@@ -1,0 +1,98 @@
+# Stillwater — kayzel
+# Warm gruvbox surfaces, muted cyan accent. Syntax lime stays.
+
+"attribute" = { fg = "support" }
+"comment" = { fg = "comment", modifiers = ["italic"] }
+"constant" = { fg = "constant" }
+"constant.character.escape" = { fg = "parameter" }
+"constructor" = { fg = "support" }
+"diagnostic" = { underline = { color = "warning", style = "curl" } }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "accent", style = "curl" } }
+"diagnostic.info" = { underline = { color = "accent", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warning", style = "curl" } }
+"diff.delta" = { fg = "warning" }
+"diff.minus" = { fg = "error" }
+"diff.plus" = { fg = "function" }
+"error" = { fg = "error" }
+"function" = { fg = "function" }
+"function.builtin" = { fg = "support" }
+"function.macro" = { fg = "keyword" }
+"hint" = { fg = "accent" }
+"info" = { fg = "accent" }
+"keyword" = { fg = "keyword" }
+"label" = { fg = "keyword" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.heading" = "function"
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.text" = "keyword"
+"markup.link.url" = { fg = "accent", modifiers = ["underlined"] }
+"markup.raw" = "string"
+"module" = { fg = "support" }
+"namespace" = { fg = "support" }
+"operator" = { fg = "keyword" }
+"punctuation" = { fg = "warm" }
+"special" = { fg = "constant" }
+"string" = { fg = "string" }
+"string.regexp" = { fg = "parameter" }
+"tag" = { fg = "keyword" }
+"type" = { fg = "type" }
+"variable" = { fg = "variable" }
+"variable.builtin" = { fg = "parameter", modifiers = ["italic"] }
+"variable.other.member" = { fg = "support" }
+"variable.parameter" = { fg = "parameter", modifiers = ["italic"] }
+"warning" = { fg = "warning" }
+
+"ui.background" = { bg = "canvas" }
+"ui.background.separator" = { fg = "border" }
+"ui.cursor" = { fg = "canvas", bg = "accent" }
+"ui.cursor.insert" = { fg = "canvas", bg = "accent-hover" }
+"ui.cursor.match" = { fg = "text", bg = "selection" }
+"ui.cursor.primary" = { fg = "canvas", bg = "accent" }
+"ui.cursorline.primary" = { bg = "canvas-raised" }
+"ui.help" = { fg = "text", bg = "canvas-raised" }
+"ui.linenr" = { fg = "text-muted" }
+"ui.linenr.selected" = { fg = "accent" }
+"ui.menu" = { fg = "text", bg = "canvas-raised" }
+"ui.menu.selected" = { fg = "on-accent", bg = "accent" }
+"ui.popup" = { bg = "canvas-raised" }
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection" }
+"ui.statusline" = { fg = "text", bg = "canvas-raised" }
+"ui.statusline.inactive" = { fg = "text-muted", bg = "canvas-overlay" }
+"ui.statusline.insert" = { fg = "on-accent", bg = "accent" }
+"ui.statusline.normal" = { fg = "on-accent", bg = "accent-deep" }
+"ui.statusline.select" = { fg = "canvas", bg = "warm" }
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "accent", bg = "canvas-raised" }
+"ui.text.directory" = { fg = "accent" }
+"ui.text.inactive" = { fg = "text-muted" }
+"ui.virtual.inlay-hint" = { fg = "text-muted" }
+"ui.virtual.ruler" = { bg = "canvas-raised" }
+"ui.virtual.whitespace" = "border"
+"ui.window" = { fg = "border" }
+
+[palette]
+canvas = "#1d2021"
+canvas-raised = "#222526"
+canvas-overlay = "#1a1c1d"
+border = "#3c3836"
+text = "#ebdbb2"
+text-muted = "#8f8f99"
+warm = "#c4a489"
+accent = "#5aa8b4"
+accent-hover = "#6ebcc6"
+accent-deep = "#3d7a88"
+on-accent = "#1d2021"
+error = "#f44747"
+warning = "#d9c679"
+selection = "#3a4e64"
+comment = "#88846F"
+string = "#E6DB74"
+keyword = "#F92672"
+function = "#A6E22E"
+type = "#A6E22E"
+support = "#66D9EF"
+constant = "#AE81FF"
+parameter = "#FD971F"
+variable = "#F8F8F2"
