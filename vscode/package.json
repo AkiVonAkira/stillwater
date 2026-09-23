@@ -1,9 +1,10 @@
 {
 	"name": "stillwater-theme",
 	"displayName": "Stillwater",
-	"description": "Kayzel's muted dark theme. Warm gruvbox surfaces, cyan accent. Forked from a personal feppz! edit.",
+	"description": "Kayzel's muted dark theme. Warm gruvbox surfaces, cyan accent. Forked from a personal feppz! edit. Local extension — not on the marketplace.",
 	"version": "1.0.0",
 	"publisher": "kayzel",
+	"private": true,
 	"engines": {
 		"vscode": "^1.43.0"
 	},

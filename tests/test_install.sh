@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+BASH_EXE="${BASH:-bash}"
+
+export STILLWATER_HOME="$TMP"
+export PATH="$TMP/bin:/usr/bin:/bin"
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -q 'Stillwater' || fail "missing OS header"
+printf '%s\n' "$list" | grep -q 'Cursor' || fail "missing Cursor row"
+printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+skip' || fail "empty home should skip Cursor"
+printf '%s\n' "$list" | grep -E -q 'Visual Studio Code[[:space:]]+skip' || fail "empty home should skip VS Code"
+
+mkdir -p "$TMP/.cursor"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found' || fail "Cursor dir should count as found"
+printf '%s\n' "$list" | grep -E -q 'Visual Studio Code[[:space:]]+skip' || fail "VS Code should stay skipped"
+
+out="$("$BASH_EXE" "$ROOT/install.sh" --dry-run cursor)"
+printf '%s\n' "$out" | grep -q 'would install  Cursor' || fail "dry-run should install found Cursor"
+printf '%s\n' "$out" | grep -q 'skip  Visual Studio Code' && fail "dry-run cursor should not mention skipped VS Code"
+[[ ! -d "$TMP/.cursor/extensions" ]] || fail "dry-run must not create Cursor dest"
+
+out="$("$BASH_EXE" "$ROOT/install.sh" cursor vscode)"
+printf '%s\n' "$out" | grep -q 'install  Cursor' || fail "should install Cursor"
+printf '%s\n' "$out" | grep -q 'skip  Visual Studio Code' || fail "should skip VS Code"
+[[ -f "$TMP/.cursor/extensions/kayzel.stillwater-theme-1.0.0/package.json" ]] || fail "Cursor extension files missing"
+
+echo "ok"

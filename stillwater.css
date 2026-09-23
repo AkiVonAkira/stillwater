@@ -13,4 +13,13 @@
   --stillwater-error: #f44747;
   --stillwater-warning: #d9c679;
   --stillwater-selection: #3a4e64;
+  --stillwater-syntax-comment: #88846F;
+  --stillwater-syntax-string: #E6DB74;
+  --stillwater-syntax-keyword: #F92672;
+  --stillwater-syntax-function: #A6E22E;
+  --stillwater-syntax-type: #A6E22E;
+  --stillwater-syntax-support: #66D9EF;
+  --stillwater-syntax-constant: #AE81FF;
+  --stillwater-syntax-parameter: #FD971F;
+  --stillwater-syntax-variable: #F8F8F2;
 }

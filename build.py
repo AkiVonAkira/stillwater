@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+SKIP_KEYS = {"id", "label", "publisher"}
 
 
 def remap_hex(text: str, hex_map: dict[str, str]) -> str:
@@ -23,14 +24,26 @@ def remap_hex(text: str, hex_map: dict[str, str]) -> str:
     return re.sub(r"#([0-9A-Fa-f]{6,8})", repl, text)
 
 
+def css_name(key: str) -> str:
+    return re.sub(r"(?<!^)(?=[A-Z])", "-", key).replace("_", "-").lower()
+
+
 def write_css(palette: dict) -> None:
-    skip = {"id", "label", "publisher"}
     lines = [":root {"]
-    for key, value in palette.items():
-        if key in skip or not isinstance(value, str) or not value.startswith("#"):
-            continue
-        name = re.sub(r"(?<!^)(?=[A-Z])", "-", key).lower()
-        lines.append(f"  --stillwater-{name}: {value};")
+
+    def walk(obj: object, prefix: str) -> None:
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key in SKIP_KEYS:
+                    continue
+                name = css_name(str(key))
+                next_prefix = f"{prefix}-{name}" if prefix else name
+                walk(value, next_prefix)
+            return
+        if isinstance(obj, str) and obj.startswith("#"):
+            lines.append(f"  --stillwater-{prefix}: {obj};")
+
+    walk(palette, "")
     lines.append("}")
     lines.append("")
     out = ROOT / "stillwater.css"

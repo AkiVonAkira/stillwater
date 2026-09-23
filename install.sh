@@ -2,73 +2,174 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-EXT_ID="kayzel.stillwater-theme-1.0.0"
+export STILLWATER_ROOT="$ROOT"
+# shellcheck source=install/lib.sh
+source "$ROOT/install/lib.sh"
+stillwater_init_paths
 
-install_vscode_ext() {
-  local dest="$1"
-  mkdir -p "$(dirname "$dest")"
-  rm -rf "$dest"
-  mkdir -p "$dest"
-  cp -a "$ROOT/vscode/." "$dest/"
+usage() {
+  cat <<'EOF'
+Install Stillwater into apps found on this OS. Missing apps are skipped.
+
+  bash install.sh
+  bash install.sh --list
+  bash install.sh --dry-run
+  bash install.sh --interactive
+  bash install.sh cursor t3
+EOF
 }
 
-if [[ -d "$HOME/.cursor" ]] || command -v cursor >/dev/null 2>&1; then
-  install_vscode_ext "$HOME/.cursor/extensions/$EXT_ID"
-  echo "Cursor extension: $HOME/.cursor/extensions/$EXT_ID"
-fi
+LIST=0
+INTERACTIVE=0
+ONLY=()
+STILLWATER_DRY_RUN=0
 
-if [[ -d "$HOME/.vscode" ]] || command -v code >/dev/null 2>&1; then
-  install_vscode_ext "$HOME/.vscode/extensions/$EXT_ID"
-  echo "VS Code extension: $HOME/.vscode/extensions/$EXT_ID"
-fi
-
-set_color_theme() {
-  local settings="$1"
-  mkdir -p "$(dirname "$settings")"
-  if [[ ! -f "$settings" ]]; then
-    printf '%s\n' '{
-  "workbench.colorTheme": "Stillwater"
-}' >"$settings"
-    return
-  fi
-  python3 - "$settings" <<'PY'
-import json, pathlib, sys
-path = pathlib.Path(sys.argv[1])
-raw = path.read_text()
-data = json.loads(raw)
-data["workbench.colorTheme"] = "Stillwater"
-path.write_text(json.dumps(data, indent=2) + "\n")
-PY
-}
-
-for candidate in \
-  "$HOME/.config/Cursor/User/settings.json" \
-  "$HOME/.config/Code/User/settings.json"
-do
-  if [[ -f "$candidate" ]] || [[ "$candidate" == *Cursor* && -d "$HOME/.config/Cursor" ]] || [[ "$candidate" == *Code* && -d "$HOME/.config/Code" ]]; then
-    set_color_theme "$candidate"
-    echo "colorTheme Stillwater -> $candidate"
-  fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --list)
+      LIST=1
+      shift
+      ;;
+    --dry-run)
+      STILLWATER_DRY_RUN=1
+      shift
+      ;;
+    --interactive)
+      INTERACTIVE=1
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "unknown flag: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      ONLY+=("$1")
+      shift
+      ;;
+  esac
 done
 
-RYOKU_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ryoku/themes/stillwater"
-if command -v ryoku-shell >/dev/null 2>&1; then
-  mkdir -p "$RYOKU_DIR"
-  cp -a "$ROOT/ryoku/scheme.json" "$ROOT/ryoku/meta.json" "$RYOKU_DIR/"
-  python3 - <<'PY'
-import json, pathlib, os
-p = pathlib.Path.home() / ".config" / "ryoku" / "theme.json"
-p.parent.mkdir(parents=True, exist_ok=True)
-data = {}
-if p.exists():
-    data = json.loads(p.read_text() or "{}")
-data["followWallpaper"] = False
-p.write_text(json.dumps(data, indent=2) + "\n")
-PY
-  ryoku-shell theme stillwater >/dev/null
-  echo "Ryoku theme: stillwater ($RYOKU_DIR)"
+export STILLWATER_DRY_RUN
+
+BASH_EXE="${BASH:-bash}"
+
+adapter_scripts() {
+  local script
+  for script in "$ROOT"/*/install.sh; do
+    if [[ -f "$script" ]]; then
+      printf '%s\n' "$script"
+    fi
+  done | sort
+}
+
+collect_status() {
+  local script
+  while IFS= read -r script; do
+    "$BASH_EXE" "$script" status
+  done < <(adapter_scripts)
+}
+
+print_list() {
+  printf 'Stillwater  %s\n' "$(stillwater_os_label)"
+  collect_status | while IFS='|' read -r id label state; do
+    printf '  %-22s  %s  %s\n' "$label" "$state" "$id"
+  done
+}
+
+unknown_ids() {
+  local id known line
+  if [[ ${#ONLY[@]} -eq 0 ]]; then
+    return 0
+  fi
+  known="$(collect_status | cut -d'|' -f1)"
+  for id in "${ONLY[@]}"; do
+    if ! printf '%s\n' "$known" | grep -qx "$id"; then
+      echo "unknown adapter: $id" >&2
+      echo "known: $(printf '%s' "$known" | tr '\n' ' ')" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
+if [[ "$LIST" == 1 ]]; then
+  print_list
+  exit 0
 fi
 
-if command -v t3 >/dev/null 2>&1; then
-  t3 theme set --id stillwater "$ROOT/t3/stillwater.json"
+unknown_ids || exit 1
+
+if [[ "$INTERACTIVE" == 1 ]]; then
+  if [[ ! -t 0 ]]; then
+    echo "--interactive needs a terminal" >&2
+    exit 1
+  fi
+  print_list
+  echo
+  printf 'Install to all found apps? [Y/s/n] '
+  read -r choice || exit 1
+  choice="$(printf '%s' "$choice" | tr '[:upper:]' '[:lower:]')"
+  case "$choice" in
+    n | no)
+      exit 0
+      ;;
+    s | select)
+      printf 'Ids (space separated): '
+      read -r selected || exit 1
+      # shellcheck disable=SC2206
+      ONLY=($selected)
+      ;;
+    *)
+      ONLY=()
+      while IFS='|' read -r id _label state; do
+        if [[ "$state" == found ]]; then
+          ONLY+=("$id")
+        fi
+      done < <(collect_status)
+      ;;
+  esac
+  unknown_ids || exit 1
 fi
+
+installed=0
+skipped=0
+while IFS='|' read -r id label state; do
+  if ! stillwater_id_wanted "$id" "${ONLY[@]+"${ONLY[@]}"}"; then
+    continue
+  fi
+  if [[ "$state" != found ]]; then
+    echo "skip  $label ($id) - not found"
+    skipped=$((skipped + 1))
+    continue
+  fi
+  script=""
+  while IFS= read -r candidate; do
+    if "$BASH_EXE" "$candidate" owns "$id"; then
+      script="$candidate"
+      break
+    fi
+  done < <(adapter_scripts)
+  if [[ -z "$script" ]]; then
+    echo "skip  $label ($id) - no installer"
+    skipped=$((skipped + 1))
+    continue
+  fi
+  dest="$("$BASH_EXE" "$script" install "$id")"
+  if [[ "$STILLWATER_DRY_RUN" == 1 ]]; then
+    echo "would install  $label -> $dest"
+  else
+    echo "install  $label -> $dest"
+  fi
+  installed=$((installed + 1))
+done < <(collect_status)
+
+echo "$installed installed, $skipped skipped"

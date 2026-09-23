@@ -1,54 +1,105 @@
+param(
+  [switch]$List,
+  [switch]$DryRun,
+  [switch]$Interactive,
+  [Parameter(ValueFromRemainingArguments = $true)]
+  [string[]]$Only
+)
+
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ExtId = "kayzel.stillwater-theme-1.0.0"
+$env:STILLWATER_ROOT = $Root
+. (Join-Path $Root "install\lib.ps1")
+Initialize-StillwaterPaths
+if ($DryRun) { $env:STILLWATER_DRY_RUN = "1" } else { $env:STILLWATER_DRY_RUN = "0" }
 
-function Install-VsCodeExt([string]$Dest) {
-  $parent = Split-Path -Parent $Dest
-  New-Item -ItemType Directory -Force -Path $parent | Out-Null
-  if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
-  Copy-Item -Recurse -Force (Join-Path $Root "vscode") $Dest
+function Get-AdapterScripts {
+  Get-ChildItem -Path $Root -Directory | ForEach-Object {
+    $script = Join-Path $_.FullName "install.ps1"
+    if (Test-Path -LiteralPath $script) { $script }
+  }
 }
 
-function Set-ColorTheme([string]$SettingsPath) {
-  $dir = Split-Path -Parent $SettingsPath
-  New-Item -ItemType Directory -Force -Path $dir | Out-Null
-  $seed = "{`n  `"workbench.colorTheme`": `"Stillwater`"`n}`n"
-  if (-not (Test-Path $SettingsPath)) {
-    Set-Content -Encoding utf8 -Path $SettingsPath -Value $seed
-    return
+function Get-StillwaterStatus {
+  foreach ($script in Get-AdapterScripts) {
+    & $script -Action status
   }
-  $raw = Get-Content -Raw -Encoding utf8 $SettingsPath
-  if ($raw -match 'workbench\.colorTheme') {
-    $raw = [regex]::Replace($raw, '"workbench\.colorTheme"\s*:\s*"[^"]*"', '"workbench.colorTheme": "Stillwater"')
-  } else {
-    $raw = $raw.TrimEnd()
-    if ($raw.EndsWith("}")) {
-      $raw = $raw.Substring(0, $raw.Length - 1) + "  `"workbench.colorTheme`": `"Stillwater`"`r`n}`r`n"
+}
+
+function Write-StillwaterList {
+  Write-Host ("Stillwater  " + (Get-StillwaterOsLabel))
+  foreach ($row in Get-StillwaterStatus) {
+    $id, $label, $state = $row.Split("|")
+    Write-Host ("  {0,-22}  {1}  {2}" -f $label, $state, $id)
+  }
+}
+
+if ($List) {
+  Write-StillwaterList
+  exit 0
+}
+
+$known = @{}
+foreach ($row in Get-StillwaterStatus) {
+  $id = $row.Split("|")[0]
+  $known[$id] = $true
+}
+if ($Only) {
+  foreach ($id in $Only) {
+    if (-not $known.ContainsKey($id)) {
+      Write-Error "unknown adapter: $id"
+      exit 1
     }
   }
-  [System.IO.File]::WriteAllText($SettingsPath, $raw)
 }
 
-$cursorExt = Join-Path $env:USERPROFILE ".cursor\extensions\$ExtId"
-Install-VsCodeExt $cursorExt
-Write-Host "Cursor extension: $cursorExt"
-
-$vscodeExt = Join-Path $env:USERPROFILE ".vscode\extensions\$ExtId"
-Install-VsCodeExt $vscodeExt
-Write-Host "VS Code extension: $vscodeExt"
-
-$cursorSettings = Join-Path $env:APPDATA "Cursor\User\settings.json"
-Set-ColorTheme $cursorSettings
-Write-Host "colorTheme Stillwater -> $cursorSettings"
-
-$vscodeSettings = Join-Path $env:APPDATA "Code\User\settings.json"
-Set-ColorTheme $vscodeSettings
-Write-Host "colorTheme Stillwater -> $vscodeSettings"
-
-$t3Theme = Join-Path $Root "t3\stillwater.json"
-$t3 = Get-Command t3 -ErrorAction SilentlyContinue
-if ($t3) {
-  & t3 theme set --id stillwater $t3Theme
-} else {
-  Write-Host "t3 CLI not on PATH. Import $t3Theme in T3 Appearance, or install the T3 CLI and rerun."
+if ($Interactive) {
+  if (-not [Environment]::UserInteractive) {
+    Write-Error "--interactive needs a terminal"
+    exit 1
+  }
+  Write-StillwaterList
+  Write-Host ""
+  $choice = (Read-Host "Install to all found apps? [Y/s/n]").Trim().ToLowerInvariant()
+  if ($choice -eq "n" -or $choice -eq "no") { exit 0 }
+  if ($choice -eq "s" -or $choice -eq "select") {
+    $Only = @((Read-Host "Ids (space separated)") -split "\s+")
+  } else {
+    $Only = @()
+    foreach ($row in Get-StillwaterStatus) {
+      $id, $label, $state = $row.Split("|")
+      if ($state -eq "found") { $Only += $id }
+    }
+  }
 }
+
+$installed = 0
+$skipped = 0
+foreach ($row in Get-StillwaterStatus) {
+  $id, $label, $state = $row.Split("|")
+  if (-not (Test-StillwaterIdWanted $id $Only)) { continue }
+  if ($state -ne "found") {
+    Write-Host "skip  $label ($id) - not found"
+    $skipped++
+    continue
+  }
+  $script = $null
+  foreach ($candidate in Get-AdapterScripts) {
+    $owns = & $candidate -Action owns -Only @($id)
+    if ($owns -eq "yes") { $script = $candidate; break }
+  }
+  if (-not $script) {
+    Write-Host "skip  $label ($id) - no installer"
+    $skipped++
+    continue
+  }
+  $dest = & $script -Action install -Only @($id)
+  if ($env:STILLWATER_DRY_RUN -eq "1") {
+    Write-Host "would install  $label -> $dest"
+  } else {
+    Write-Host "install  $label -> $dest"
+  }
+  $installed++
+}
+
+Write-Host "$installed installed, $skipped skipped"

@@ -16,7 +16,18 @@
     "onAccent": "#1d2021",
     "error": "#f44747",
     "warning": "#d9c679",
-    "selection": "#3a4e64"
+    "selection": "#3a4e64",
+    "syntax": {
+      "comment": "#88846F",
+      "string": "#E6DB74",
+      "keyword": "#F92672",
+      "function": "#A6E22E",
+      "type": "#A6E22E",
+      "support": "#66D9EF",
+      "constant": "#AE81FF",
+      "parameter": "#FD971F",
+      "variable": "#F8F8F2"
+    }
   },
   "hexMap": {
     "2eb387": "5aa8b4",

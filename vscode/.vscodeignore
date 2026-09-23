@@ -1,0 +1,4 @@
+.vscode/**
+.git/**
+install.sh
+install.ps1

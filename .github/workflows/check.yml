@@ -1,0 +1,30 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate JSON
+        run: |
+          python3 -m json.tool palette.json >/dev/null
+          python3 -m json.tool vscode/package.json >/dev/null
+          python3 -m json.tool t3/stillwater.json >/dev/null
+          python3 -m json.tool ryoku/scheme.json >/dev/null
+          python3 -m json.tool ryoku/meta.json >/dev/null
+      - name: Rebuild CSS
+        run: |
+          python3 build.py
+          git diff --exit-code stillwater.css
+      - name: Installer tests
+        run: bash tests/test_install.sh
+      - name: Installer list
+        run: bash install.sh --list
