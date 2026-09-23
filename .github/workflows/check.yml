@@ -10,19 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
+          node-version: "22"
+          cache: npm
+      - name: Install
+        run: npm ci
       - name: Validate JSON
         run: |
-          python3 -m json.tool palette.json >/dev/null
-          python3 -m json.tool vscode/package.json >/dev/null
-          python3 -m json.tool t3/stillwater.json >/dev/null
-          python3 -m json.tool ryoku/scheme.json >/dev/null
-          python3 -m json.tool ryoku/meta.json >/dev/null
+          node --input-type=commonjs -e "const fs=require('fs'); for (const file of ['palette.json','vscode/package.json','t3/stillwater.json','ryoku/scheme.json','ryoku/meta.json']) JSON.parse(fs.readFileSync(file,'utf8'));"
       - name: Rebuild CSS
         run: |
-          python3 build.py
+          npm run build
           git diff --exit-code stillwater.css
       - name: Installer tests
         run: bash tests/test_install.sh

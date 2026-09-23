@@ -15,9 +15,9 @@ Work lands on `main` through pull requests. Do not push to `main`. Do not open e
 ## Checks
 
 ```bash
-python3 build.py
+npm run build
 bash tests/test_install.sh
 bash install.sh --list
 ```
 
-`stillwater.css` must match `palette.json` after `python3 build.py`.
+`stillwater.css` must match `palette.json` after `npm run build`.

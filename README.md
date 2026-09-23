@@ -12,7 +12,7 @@ This repository is private until the installer can ask which apps to theme. Dire
 
 `palette.json` field `palette` is the set to use. `stillwater.css` is the same set as custom properties (`--stillwater-canvas`, `--stillwater-accent`, `--stillwater-syntax-function`, and the rest). Anything that can read JSON or CSS can use those files. Do not invent a second palette.
 
-`python build.py` rewrites `stillwater.css` from `palette.json`. Pass a feppz theme path only when rebuilding the VS Code token file.
+`npm run build` rewrites `stillwater.css` from `palette.json`. Pass a feppz theme path only when rebuilding the VS Code token file (`npm run build -- path/to/feppz.json`).
 
 `hexMap` in `palette.json` is the one-time green-to-cyan remap for that VS Code file. Other apps should ignore it.
 
