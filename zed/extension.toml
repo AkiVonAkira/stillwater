@@ -1,0 +1,6 @@
+id = "stillwater"
+name = "Stillwater"
+version = "1.0.0"
+schema_version = 1
+authors = ["kayzel"]
+description = "Kayzel's muted dark theme. Warm gruvbox surfaces, cyan accent. Local Zed extension — not on the extension store."
