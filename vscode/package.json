@@ -1,0 +1,22 @@
+{
+	"name": "stillwater-theme",
+	"displayName": "Stillwater",
+	"description": "Kayzel's muted dark theme. Warm gruvbox surfaces, cyan accent. Forked from a personal feppz! edit.",
+	"version": "1.0.0",
+	"publisher": "kayzel",
+	"engines": {
+		"vscode": "^1.43.0"
+	},
+	"categories": [
+		"Themes"
+	],
+	"contributes": {
+		"themes": [
+			{
+				"label": "Stillwater",
+				"uiTheme": "vs-dark",
+				"path": "./themes/stillwater-color-theme.json"
+			}
+		]
+	}
+}

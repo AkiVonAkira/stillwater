@@ -1,0 +1,32 @@
+{
+  "palette": {
+    "id": "stillwater",
+    "label": "Stillwater",
+    "publisher": "kayzel",
+    "canvas": "#1d2021",
+    "canvasRaised": "#222526",
+    "canvasOverlay": "#1a1c1d",
+    "border": "#3c3836",
+    "text": "#ebdbb2",
+    "textMuted": "#8f8f99",
+    "warm": "#c4a489",
+    "accent": "#5aa8b4",
+    "accentHover": "#6ebcc6",
+    "accentDeep": "#3d7a88",
+    "onAccent": "#1d2021",
+    "error": "#f44747",
+    "warning": "#d9c679",
+    "selection": "#3a4e64"
+  },
+  "hexMap": {
+    "2eb387": "5aa8b4",
+    "30c593": "62b4c0",
+    "5ed196": "78c4ce",
+    "2a8f54": "3d8a88",
+    "4da586": "4d9aa0",
+    "60d2be": "60c4d2",
+    "5ed2be": "5ec4d2",
+    "4ec9b0": "4ec4c0",
+    "0e639c": "3d7a90"
+  }
+}

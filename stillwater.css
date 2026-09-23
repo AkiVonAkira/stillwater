@@ -1,0 +1,16 @@
+:root {
+  --stillwater-canvas: #1d2021;
+  --stillwater-canvas-raised: #222526;
+  --stillwater-canvas-overlay: #1a1c1d;
+  --stillwater-border: #3c3836;
+  --stillwater-text: #ebdbb2;
+  --stillwater-text-muted: #8f8f99;
+  --stillwater-warm: #c4a489;
+  --stillwater-accent: #5aa8b4;
+  --stillwater-accent-hover: #6ebcc6;
+  --stillwater-accent-deep: #3d7a88;
+  --stillwater-on-accent: #1d2021;
+  --stillwater-error: #f44747;
+  --stillwater-warning: #d9c679;
+  --stillwater-selection: #3a4e64;
+}
