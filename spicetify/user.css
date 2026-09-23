@@ -1,0 +1,22 @@
+/* Stillwater - local Spicetify theme. Not listed on Marketplace.
+   Chrome colors come from color.ini as --spice-* variables. */
+
+.Root__top-container,
+.main-topBar-background {
+  background-color: var(--spice-main) !important;
+}
+
+.main-nowPlayingBar-nowPlayingBar {
+  background-color: var(--spice-player) !important;
+}
+
+.encore-bright-accent-set {
+  --background-base: var(--spice-button) !important;
+  --background-highlight: var(--spice-button-active) !important;
+  --text-base: var(--spice-main) !important;
+}
+
+.main-trackList-trackListRow.main-trackList-selected,
+.main-trackList-trackListRow:hover {
+  background-color: var(--spice-highlight) !important;
+}
