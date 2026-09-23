@@ -1,0 +1,85 @@
+/**
+ * @name Stillwater
+ * @author kayzel
+ * @version 1.0.0
+ * @description Warm gruvbox surfaces, muted cyan accent. Local Vencord theme - not listed on a theme store.
+ * @authorId kayzel
+ */
+
+.theme-dark,
+.theme-midnight,
+:root {
+  --stillwater-canvas: #1d2021;
+  --stillwater-raised: #222526;
+  --stillwater-overlay: #1a1c1d;
+  --stillwater-border: #3c3836;
+  --stillwater-text: #ebdbb2;
+  --stillwater-muted: #8f8f99;
+  --stillwater-warm: #c4a489;
+  --stillwater-accent: #5aa8b4;
+  --stillwater-accent-hover: #6ebcc6;
+  --stillwater-accent-deep: #3d7a88;
+  --stillwater-on-accent: #1d2021;
+  --stillwater-error: #f44747;
+  --stillwater-warning: #d9c679;
+  --stillwater-selection: #3a4e64;
+
+  --background-primary: var(--stillwater-canvas) !important;
+  --background-secondary: var(--stillwater-overlay) !important;
+  --background-secondary-alt: var(--stillwater-overlay) !important;
+  --background-tertiary: var(--stillwater-raised) !important;
+  --background-accent: var(--stillwater-raised) !important;
+  --background-floating: var(--stillwater-raised) !important;
+  --background-nested-floating: var(--stillwater-raised) !important;
+  --background-mobile-primary: var(--stillwater-canvas) !important;
+  --background-mobile-secondary: var(--stillwater-overlay) !important;
+  --channeltextarea-background: var(--stillwater-raised) !important;
+  --background-modifier-hover: #222526 !important;
+  --background-modifier-active: #2a3a3c !important;
+  --background-modifier-selected: #2a3a3c !important;
+  --background-modifier-accent: var(--stillwater-border) !important;
+
+  --bg-base-primary: var(--stillwater-canvas) !important;
+  --bg-base-secondary: var(--stillwater-overlay) !important;
+  --bg-base-tertiary: var(--stillwater-raised) !important;
+  --bg-surface-overlay: var(--stillwater-raised) !important;
+  --bg-surface-raised: var(--stillwater-raised) !important;
+  --bg-mod-faint: #22252680 !important;
+  --bg-mod-subtle: #2a3a3c80 !important;
+  --bg-mod-strong: #2a3a3ccc !important;
+  --bg-brand: var(--stillwater-accent) !important;
+  --border-subtle: var(--stillwater-border) !important;
+  --border-strong: var(--stillwater-border) !important;
+
+  --text-normal: var(--stillwater-text) !important;
+  --text-muted: var(--stillwater-muted) !important;
+  --text-link: var(--stillwater-accent) !important;
+  --text-brand: var(--stillwater-accent) !important;
+  --header-primary: var(--stillwater-text) !important;
+  --header-secondary: var(--stillwater-muted) !important;
+  --channels-default: var(--stillwater-muted) !important;
+  --interactive-normal: var(--stillwater-muted) !important;
+  --interactive-hover: var(--stillwater-text) !important;
+  --interactive-active: var(--stillwater-text) !important;
+  --interactive-muted: var(--stillwater-border) !important;
+
+  --brand-500: var(--stillwater-accent) !important;
+  --brand-560: var(--stillwater-accent-hover) !important;
+  --brand-experiment: var(--stillwater-accent) !important;
+  --brand-experiment-560: var(--stillwater-accent-hover) !important;
+  --control-brand-foreground: var(--stillwater-accent) !important;
+  --control-brand-foreground-new: var(--stillwater-accent) !important;
+
+  --scrollbar-thin-thumb: var(--stillwater-border) !important;
+  --scrollbar-auto-thumb: var(--stillwater-border) !important;
+  --scrollbar-auto-track: var(--stillwater-overlay) !important;
+  --input-background: var(--stillwater-raised) !important;
+  --deprecated-card-bg: var(--stillwater-raised) !important;
+  --deprecated-text-input-bg: var(--stillwater-raised) !important;
+}
+
+.theme-dark .wrapper_f7ecac,
+.theme-dark [class*="sidebar_"],
+.theme-dark [class*="guilds_"] {
+  background-color: var(--stillwater-overlay) !important;
+}
