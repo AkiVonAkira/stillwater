@@ -2,6 +2,7 @@ param(
   [switch]$List,
   [switch]$DryRun,
   [switch]$Interactive,
+  [switch]$All,
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$Only
 )
@@ -12,6 +13,11 @@ $env:STILLWATER_ROOT = $Root
 . (Join-Path $Root "install\lib.ps1")
 Initialize-StillwaterPaths
 if ($DryRun) { $env:STILLWATER_DRY_RUN = "1" } else { $env:STILLWATER_DRY_RUN = "0" }
+
+if ($All -and $Only) {
+  Write-Error "use -All or adapter ids, not both"
+  exit 1
+}
 
 function Get-AdapterScripts {
   Get-ChildItem -Path $Root -Directory | ForEach-Object {
@@ -27,7 +33,7 @@ function Get-StillwaterStatus {
 }
 
 function Write-StillwaterList {
-  Write-Host ("Stillwater  " + (Get-StillwaterOsLabel))
+  Write-Host ("Stillwater  {0}  {1}" -f (Get-StillwaterOsLabel), (Get-StillwaterVersion))
   foreach ($row in Get-StillwaterStatus) {
     $id, $label, $state = $row.Split("|")
     Write-Host ("  {0,-22}  {1}  {2}" -f $label, $state, $id)
@@ -53,9 +59,9 @@ if ($Only) {
   }
 }
 
-if ($Interactive) {
-  if (-not [Environment]::UserInteractive) {
-    Write-Error "--interactive needs a terminal"
+function Invoke-StillwaterInteractive {
+  if (-not [Environment]::UserInteractive -or [Console]::IsInputRedirected) {
+    Write-Error "install.ps1 needs a terminal, or pass -All / adapter ids"
     exit 1
   }
   Write-StillwaterList
@@ -63,14 +69,22 @@ if ($Interactive) {
   $choice = (Read-Host "Install to all found apps? [Y/s/n]").Trim().ToLowerInvariant()
   if ($choice -eq "n" -or $choice -eq "no") { exit 0 }
   if ($choice -eq "s" -or $choice -eq "select") {
-    $Only = @((Read-Host "Ids (space separated)") -split "\s+")
-  } else {
-    $Only = @()
-    foreach ($row in Get-StillwaterStatus) {
-      $id, $label, $state = $row.Split("|")
-      if ($state -eq "found") { $Only += $id }
-    }
+    return @((Read-Host "Ids (space separated)") -split "\s+")
   }
+  $found = @()
+  foreach ($row in Get-StillwaterStatus) {
+    $id, $label, $state = $row.Split("|")
+    if ($state -eq "found") { $found += $id }
+  }
+  return $found
+}
+
+if ($All) {
+  $Only = @()
+} elseif ($Only -and -not $Interactive) {
+  :
+} else {
+  $Only = @(Invoke-StillwaterInteractive)
 }
 
 $installed = 0

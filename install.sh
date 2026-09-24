@@ -11,16 +11,17 @@ usage() {
   cat <<'EOF'
 Install Stillwater into apps found on this OS. Missing apps are skipped.
 
-  bash install.sh
+  bash install.sh                 interactive chooser (default)
+  bash install.sh --all           every found adapter (for agents)
   bash install.sh --list
-  bash install.sh --dry-run
-  bash install.sh --interactive
+  bash install.sh --dry-run --all
   bash install.sh cursor t3
 EOF
 }
 
 LIST=0
 INTERACTIVE=0
+ALL=0
 ONLY=()
 STILLWATER_DRY_RUN=0
 
@@ -36,6 +37,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --interactive)
       INTERACTIVE=1
+      shift
+      ;;
+    --all)
+      ALL=1
       shift
       ;;
     -h | --help)
@@ -60,6 +65,11 @@ done
 
 export STILLWATER_DRY_RUN
 
+if [[ "$ALL" == 1 && ${#ONLY[@]} -gt 0 ]]; then
+  echo "use --all or adapter ids, not both" >&2
+  exit 1
+fi
+
 BASH_EXE="${BASH:-bash}"
 
 adapter_scripts() {
@@ -79,14 +89,14 @@ collect_status() {
 }
 
 print_list() {
-  printf 'Stillwater  %s\n' "$(stillwater_os_label)"
+  printf 'Stillwater  %s  %s\n' "$(stillwater_os_label)" "$(stillwater_version)"
   collect_status | while IFS='|' read -r id label state; do
     printf '  %-22s  %s  %s\n' "$label" "$state" "$id"
   done
 }
 
 unknown_ids() {
-  local id known line
+  local id known
   if [[ ${#ONLY[@]} -eq 0 ]]; then
     return 0
   fi
@@ -101,16 +111,9 @@ unknown_ids() {
   return 0
 }
 
-if [[ "$LIST" == 1 ]]; then
-  print_list
-  exit 0
-fi
-
-unknown_ids || exit 1
-
-if [[ "$INTERACTIVE" == 1 ]]; then
+prompt_interactive() {
   if [[ ! -t 0 ]]; then
-    echo "--interactive needs a terminal" >&2
+    echo "install.sh needs a terminal, or pass --all / adapter ids" >&2
     exit 1
   fi
   print_list
@@ -137,8 +140,24 @@ if [[ "$INTERACTIVE" == 1 ]]; then
       done < <(collect_status)
       ;;
   esac
-  unknown_ids || exit 1
+}
+
+if [[ "$LIST" == 1 ]]; then
+  print_list
+  exit 0
 fi
+
+unknown_ids || exit 1
+
+if [[ "$ALL" == 1 ]]; then
+  ONLY=()
+elif [[ ${#ONLY[@]} -gt 0 && "$INTERACTIVE" != 1 ]]; then
+  :
+else
+  prompt_interactive
+fi
+
+unknown_ids || exit 1
 
 installed=0
 skipped=0

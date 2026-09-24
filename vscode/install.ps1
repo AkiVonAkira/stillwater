@@ -10,7 +10,7 @@ if (-not $Root) { $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.M
 . (Join-Path $Root "install\lib.ps1")
 Initialize-StillwaterPaths
 
-$ExtId = "kayzel.stillwater-theme-1.0.0"
+$ExtId = Get-StillwaterVsCodeExtId
 $Src = Join-Path $Root "vscode"
 $Platform = Get-StillwaterPlatform
 
@@ -88,8 +88,10 @@ switch ($Action) {
   "install" {
     $id = $Only[0]
     $dest = Get-ExtDir $id
+    Remove-StillwaterOldVsCodeExtensions (Split-Path -Parent $dest) (Split-Path -Leaf $dest)
     Copy-StillwaterFile (Join-Path $Src "package.json") (Join-Path $dest "package.json")
     Copy-StillwaterTree (Join-Path $Src "themes") (Join-Path $dest "themes")
+    Register-StillwaterVsCodeExtension $dest
     Set-StillwaterVsCodeTheme (Get-SettingsPath $id)
     Write-Output $dest
   }

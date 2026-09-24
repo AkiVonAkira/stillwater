@@ -8,6 +8,7 @@ const SKIP_KEYS = new Set(["id", "label", "publisher"]);
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
 type Spec = {
+  version?: string;
   palette: { [key: string]: Json };
   hexMap: { [key: string]: string };
 };

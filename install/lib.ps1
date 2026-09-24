@@ -82,6 +82,88 @@ function Copy-StillwaterFile([string]$Src, [string]$Dest) {
   Copy-Item -Force $Src $Dest
 }
 
+function Get-StillwaterVersion {
+  $file = Join-Path $env:STILLWATER_ROOT "palette.json"
+  $spec = Get-Content -Raw -LiteralPath $file | ConvertFrom-Json
+  return [string]$spec.version
+}
+
+function Get-StillwaterVsCodeExtId {
+  return ("kayzel.stillwater-theme-{0}" -f (Get-StillwaterVersion))
+}
+
+function ConvertTo-StillwaterVsCodePath([string]$Path) {
+  $norm = $Path.Replace("\", "/")
+  if ($norm -match '^([A-Za-z]):/(.*)$') {
+    return ("/{0}:/{1}" -f $Matches[1].ToLowerInvariant(), $Matches[2])
+  }
+  return $norm
+}
+
+function Remove-StillwaterOldVsCodeExtensions([string]$Parent, [string]$Keep) {
+  if ($env:STILLWATER_DRY_RUN -eq "1") {
+    Write-Host "would retire old Stillwater folders in $Parent"
+    return
+  }
+  if (-not (Test-Path -LiteralPath $Parent -PathType Container)) { return }
+  Get-ChildItem -LiteralPath $Parent -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "kayzel.stillwater-theme-*" -and $_.Name -ne $Keep } |
+    ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force }
+}
+
+function Register-StillwaterVsCodeExtension([string]$Dest) {
+  $version = Get-StillwaterVersion
+  $id = "kayzel.stillwater-theme"
+  $root = Split-Path -Parent $Dest
+  $folder = Split-Path -Leaf $Dest
+  $jsonPath = Join-Path $root "extensions.json"
+  $obsoletePath = Join-Path $root ".obsolete"
+  if ($env:STILLWATER_DRY_RUN -eq "1") {
+    Write-Host "would register $id $version -> $Dest"
+    return
+  }
+  New-Item -ItemType Directory -Force -Path $root | Out-Null
+  if (Test-Path -LiteralPath $obsoletePath) {
+    $obsolete = Get-Content -Raw -LiteralPath $obsoletePath | ConvertFrom-Json
+    $map = @{}
+    $obsolete.PSObject.Properties | ForEach-Object {
+      if ($_.Name -notlike "kayzel.stillwater-theme*") { $map[$_.Name] = $_.Value }
+    }
+    $obsoleteJson = if ($map.Count -eq 0) { "{}" } else { $map | ConvertTo-Json -Compress }
+    [System.IO.File]::WriteAllText($obsoletePath, $obsoleteJson + "`n")
+  }
+  $list = @()
+  if (Test-Path -LiteralPath $jsonPath) {
+    $parsed = Get-Content -Raw -LiteralPath $jsonPath | ConvertFrom-Json
+    if ($parsed) { $list = @($parsed) }
+  }
+  $list = @($list | Where-Object { $_.identifier.id -ne $id })
+  $entry = [pscustomobject]@{
+    identifier = [pscustomobject]@{ id = $id }
+    version = $version
+    location = [pscustomobject]@{
+      '$mid' = 1
+      path = ConvertTo-StillwaterVsCodePath ((Resolve-Path -LiteralPath $Dest).Path)
+      scheme = "file"
+    }
+    relativeLocation = $folder
+    metadata = [pscustomobject]@{
+      installedTimestamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+      pinned = $true
+      source = "vsix"
+      isPreReleaseVersion = $false
+      hasPreReleaseVersion = $false
+    }
+  }
+  $list += $entry
+  $payload = @($list)
+  $text = ConvertTo-Json -Depth 8 -Compress $payload
+  if ($payload.Count -eq 1 -and $text -notmatch '^\s*\[') {
+    $text = "[$text]"
+  }
+  [System.IO.File]::WriteAllText($jsonPath, $text + "`n")
+}
+
 function Set-StillwaterVsCodeTheme([string]$SettingsPath) {
   if ($env:STILLWATER_DRY_RUN -eq "1") {
     Write-Host "would set workbench.colorTheme in $SettingsPath"
@@ -95,10 +177,12 @@ function Set-StillwaterVsCodeTheme([string]$SettingsPath) {
     return
   }
   $raw = [System.IO.File]::ReadAllText($SettingsPath)
-  if ($raw -match 'workbench\.colorTheme') {
+  if ($raw -match '"workbench\.colorTheme"') {
     $raw = [regex]::Replace($raw, '"workbench\.colorTheme"\s*:\s*"[^"]*"', '"workbench.colorTheme": "Stillwater"')
-    [System.IO.File]::WriteAllText($SettingsPath, $raw)
+  } else {
+    $raw = [regex]::Replace($raw, '\{', "{`n  `"workbench.colorTheme`": `"Stillwater`",", 1)
   }
+  [System.IO.File]::WriteAllText($SettingsPath, $raw)
 }
 
 function Invoke-StillwaterCmd([string[]]$Cmd) {

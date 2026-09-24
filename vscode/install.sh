@@ -6,7 +6,7 @@ ROOT="${STILLWATER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 source "$ROOT/install/lib.sh"
 stillwater_init_paths
 
-EXT_ID="kayzel.stillwater-theme-1.0.0"
+EXT_ID="$(stillwater_vscode_ext_id)"
 SRC="$ROOT/vscode"
 ACTION="${1:-install}"
 shift || true
@@ -140,8 +140,10 @@ case "$ACTION" in
     id="${1:-}"
     owns "$id"
     dest="$(ext_dir "$id")"
+    stillwater_retire_vscode_extensions "$(dirname "$dest")" "$(basename "$dest")"
     stillwater_copy_file "$SRC/package.json" "$dest/package.json"
     stillwater_copy_tree "$SRC/themes" "$dest/themes"
+    stillwater_register_vscode_extension "$dest"
     stillwater_set_vscode_theme "$(settings_path "$id")"
     printf '%s\n' "$dest"
     ;;
