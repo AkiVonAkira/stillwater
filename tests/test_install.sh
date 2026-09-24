@@ -323,6 +323,26 @@ printf '%s\n' ':root {
 grep -q 'margin: 7px' "$TMP/.config/yasb/styles.css" || fail "YASB should keep a different theme layout"
 grep -q -- '--base: #1d2021' "$TMP/.config/yasb/styles.css" || fail "YASB should map --base by name"
 grep -q -- '--blue: #5aa8b4' "$TMP/.config/yasb/styles.css" || fail "YASB should map --blue by name"
+printf '%s\n' ':root {
+  --base: #11111b;
+}
+.yasb-bar {
+  padding: 12px;
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+}
+.media-menu .source.spotify {
+  background-color: #199143;
+}
+.icon { color: rgb(203, 166, 247); }' >"$TMP/.config/yasb/styles.css"
+"$BASH_EXE" "$ROOT/install.sh" yasb >/dev/null
+grep -q 'padding: 12px' "$TMP/.config/yasb/styles.css" || fail "YASB should keep hardcoded-theme layout"
+grep -q 'background-color: #1d2021' "$TMP/.config/yasb/styles.css" || fail "YASB should patch mocha bar fill"
+grep -q 'color: #ebdbb2' "$TMP/.config/yasb/styles.css" || fail "YASB should patch mocha bar text"
+grep -q 'background-color: #199143' "$TMP/.config/yasb/styles.css" || fail "YASB should keep Spotify brand color"
+grep -q 'color: rgb(174, 129, 255)' "$TMP/.config/yasb/styles.css" || fail "YASB should patch mocha rgb() literals"
+if grep -q '#1e1e2e' "$TMP/.config/yasb/styles.css"; then fail "YASB should not leave mocha base hex in widget CSS"; fi
+if grep -q '#cdd6f4' "$TMP/.config/yasb/styles.css"; then fail "YASB should not leave mocha text hex in widget CSS"; fi
 
 rm -rf "$TMP/.config/kitty"
 mkdir -p "$TMP/.config/kitty"

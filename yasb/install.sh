@@ -11,6 +11,7 @@ shift || true
 ID="yasb"
 LABEL="YASB"
 MAP="$ROOT/yasb/vars.map"
+HEXMAP="$ROOT/yasb/hex.map"
 SEED="$ROOT/yasb/root.css"
 
 detect_dirs() {
@@ -81,12 +82,93 @@ yasb_format() {
   fi
 }
 
+yasb_skip_hex() {
+  case "$1" in
+    0078d4 | 199143 | ff583b | 1db954 | ffffff | 000000) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+yasb_hex_role() {
+  local hex="$1"
+  hex="$(printf '%s' "$hex" | tr '[:upper:]' '[:lower:]')"
+  sed -n "s/^${hex}[[:space:]]\{1,\}//p" "$HEXMAP" | head -n 1
+}
+
+yasb_expand_hex() {
+  local h="$1"
+  h="$(printf '%s' "$h" | tr '[:upper:]' '[:lower:]')"
+  if [[ ${#h} -eq 3 ]]; then
+    printf '%s%s%s%s%s%s' "${h:0:1}" "${h:0:1}" "${h:1:1}" "${h:1:1}" "${h:2:1}" "${h:2:1}"
+    return 0
+  fi
+  printf '%s' "$h"
+}
+
+yasb_map_hex() {
+  local hex="$1" role
+  hex="$(yasb_expand_hex "$hex")"
+  if yasb_skip_hex "$hex"; then
+    return 1
+  fi
+  role="$(yasb_hex_role "$hex")"
+  [[ -n "$role" ]] || return 1
+  yasb_hex "$role"
+}
+
+yasb_rewrite_colors() {
+  local cursor="$1" rebuilt="" match hex mapped r g b rest pre found
+  local rgb_re='rgba?\([[:space:]]*([0-9]+)[[:space:]]*,[[:space:]]*([0-9]+)[[:space:]]*,[[:space:]]*([0-9]+)[[:space:]]*(,[^)]*)?\)'
+  while [[ "$cursor" =~ $rgb_re ]]; do
+    match="${BASH_REMATCH[0]}"
+    r="${BASH_REMATCH[1]}"
+    g="${BASH_REMATCH[2]}"
+    b="${BASH_REMATCH[3]}"
+    rest="${BASH_REMATCH[4]}"
+    hex="$(printf '%02x%02x%02x' "$r" "$g" "$b")"
+    mapped="$(yasb_map_hex "$hex" || true)"
+    pre="${cursor%%"$match"*}"
+    rebuilt+="$pre"
+    if [[ -n "$mapped" ]]; then
+      r=$((16#${mapped:0:2}))
+      g=$((16#${mapped:2:2}))
+      b=$((16#${mapped:4:2}))
+      if [[ "$match" == rgba* ]]; then
+        rebuilt+="rgba(${r}, ${g}, ${b}${rest})"
+      else
+        rebuilt+="rgb(${r}, ${g}, ${b})"
+      fi
+    else
+      rebuilt+="$match"
+    fi
+    cursor="${cursor#*"$match"}"
+  done
+  cursor="$rebuilt$cursor"
+  rebuilt=""
+  local hex_re='#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})'
+  while [[ "$cursor" =~ $hex_re ]]; do
+    found="${BASH_REMATCH[0]}"
+    hex="$(yasb_expand_hex "${BASH_REMATCH[1]}")"
+    mapped="$(yasb_map_hex "$hex" || true)"
+    pre="${cursor%%"$found"*}"
+    rebuilt+="$pre"
+    if [[ -n "$mapped" ]]; then
+      rebuilt+="#$mapped"
+    else
+      rebuilt+="$found"
+    fi
+    cursor="${cursor#*"$found"}"
+  done
+  printf '%s' "$rebuilt$cursor"
+}
+
 yasb_rewrite_line() {
   local line="$1"
   local indent name value rest role hex
   local re='^([[:space:]]*)--([A-Za-z0-9-]+)[[:space:]]*:[[:space:]]*([^;]+);(.*)$'
   if [[ ! "$line" =~ $re ]]; then
-    printf '%s\n' "$line"
+    yasb_rewrite_colors "$line"
+    printf '\n'
     return 0
   fi
   indent="${BASH_REMATCH[1]}"
@@ -100,16 +182,15 @@ yasb_rewrite_line() {
     return 0
   fi
   role="$(yasb_role "$name" || true)"
-  if [[ -z "$role" ]]; then
-    printf '%s\n' "$line"
-    return 0
+  if [[ -n "$role" ]]; then
+    hex="$(yasb_hex "$role")"
+    if [[ -n "$hex" ]]; then
+      printf '%s--%s: %s;%s\n' "$indent" "$name" "$(yasb_format "$value" "$hex")" "$rest"
+      return 0
+    fi
   fi
-  hex="$(yasb_hex "$role")"
-  if [[ -z "$hex" ]]; then
-    printf '%s\n' "$line"
-    return 0
-  fi
-  printf '%s--%s: %s;%s\n' "$indent" "$name" "$(yasb_format "$value" "$hex")" "$rest"
+  yasb_rewrite_colors "$line"
+  printf '\n'
 }
 
 # ponytail: one-level :root brace count. Nested blocks inside :root are not expected in YASB themes.
@@ -142,11 +223,7 @@ yasb_rewrite() {
     if [[ "$line" == *":root"* ]]; then
       in_root=1
     fi
-    if [[ "$in_root" -eq 1 ]]; then
-      yasb_rewrite_line "$line" >>"$out"
-    else
-      printf '%s\n' "$line" >>"$out"
-    fi
+    yasb_rewrite_line "$line" >>"$out"
     depth=$((was + opens - closes))
     if [[ "$depth" -lt 0 ]]; then
       depth=0
