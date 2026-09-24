@@ -272,6 +272,7 @@ function Get-StillwaterNextStep([string]$Id) {
     "neovim" { return "Run :colorscheme stillwater." }
     "sublime" { return "Set Color Scheme to Stillwater." }
     "vencord" { return "Enable Stillwater in Vencord themes." }
+    "equicord" { return "Enable Stillwater in Equicord themes." }
     "t3" { return "Select Stillwater in T3 Code." }
     "spicetify" { return "Restart Spotify." }
     "ryoku" { return "Select Stillwater in Ryoku." }

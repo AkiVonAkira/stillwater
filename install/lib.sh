@@ -347,6 +347,9 @@ stillwater_next_step() {
     vencord)
       printf 'Enable Stillwater in Vencord themes.'
       ;;
+    equicord)
+      printf 'Enable Stillwater in Equicord themes.'
+      ;;
     t3)
       printf 'Select Stillwater in T3 Code.'
       ;;
