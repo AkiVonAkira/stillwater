@@ -9,10 +9,20 @@
  *
  * Fork of midnight by refact0r (MIT): https://github.com/refact0r/midnight-discord
  * Copyright (c) 2025 refact0r
+ *
+ * Panel/Spotify snippets from Akira's Theme. Owned overrides use the live
+ * hashed class names (cheaper than [class*=] + :has() on the whole tree).
  */
 
 /* import theme modules */
 @import url('https://refact0r.github.io/midnight-discord/build/midnight.css');
+@import url('https://raw.githubusercontent.com/abbie/discord-css/refs/heads/main/import.css');
+@import url('https://raw.githubusercontent.com/davart154/Themes/refs/heads/main/Snippets/Simplified%20Panel%20Area/SimplifiedPanelArea.css');
+@import url('https://raw.githubusercontent.com/ISOUL22/rice/refs/heads/main/Vencord/improvedSpotifyControls.css');
+@import url('https://raw.githubusercontent.com/amozeo/discord-css-snippets/refs/heads/main/snippets/compact-search-button.css');
+@import url('https://davart154.github.io/Themes/Snippets/Mana%20Page%20Switcher/ManaPageSwitcherSource.css');
+@import url('https://davart154.github.io/Themes/Snippets/Plugin%20Icon%20Consistency/IconConsistencySource.css');
+@import url('https://raw.githubusercontent.com/Just-Me-22/Compact-Server-Shortcut-Buttons/main/compact-server-shortcuts.css');
 
 body {
     /* font options */
@@ -66,7 +76,7 @@ body {
 
     /* chatbar options */
     --custom-chatbar: off; /* off: default chatbar, separated: chatbar separated from chat */
-    --chatbar-height: 47px; /* height of the chatbar (56px by default, 47px to align with user panel, 56px recommended for separated) */
+    --chatbar-height: 56px; /* height of the chatbar (56px by default, 47px to align with user panel, 56px recommended for separated) */
 
     /* other options */
     --small-user-panel: on; /* off: default user panel, on: smaller user panel like in old discord */
@@ -149,4 +159,296 @@ body {
     --purple-3: #ae81ff;
     --purple-4: #ae81ff;
     --purple-5: #ae81ff;
+
+    /* abbie/discord-css toggles (from Akira's Theme) */
+    --\\--compact-title-bar: false;
+    --\\--compact-input-box: false;
+    --\\--compact-context-menu: false;
+    --\\--compact-user-area: false;
+    --\\--compact-channel-categories: false;
+    --\\--compact-server-list: false;
+    --\\--hide-nameplates: false;
+    --\\--hide-guild-tags: false;
+    --\\--hide-profile-effects: false;
+    --\\--hide-avatar-decorations: false;
+    --\\--hide-gradient-glow-usernames: false;
+    --\\--hide-server-boost-goal: true;
+    --\\--hide-server-activity: false;
+    --\\--hide-user-activity: false;
+    --\\--hide-context-menu-quick-reactions: false;
+    --\\--hide-hover-quick-reactions: false;
+    --\\--hide-image-edit-button: true;
+    --\\--hide-gif-button: true;
+    --\\--hide-sticker-button: true;
+    --\\--hide-emoji-button: false;
+    --\\--hide-apps-button: true;
+    --\\--hide-gift-button: true;
+    --\\--hide-help-button: true;
+    --\\--hide-shop-button: true;
+    --\\--hide-nitro-button: true;
+    --\\--hide-nitro-upsells: true;
+    --\\--hide-vencord-desktop-platform-indicator: true;
+    --\\--hide-cluttery-badges: false;
+    --\\--darker-scrollbar: true;
+    --\\--darker-hovered-message: true;
+    --\\--prevent-sidebar-resizing: false;
+    --\\--fix-minor-icon-misalignments: true;
+
+    /* ISOUL improved Spotify controls */
+    --isc-bg: var(--bg-4);
+    /* blur can be performance intensive, to disable change this to 0px */
+    --isc-bg-blur: 0px;
+    --isc-bg-brightness: 0.5;
+    /* keep the compact player; a square stack is what left the empty gap */
+    --ics-full-album-art: false;
+    /* smaller = higher in the panel stack */
+    --ics-panel-order-activity: 2; /* theme default 2 | discord default 1 */
+    --ics-panel-order-spotify: 1; /* theme default 1 | discord default 2 */
+    --ics-panel-order-voicechat: 3;
+    --ics-panel-order-user: 4;
+
+    --isc-song-title: var(--accent-1);
+    --isc-icon-color: var(--text-1);
+
+    --isc-progress-bar: var(--accent-2);
+    --isc-progress-bar-hover: var(--accent-1);
+
+    --isc-button-icon: var(--text-4);
+    --isc-button-icon-hover: var(--text-1);
+    --isc-button-bg: transparent;
+    --isc-button-bg-hover: var(--hover);
+
+    --isc-button-toggled-icon: var(--accent-1);
+    --isc-button-toggled-icon-hover: var(--accent-1);
+    --isc-button-bg-base: var(--accent-new);
+    --isc-button-toggled-bg: color-mix(in hsl, var(--isc-button-bg-base), transparent 90%);
+    --isc-button-toggled-bg-hover: color-mix(in hsl, var(--isc-button-bg-base), transparent 80%);
+
+    /* Simplified Panel Area / Mana tabs */
+    --panel-gap: 8px;
+    --panel-radius: 10px;
+    --panel-color: var(--bg-4);
+    --server-tabs: true;
+    --dms-tabs: true;
+
+    /* Compact server shortcut buttons */
+    --sh-ink: var(--accent-2);
+    --sh-rule: var(--border);
+}
+
+/* Compact Spotify: kill the empty gap without growing the player. */
+.panels__5e434:has(#vc-spotify-player) {
+    aspect-ratio: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible;
+}
+
+.wrapper_e131a9:not(:has(.rtcConnectionStatus__06d62)) {
+    display: none !important;
+}
+
+.wrapper_e131a9:not(:has(.rtcConnectionStatus__06d62)) .container_e131a9 {
+    min-height: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+#vc-spotify-player#vc-spotify-player {
+    flex: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+}
+
+#vc-spotify-player::before,
+#vc-spotify-player::after {
+    border-radius: inherit;
+}
+
+#vc-spotify-info-wrapper {
+    height: fit-content !important;
+}
+
+#vc-spotify-titles > :nth-child(n + 3),
+#vc-spotify-album-title,
+.vc-spotify-album {
+    display: none !important;
+}
+
+#vc-spotify-progress-bar#vc-spotify-progress-bar {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+        "slider slider"
+        "left right";
+    align-items: center;
+    column-gap: 4px;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    margin: 6px 0 0 !important;
+    padding: 0 !important;
+    min-height: unset !important;
+    background: transparent;
+    box-shadow: none;
+}
+
+#vc-spotify-progress-bar > :not(.vc-spotify-progress-time):not(.vc-spotify-time-left):not(.vc-spotify-time-right) {
+    grid-area: slider;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+#vc-spotify-progress-bar [class*="track"] {
+    left: 0 !important;
+    right: 0 !important;
+}
+
+.vc-spotify-progress-time,
+.vc-spotify-time-left,
+.vc-spotify-time-right {
+    display: flex !important;
+    position: static !important;
+    align-items: center;
+    opacity: 1 !important;
+    margin: 0 !important;
+    top: auto !important;
+    bottom: auto !important;
+    line-height: 1.2;
+}
+
+.vc-spotify-time-left {
+    grid-area: left;
+    justify-content: flex-start;
+}
+
+.vc-spotify-time-right {
+    grid-area: right;
+    justify-content: flex-end;
+}
+
+#vc-spotify-progress-bar#vc-spotify-progress-bar::after {
+    content: none !important;
+    display: none !important;
+}
+
+#vc-spotify-player:hover .vc-spotify-button-row {
+    top: -14px !important;
+    z-index: 4;
+    overflow: visible;
+}
+
+#vc-spotify-player:hover #vc-spotify-progress-bar {
+    top: auto !important;
+    opacity: 1 !important;
+}
+
+/* Align chat box with user panel. */
+.visual-refresh {
+    --custom-channel-textarea-text-area-height: 56px;
+}
+
+.visual-refresh .form_f75fb0 {
+    display: flex;
+    flex-direction: column;
+}
+
+.visual-refresh .channelTextArea_f75fb0 {
+    margin-bottom: 8px;
+}
+
+.visual-refresh .form_f75fb0 > .base_b88801 {
+    position: static;
+    order: -1;
+}
+
+/* Hide DevTools in the title bar trailing cluster */
+.trailing_c38106 > div:nth-of-type(3) {
+    display: none;
+}
+
+/* Vencord update toast */
+.vc-notification-root {
+    background: color-mix(in srgb, #5aa8b4 28%, #1d2021);
+    border: 2px solid color-mix(in srgb, #5aa8b4 35%, transparent);
+    transition: 0.5s ease;
+}
+
+.vc-notification-root:hover {
+    background: color-mix(in srgb, #5aa8b4 42%, #1d2021);
+    border: 2px solid color-mix(in srgb, #6ebcc6 55%, transparent);
+}
+
+.root__49fc1:has(.vc-settings-modal) {
+    border: 2px solid color-mix(in srgb, #5aa8b4 70%, transparent);
+    background: color-mix(in srgb, #5aa8b4 12%, #1d2021);
+}
+
+/* Unobtrusive disconnection popup */
+.container_a2f514 {
+    background: #00000080;
+    bottom: unset;
+    left: unset;
+    right: 20px;
+    top: 20px !important;
+    height: 110px;
+    width: 250px;
+    border-radius: 8px;
+    border-top: 5px solid #ebdbb2;
+    transition: border-top-color 1s;
+}
+
+.container_a2f514:has(> .slideIn_a2f514) {
+    border-top-color: #f44747;
+}
+
+.spinner_a2f514 {
+    display: none;
+}
+
+.problems_a2f514 {
+    padding-bottom: 10px;
+}
+
+/* Profile roles */
+.vc-permviewer-role-button {
+    padding: 2px;
+}
+
+[class^="roleTag"] > [class^="role"] {
+    border-radius: var(--radius-sm);
+    gap: 4px;
+    padding: 0 4px;
+}
+
+[class^="roleTag"] > [class^="role"] > [class^="roleCircle"] {
+    margin: unset;
+}
+
+[class^="roleTag"] > [class^="role"] > span > [class^="roleIcon"] {
+    height: 16px;
+    width: 16px;
+    margin-inline-start: unset;
+    vertical-align: top;
+    content: var(--role-icon-url-128);
+}
+
+[class^="roleTag"] > [class^="role"] > [class^="removeButton"] {
+    position: absolute;
+    height: 12px;
+    width: 12px;
+    opacity: 0;
+}
+
+[class^="roleTag"] > [class^="role"] > [class^="removeButton"]:hover {
+    opacity: 1;
 }
