@@ -62,7 +62,7 @@ case "$ACTION" in
       "$ROOT/spicetify/color.ini" "$dest/color.ini" \
       "$ROOT/spicetify/user.css" "$dest/user.css" \
       "$ROOT/spicetify/theme.js" "$dest/theme.js")" \
-      "$dest/color.ini"
+      "$dest"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]
@@ -70,9 +70,7 @@ case "$ACTION" in
   install)
     [[ "${1:-}" == "$ID" ]]
     dest="$(dest_dir)"
-    if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-      echo "would copy spicetify theme -> $dest" >&2
-    else
+    if [[ "${STILLWATER_DRY_RUN:-0}" != 1 ]]; then
       mkdir -p "$dest"
       cp -a "$ROOT/spicetify/color.ini" "$ROOT/spicetify/user.css" "$ROOT/spicetify/theme.js" "$dest/"
     fi
@@ -84,7 +82,7 @@ case "$ACTION" in
     printf '%s\n' "$dest"
     ;;
   *)
-    echo "unknown action: $ACTION" >&2
+    echo "Unknown action: $ACTION" >&2
     exit 1
     ;;
 esac

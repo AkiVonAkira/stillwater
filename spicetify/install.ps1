@@ -51,16 +51,14 @@ switch ($Action) {
       (Join-Path $Root "spicetify\user.css"), (Join-Path $dest "user.css"),
       (Join-Path $Root "spicetify\theme.js"), (Join-Path $dest "theme.js")
     )
-    Write-StillwaterCopyStatus $Id $Label $app $theme (Join-Path $dest "color.ini")
+    Write-StillwaterCopyStatus $Id $Label $app $theme $dest
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }
   }
   "install" {
     $dest = Get-SpicetifyDest
-    if ($env:STILLWATER_DRY_RUN -eq "1") {
-      Write-Host "would copy spicetify theme -> $dest"
-    } else {
+    if ($env:STILLWATER_DRY_RUN -ne "1") {
       New-Item -ItemType Directory -Force -Path $dest | Out-Null
       Copy-Item -Force (Join-Path $Root "spicetify\color.ini") $dest
       Copy-Item -Force (Join-Path $Root "spicetify\user.css") $dest

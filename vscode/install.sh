@@ -134,7 +134,7 @@ case "$ACTION" in
       payload="$(stillwater_vscode_payload_state "$SRC" "$dest")"
       theme="${payload%%|*}"
       note="${payload#*|}"
-      stillwater_print_status "$id" "$(label_of "$id")" "$app" "$theme" "$note"
+      stillwater_print_status "$id" "$(label_of "$id")" "$app" "$theme" "$note" "$dest"
     done < <(product_ids)
     ;;
   owns)
@@ -152,7 +152,7 @@ case "$ACTION" in
     printf '%s\n' "$dest"
     ;;
   *)
-    echo "unknown action: $ACTION" >&2
+    echo "Unknown action: $ACTION" >&2
     exit 1
     ;;
 esac

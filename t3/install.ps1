@@ -23,9 +23,16 @@ function Test-T3Found {
   )
 }
 
+function Get-T3ThemeDest {
+  if ($env:T3CODE_HOME) {
+    return (Join-Path $env:T3CODE_HOME "userdata\themes\stillwater.json")
+  }
+  return (Join-Path $env:HOME ".t3\userdata\themes\stillwater.json")
+}
+
 function Get-T3ThemeCandidates {
-  $paths = @(
-    (Join-Path $env:HOME ".t3\userdata\themes\stillwater.json"),
+  @(
+    (Get-T3ThemeDest),
     (Join-Path $env:HOME ".t3\themes\stillwater.json"),
     (Join-Path $env:XDG_CONFIG_HOME "t3\userdata\themes\stillwater.json"),
     (Join-Path $env:XDG_CONFIG_HOME "t3\themes\stillwater.json"),
@@ -34,10 +41,6 @@ function Get-T3ThemeCandidates {
     (Join-Path $env:LOCALAPPDATA "t3\userdata\themes\stillwater.json"),
     (Join-Path $env:LOCALAPPDATA "t3\themes\stillwater.json")
   )
-  if ($env:T3CODE_HOME) {
-    $paths += (Join-Path $env:T3CODE_HOME "userdata\themes\stillwater.json")
-  }
-  return $paths
 }
 
 function Get-T3ThemeState {
@@ -53,19 +56,20 @@ function Get-T3ThemeState {
 switch ($Action) {
   "status" {
     $app = if (Test-T3Found) { "found" } else { "skip" }
-    $dests = @(Get-T3ThemeCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+    $dests = @()
+    $dests += Get-T3ThemeDest
+    $dests += @(Get-T3ThemeCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
     Write-StillwaterCopyStatus $Id $Label $app (Get-T3ThemeState) $dests
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }
   }
   "install" {
+    $dest = Get-T3ThemeDest
     if (Test-StillwaterCommand "t3") {
-      if (Invoke-StillwaterCmd @("t3", "theme", "set", "--id", "stillwater", $Src)) {
-        Write-Output "t3 theme set --id stillwater"
-        break
-      }
+      Invoke-StillwaterCmd @("t3", "theme", "set", "--id", "stillwater", $Src) | Out-Null
     }
-    Write-Output $Src
+    Copy-StillwaterFile $Src $dest
+    Write-Output $dest
   }
 }

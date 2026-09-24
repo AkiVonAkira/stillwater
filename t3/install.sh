@@ -19,9 +19,17 @@ found() {
   stillwater_any_dir "$XDG_CONFIG_HOME/t3" "$HOME/.t3" "$APPDATA/t3" "$LOCALAPPDATA/t3"
 }
 
+theme_dest() {
+  if [[ -n "${T3CODE_HOME:-}" ]]; then
+    printf '%s\n' "$T3CODE_HOME/userdata/themes/stillwater.json"
+    return
+  fi
+  printf '%s\n' "$HOME/.t3/userdata/themes/stillwater.json"
+}
+
 theme_candidates() {
+  printf '%s\n' "$(theme_dest)"
   printf '%s\n' \
-    "$HOME/.t3/userdata/themes/stillwater.json" \
     "$HOME/.t3/themes/stillwater.json" \
     "$XDG_CONFIG_HOME/t3/userdata/themes/stillwater.json" \
     "$XDG_CONFIG_HOME/t3/themes/stillwater.json" \
@@ -29,9 +37,6 @@ theme_candidates() {
     "$APPDATA/t3/themes/stillwater.json" \
     "$LOCALAPPDATA/t3/userdata/themes/stillwater.json" \
     "$LOCALAPPDATA/t3/themes/stillwater.json"
-  if [[ -n "${T3CODE_HOME:-}" ]]; then
-    printf '%s\n' "$T3CODE_HOME/userdata/themes/stillwater.json"
-  fi
 }
 
 theme_state() {
@@ -54,29 +59,28 @@ case "$ACTION" in
     if found; then
       app="found"
     fi
-    dests=()
+    dests=("$(theme_dest)")
     while IFS= read -r file; do
       if [[ -f "$file" ]]; then
         dests+=("$file")
       fi
     done < <(theme_candidates)
-    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(theme_state)" ${dests[@]+"${dests[@]}"}
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(theme_state)" "${dests[@]}"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]
     ;;
   install)
     [[ "${1:-}" == "$ID" ]]
+    dest="$(theme_dest)"
     if stillwater_has_cmd t3; then
-      if stillwater_run t3 theme set --id stillwater "$SRC"; then
-        printf '%s\n' "t3 theme set --id stillwater"
-        exit 0
-      fi
+      stillwater_run t3 theme set --id stillwater "$SRC" || true
     fi
-    printf '%s\n' "$SRC"
+    stillwater_copy_file "$SRC" "$dest"
+    printf '%s\n' "$dest"
     ;;
   *)
-    echo "unknown action: $ACTION" >&2
+    echo "Unknown action: $ACTION" >&2
     exit 1
     ;;
 esac

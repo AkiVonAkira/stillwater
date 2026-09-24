@@ -48,6 +48,14 @@ switch ($Action) {
   "install" {
     $dest = Get-SublimeDest
     Copy-StillwaterFile $Src $dest
+    if ($env:STILLWATER_DRY_RUN -ne "1") {
+      $prefs = Join-Path (Split-Path (Split-Path $dest -Parent) -Parent) "User\Preferences.sublime-settings"
+      if ((Test-Path -LiteralPath $prefs) -and (Select-String -LiteralPath $prefs -Pattern '"color_scheme"' -Quiet)) {
+        $raw = [System.IO.File]::ReadAllText($prefs)
+        $raw = [regex]::Replace($raw, '"color_scheme"\s*:\s*"[^"]*"', '"color_scheme": "Packages/Stillwater/Stillwater.sublime-color-scheme"')
+        [System.IO.File]::WriteAllText($prefs, $raw)
+      }
+    }
     Write-Output $dest
   }
 }

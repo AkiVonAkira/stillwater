@@ -65,6 +65,16 @@ switch ($Action) {
     $ext = Get-ZedExtDest
     Copy-StillwaterFile (Join-Path $Root "zed\extension.toml") (Join-Path $ext "extension.toml")
     Copy-StillwaterFile $ThemeSrc (Join-Path $ext "themes\stillwater.json")
+    if ($env:STILLWATER_DRY_RUN -ne "1") {
+      $settings = Join-Path (Split-Path (Split-Path $dest -Parent) -Parent) "settings.json"
+      if (Test-Path -LiteralPath $settings) {
+        $raw = [System.IO.File]::ReadAllText($settings)
+        if ($raw -match '"theme"\s*:\s*"') {
+          $raw = [regex]::Replace($raw, '"theme"\s*:\s*"[^"]*"', '"theme": "Stillwater"')
+          [System.IO.File]::WriteAllText($settings, $raw)
+        }
+      }
+    }
     Write-Output $dest
   }
 }

@@ -77,7 +77,7 @@ case "$ACTION" in
     printf '%s\n' "$dest"
     ;;
   *)
-    echo "unknown action: $ACTION" >&2
+    echo "Unknown action: $ACTION" >&2
     exit 1
     ;;
 esac

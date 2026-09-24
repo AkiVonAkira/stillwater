@@ -80,7 +80,7 @@ switch ($Action) {
       $app = if (Test-ProductFound $product) { "found" } else { "skip" }
       $dest = Get-ExtDir $product.Id
       $payload = Get-StillwaterVsCodePayloadState $Src $dest
-      Write-StillwaterStatus $product.Id $product.Label $app $payload.Theme $payload.Note
+      Write-StillwaterStatus $product.Id $product.Label $app $payload.Theme $payload.Note $dest
     }
   }
   "owns" {

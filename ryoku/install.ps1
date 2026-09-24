@@ -15,12 +15,12 @@ $Label = "Ryoku"
 
 switch ($Action) {
   "status" {
-    Write-StillwaterCopyStatus $Id $Label "n/a" "none"
+    Write-StillwaterCopyStatus $Id $Label "n/a" "none" (Join-Path $env:XDG_DATA_HOME "ryoku\themes\stillwater")
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }
   }
   "install" {
-    Write-Output "ryoku is Linux only"
+    Write-Output "Ryoku is Linux only."
   }
 }

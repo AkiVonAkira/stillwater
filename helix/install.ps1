@@ -44,6 +44,18 @@ switch ($Action) {
   "install" {
     $dest = Get-HelixDest
     Copy-StillwaterFile $Src $dest
+    if ($env:STILLWATER_DRY_RUN -ne "1") {
+      $config = Join-Path (Split-Path (Split-Path $dest -Parent) -Parent) "config.toml"
+      if (Test-Path -LiteralPath $config) {
+        $raw = [System.IO.File]::ReadAllText($config)
+        if ($raw -match '(?m)^theme\s*=') {
+          $raw = [regex]::Replace($raw, '(?m)^theme\s*=.*', 'theme = "stillwater"')
+        } else {
+          $raw = "theme = `"stillwater`"`n" + $raw
+        }
+        [System.IO.File]::WriteAllText($config, $raw)
+      }
+    }
     Write-Output $dest
   }
 }

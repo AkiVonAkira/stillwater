@@ -21,7 +21,7 @@ found() {
 case "$ACTION" in
   status)
     if [[ "$(stillwater_platform)" != linux ]]; then
-      stillwater_print_copy_status "$ID" "$LABEL" "n/a" "none"
+      stillwater_print_copy_status "$ID" "$LABEL" "n/a" "none" "$XDG_DATA_HOME/ryoku/themes/stillwater"
       exit 0
     fi
     app="skip"
@@ -41,7 +41,6 @@ case "$ACTION" in
     [[ "${1:-}" == "$ID" ]]
     dest="$XDG_DATA_HOME/ryoku/themes/stillwater"
     if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-      echo "would copy ryoku theme -> $dest" >&2
       printf '%s\n' "$dest"
       exit 0
     fi
@@ -64,7 +63,7 @@ case "$ACTION" in
     printf '%s\n' "$dest"
     ;;
   *)
-    echo "unknown action: $ACTION" >&2
+    echo "Unknown action: $ACTION" >&2
     exit 1
     ;;
 esac

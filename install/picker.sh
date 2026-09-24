@@ -38,16 +38,27 @@ stillwater_picker_action() {
   local app="$1"
   local theme="$2"
   case "$app" in
-    skip) printf 'not found' ;;
-    n/a) printf 'linux only' ;;
+    skip) printf 'Not found' ;;
+    n/a) printf 'Linux only' ;;
     *)
       case "$theme" in
-        none) printf 'install' ;;
-        current) printf 'up to date' ;;
-        update) printf 'update' ;;
+        none) printf 'Install' ;;
+        current) printf 'Up to date' ;;
+        update) printf 'Update' ;;
         *) printf '%s' "$theme" ;;
       esac
       ;;
+  esac
+}
+
+stillwater_picker_summary_name() {
+  local label="$1"
+  local theme="$2"
+  case "$theme" in
+    none) printf '%s to install' "$label" ;;
+    update) printf '%s to update' "$label" ;;
+    current) printf '%s, already current' "$label" ;;
+    *) printf '%s' "$label" ;;
   esac
 }
 
@@ -73,21 +84,35 @@ stillwater_picker_parse() {
   SW_APPS=()
   SW_THEMES=()
   SW_NOTES=()
+  SW_DESTS=()
   SW_SELECTED=()
-  local id label app theme note
-  while IFS='|' read -r id label app theme note; do
+  local id label app theme note dest
+  while IFS='|' read -r id label app theme note dest; do
     [[ -n "$id" ]] || continue
     SW_IDS+=("$id")
     SW_LABELS+=("$label")
     SW_APPS+=("$app")
     SW_THEMES+=("$theme")
     SW_NOTES+=("$note")
+    SW_DESTS+=("$dest")
     if stillwater_picker_selectable "$app" && [[ "$theme" != current ]]; then
       SW_SELECTED+=(1)
     else
       SW_SELECTED+=(0)
     fi
   done <<<"$blob"
+}
+
+stillwater_picker_path() {
+  local dest="$1"
+  local used="${2:-60}"
+  local cols max
+  cols="$(stillwater_term_cols)"
+  max=$((cols - used))
+  if [[ "$max" -lt 8 ]]; then
+    return 0
+  fi
+  stillwater_fit_left "$(stillwater_display_path "$dest")" "$max"
 }
 
 stillwater_picker_first() {
@@ -150,7 +175,7 @@ stillwater_picker_rows() {
 }
 
 stillwater_picker_draw() {
-  local i check label action note color labelfg
+  local i check label action note path color labelfg
   printf '%s%s%s  %sStillwater%s  %s%s  %s%s\n' \
     "$SW_CLEAR" "$SW_MUTED" "$SW_START" "$SW_ACCENT" "$SW_RESET" "$SW_WARM" "$(stillwater_os_label)" "$(stillwater_version)" "$SW_RESET" >&2
   printf '%s%s%s  %sWhich apps should get Stillwater?%s\n' \
@@ -158,11 +183,12 @@ stillwater_picker_draw() {
   for i in "${!SW_IDS[@]}"; do
     label="$(printf '%-22s' "${SW_LABELS[$i]}")"
     action="$(printf '%-10s' "$(stillwater_picker_action "${SW_APPS[$i]}" "${SW_THEMES[$i]}")")"
-    note="${SW_NOTES[$i]}"
+    note="$(printf '%-16s' "${SW_NOTES[$i]}")"
+    path="$(stillwater_picker_path "${SW_DESTS[$i]}")"
     color="$(stillwater_picker_action_color "${SW_APPS[$i]}" "${SW_THEMES[$i]}")"
     if ! stillwater_picker_selectable "${SW_APPS[$i]}"; then
-      printf '%s%s%s     %s  %s  %s%s\n' \
-        "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$label" "$action" "$note" "$SW_RESET" >&2
+      printf '%s%s%s     %s  %s  %s  %s%s\n' \
+        "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$label" "$action" "$note" "$path" "$SW_RESET" >&2
       continue
     fi
     if [[ "${SW_SELECTED[$i]}" == 1 ]]; then
@@ -177,10 +203,10 @@ stillwater_picker_draw() {
     else
       labelfg="$SW_MUTED"
     fi
-    printf '%s%s%s%s  %s  %s%s  %s%s  %s%s%s\n' \
-      "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$SW_RESET" "$check" "$labelfg" "$label" "$color" "$action" "$SW_MUTED" "$note" "$SW_RESET" >&2
+    printf '%s%s%s%s  %s  %s%s  %s%s  %s%s  %s%s%s\n' \
+      "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$SW_RESET" "$check" "$labelfg" "$label" "$color" "$action" "$SW_MUTED" "$note" "$path" "$SW_RESET" >&2
   done
-  printf '%s%s%s  Space to select · a all found · Enter to install%s\n' "$SW_CLEAR" "$SW_MUTED" "$SW_CORNER" "$SW_RESET" >&2
+  printf '%s%s%s  Space selects, a selects all found, Enter installs%s\n' "$SW_CLEAR" "$SW_MUTED" "$SW_CORNER" "$SW_RESET" >&2
 }
 
 stillwater_picker_redraw() {
@@ -193,11 +219,10 @@ stillwater_picker_erase() {
 }
 
 stillwater_picker_summary() {
-  local i names=() action
+  local i names=()
   for i in "${!SW_IDS[@]}"; do
     if [[ "${SW_SELECTED[$i]}" == 1 ]]; then
-      action="$(stillwater_picker_action "${SW_APPS[$i]}" "${SW_THEMES[$i]}")"
-      names+=("${SW_LABELS[$i]} (${action})")
+      names+=("$(stillwater_picker_summary_name "${SW_LABELS[$i]}" "${SW_THEMES[$i]}")")
     fi
   done
   printf '%s%s%s  %sStillwater%s  %s%s  %s%s\n' \
@@ -205,7 +230,7 @@ stillwater_picker_summary() {
   printf '%s%s%s  %sWhich apps should get Stillwater?%s\n' \
     "$SW_CLEAR" "$SW_ACCENT_HOVER" "$SW_DONE" "$SW_TEXT" "$SW_RESET" >&2
   if [[ ${#names[@]} -eq 0 ]]; then
-    printf '%s%s%s  nothing selected%s\n' "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$SW_RESET" >&2
+    printf '%s%s%s  Nothing selected.%s\n' "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$SW_RESET" >&2
   else
     local joined
     joined="$(printf '%s, ' "${names[@]}")"
@@ -258,7 +283,7 @@ stillwater_picker() {
   stillwater_picker_init_style
   stillwater_picker_parse "$blob"
   if [[ ${#SW_IDS[@]} -eq 0 ]]; then
-    echo "no adapters found" >&2
+    echo "No adapters found." >&2
     return 1
   fi
   SW_CURSOR="$(stillwater_picker_first)"
@@ -300,13 +325,80 @@ stillwater_picker() {
         ;;
       quit)
         stillwater_picker_erase "$rows"
-        printf '%s%s%s  Cancelled%s\n' "$SW_CLEAR" "$SW_ERROR" "$SW_CANCEL" "$SW_RESET" >&2
+        printf '%s%s%s  Cancelled.%s\n' "$SW_CLEAR" "$SW_ERROR" "$SW_CANCEL" "$SW_RESET" >&2
         printf '\033[J' >&2
         stillwater_picker_restore
         trap - EXIT INT TERM
         return 1
         ;;
     esac
-    stillwater_picker_redraw "$rows"
+        stillwater_picker_redraw "$rows"
   done
+}
+
+stillwater_clack() {
+  [[ -t 1 ]]
+}
+
+stillwater_clack_header() {
+  printf '%s%s%s  %sStillwater%s  %s%s  %s%s\n' \
+    "$SW_CLEAR" "$SW_MUTED" "$SW_START" "$SW_ACCENT" "$SW_RESET" "$SW_WARM" "$(stillwater_os_label)" "$(stillwater_version)" "$SW_RESET" >&2
+}
+
+stillwater_clack_step() {
+  local color="${1:-$SW_ACCENT}"
+  local mark="${2:-$SW_DIAMOND}"
+  local text="$3"
+  printf '%s%s%s  %s%s%s\n' "$SW_CLEAR" "$color" "$mark" "$SW_TEXT" "$text" "$SW_RESET" >&2
+}
+
+stillwater_clack_row() {
+  local state="$1"
+  local label="$2"
+  local hint="${3:-}"
+  local mark color labelfg hintfg
+  labelfg="$SW_TEXT"
+  hintfg="$SW_MUTED"
+  case "$state" in
+    ok)
+      mark="$SW_ON"
+      color="$SW_ACCENT"
+      ;;
+    fail)
+      mark="$SW_CANCEL"
+      color="$SW_ERROR"
+      hintfg="$SW_ERROR"
+      ;;
+    skip)
+      mark="$SW_OFF"
+      color="$SW_MUTED"
+      labelfg="$SW_MUTED"
+      ;;
+    busy)
+      mark="$SW_OFF"
+      color="$SW_ACCENT_HOVER"
+      ;;
+    next)
+      printf '%s%s%s  %s%-22s%s  %s%s%s\n' \
+        "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$SW_TEXT" "$label" "$SW_RESET" "$SW_MUTED" "$hint" "$SW_RESET" >&2
+      return 0
+      ;;
+    *)
+      mark="$SW_OFF"
+      color="$SW_MUTED"
+      labelfg="$SW_MUTED"
+      ;;
+  esac
+  printf '%s%s%s  %s%s%s  %s%-22s%s  %s%s%s\n' \
+    "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$color" "$mark" "$SW_RESET" \
+    "$labelfg" "$label" "$SW_RESET" "$hintfg" "$hint" "$SW_RESET" >&2
+}
+
+stillwater_clack_end() {
+  local text="$1"
+  printf '%s%s%s  %s%s%s\n' "$SW_CLEAR" "$SW_MUTED" "$SW_CORNER" "$text" "$SW_RESET" >&2
+}
+
+stillwater_clack_up() {
+  printf '\033[%dA' "$1" >&2
 }

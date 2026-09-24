@@ -62,10 +62,7 @@ function Test-StillwaterAnyDir([string[]]$Dirs) {
 }
 
 function Copy-StillwaterTree([string]$Src, [string]$Dest) {
-  if ($env:STILLWATER_DRY_RUN -eq "1") {
-    Write-Host "would copy $Src -> $Dest"
-    return
-  }
+  if ($env:STILLWATER_DRY_RUN -eq "1") { return }
   $parent = Split-Path -Parent $Dest
   New-Item -ItemType Directory -Force -Path $parent | Out-Null
   if (Test-Path -LiteralPath $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force }
@@ -73,10 +70,7 @@ function Copy-StillwaterTree([string]$Src, [string]$Dest) {
 }
 
 function Copy-StillwaterFile([string]$Src, [string]$Dest) {
-  if ($env:STILLWATER_DRY_RUN -eq "1") {
-    Write-Host "would copy $Src -> $Dest"
-    return
-  }
+  if ($env:STILLWATER_DRY_RUN -eq "1") { return }
   $parent = Split-Path -Parent $Dest
   New-Item -ItemType Directory -Force -Path $parent | Out-Null
   Copy-Item -Force $Src $Dest
@@ -140,10 +134,7 @@ function ConvertTo-StillwaterVsCodePath([string]$Path) {
 }
 
 function Remove-StillwaterOldVsCodeExtensions([string]$Parent, [string]$Keep) {
-  if ($env:STILLWATER_DRY_RUN -eq "1") {
-    Write-Host "would retire old Stillwater folders in $Parent"
-    return
-  }
+  if ($env:STILLWATER_DRY_RUN -eq "1") { return }
   if (-not (Test-Path -LiteralPath $Parent -PathType Container)) { return }
   Get-ChildItem -LiteralPath $Parent -Directory -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -like "kayzel.stillwater-theme-*" -and $_.Name -ne $Keep } |
@@ -157,10 +148,7 @@ function Register-StillwaterVsCodeExtension([string]$Dest) {
   $folder = Split-Path -Leaf $Dest
   $jsonPath = Join-Path $root "extensions.json"
   $obsoletePath = Join-Path $root ".obsolete"
-  if ($env:STILLWATER_DRY_RUN -eq "1") {
-    Write-Host "would register $id $version -> $Dest"
-    return
-  }
+  if ($env:STILLWATER_DRY_RUN -eq "1") { return }
   New-Item -ItemType Directory -Force -Path $root | Out-Null
   if (Test-Path -LiteralPath $obsoletePath) {
     $obsolete = Get-Content -Raw -LiteralPath $obsoletePath | ConvertFrom-Json
@@ -204,10 +192,7 @@ function Register-StillwaterVsCodeExtension([string]$Dest) {
 }
 
 function Set-StillwaterVsCodeTheme([string]$SettingsPath) {
-  if ($env:STILLWATER_DRY_RUN -eq "1") {
-    Write-Host "would set workbench.colorTheme in $SettingsPath"
-    return
-  }
+  if ($env:STILLWATER_DRY_RUN -eq "1") { return }
   $dir = Split-Path -Parent $SettingsPath
   New-Item -ItemType Directory -Force -Path $dir | Out-Null
   $seed = "{`n  `"workbench.colorTheme`": `"Stillwater`"`n}`n"
@@ -225,13 +210,11 @@ function Set-StillwaterVsCodeTheme([string]$SettingsPath) {
 }
 
 function Invoke-StillwaterCmd([string[]]$Cmd) {
-  if ($env:STILLWATER_DRY_RUN -eq "1") {
-    Write-Host ("would run: " + ($Cmd -join " "))
-    return $true
-  }
+  if ($env:STILLWATER_DRY_RUN -eq "1") { return $true }
   try {
-    & $Cmd[0] @($Cmd | Select-Object -Skip 1) | Out-Null
-    return $true
+    $global:LASTEXITCODE = 0
+    & $Cmd[0] @($Cmd | Select-Object -Skip 1) *> $null
+    return ($LASTEXITCODE -eq 0)
   } catch {
     return $false
   }
@@ -242,8 +225,58 @@ function Test-StillwaterIdWanted([string]$Id, [string[]]$Only) {
   return $Only -contains $Id
 }
 
-function Write-StillwaterStatus([string]$Id, [string]$Label, [string]$App, [string]$Theme, [string]$Note = "") {
-  Write-Output ("{0}|{1}|{2}|{3}|{4}" -f $Id, $Label, $App, $Theme, $Note)
+function Write-StillwaterStatus([string]$Id, [string]$Label, [string]$App, [string]$Theme, [string]$Note = "", [string]$Dest = "") {
+  Write-Output ("{0}|{1}|{2}|{3}|{4}|{5}" -f $Id, $Label, $App, $Theme, $Note, $Dest)
+}
+
+function Get-StillwaterDisplayPath([string]$Path) {
+  if (-not $Path) { return "" }
+  $normalized = $Path.Replace("/", "\").TrimEnd("\")
+  $leaf = Split-Path -Leaf $normalized
+  if ($leaf -like "*.*") {
+    $normalized = Split-Path -Parent $normalized
+  }
+  $homeDir = $env:HOME
+  if (-not $homeDir) { $homeDir = $env:USERPROFILE }
+  if ($homeDir) {
+    $homeSlash = $homeDir.Replace("/", "\").TrimEnd("\")
+    if ($normalized.StartsWith($homeSlash, [StringComparison]::OrdinalIgnoreCase)) {
+      return ("~" + $normalized.Substring($homeSlash.Length)).Replace("\", "/")
+    }
+  }
+  return $normalized.Replace("\", "/")
+}
+
+function Get-StillwaterTermCols {
+  try {
+    $n = [Console]::WindowWidth
+    if ($n -ge 40) { return $n }
+  } catch { }
+  return 80
+}
+
+function Get-StillwaterFitLeft([string]$Text, [int]$Max) {
+  if (-not $Text -or $Max -le 0) { return "" }
+  if ($Text.Length -le $Max) { return $Text }
+  if ($Max -le 1) { return "…" }
+  return "…" + $Text.Substring($Text.Length - $Max + 1)
+}
+
+function Get-StillwaterNextStep([string]$Id) {
+  switch ($Id) {
+    { $_ -in @("cursor", "vscode", "vscode-insiders", "vscodium", "code-oss", "windsurf") } {
+      return "Set Color Theme to Stillwater."
+    }
+    "zed" { return "Set the theme to Stillwater." }
+    "helix" { return "Set theme to stillwater in config.toml." }
+    "neovim" { return "Run :colorscheme stillwater." }
+    "sublime" { return "Set Color Scheme to Stillwater." }
+    "vencord" { return "Enable Stillwater in Vencord themes." }
+    "t3" { return "Select Stillwater in T3 Code." }
+    "spicetify" { return "Restart Spotify." }
+    "ryoku" { return "Select Stillwater in Ryoku." }
+    default { return "" }
+  }
 }
 
 function Get-StillwaterPeekVersion([string]$Path) {
@@ -278,19 +311,21 @@ function Get-StillwaterStatusNote([string]$State, [string]$Installed = "") {
   if ($State -ne "update") { return "" }
   $wanted = Get-StillwaterVersion
   if ($Installed -and $Installed -ne $wanted) {
-    return ("{0} -> {1}" -f $Installed, $wanted)
+    return ("{0} to {1}" -f $Installed, $wanted)
   }
-  return "modified"
+  return "Modified"
 }
 
 function Write-StillwaterCopyStatus([string]$Id, [string]$Label, [string]$App, [string]$State, [string[]]$Dests = @()) {
   $installed = ""
+  $destShow = ""
   foreach ($path in @($Dests)) {
     if (-not $path) { continue }
+    if (-not $destShow) { $destShow = $path }
     $installed = Get-StillwaterPeekVersion $path
     if ($installed) { break }
   }
-  Write-StillwaterStatus $Id $Label $App $State (Get-StillwaterStatusNote $State $installed)
+  Write-StillwaterStatus $Id $Label $App $State (Get-StillwaterStatusNote $State $installed) $destShow
 }
 
 function Sort-StillwaterStatus([string[]]$Rows) {

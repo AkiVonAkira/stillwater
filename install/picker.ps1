@@ -34,16 +34,25 @@ function Test-StillwaterPickerSelectable([string]$App) {
 
 function Get-StillwaterPickerAction([string]$App, [string]$Theme) {
   switch ($App) {
-    "skip" { return "not found" }
-    "n/a" { return "linux only" }
+    "skip" { return "Not found" }
+    "n/a" { return "Linux only" }
     default {
       switch ($Theme) {
-        "none" { return "install" }
-        "current" { return "up to date" }
-        "update" { return "update" }
+        "none" { return "Install" }
+        "current" { return "Up to date" }
+        "update" { return "Update" }
         default { return $Theme }
       }
     }
+  }
+}
+
+function Get-StillwaterPickerSummaryName([string]$Label, [string]$Theme) {
+  switch ($Theme) {
+    "none" { return ("{0} to install" -f $Label) }
+    "update" { return ("{0} to update" -f $Label) }
+    "current" { return ("{0}, already current" -f $Label) }
+    default { return $Label }
   }
 }
 
@@ -67,6 +76,7 @@ function ConvertTo-StillwaterPickerItems([string[]]$Rows) {
     $app = $parts[2]
     $theme = if ($parts.Count -gt 3) { $parts[3] } else { "none" }
     $note = if ($parts.Count -gt 4) { $parts[4] } else { "" }
+    $dest = if ($parts.Count -gt 5) { $parts[5] } else { "" }
     $selected = (Test-StillwaterPickerSelectable $app) -and ($theme -ne "current")
     $items += [pscustomobject]@{
       Id = $id
@@ -74,6 +84,7 @@ function ConvertTo-StillwaterPickerItems([string[]]$Rows) {
       App = $app
       Theme = $theme
       Note = $note
+      Dest = $dest
       Selected = $selected
     }
   }
@@ -114,6 +125,12 @@ function Set-StillwaterPickerAll($Items) {
   }
 }
 
+function Get-StillwaterPickerPath([string]$Dest) {
+  $max = (Get-StillwaterTermCols) - 60
+  if ($max -lt 8) { return "" }
+  return (Get-StillwaterFitLeft (Get-StillwaterDisplayPath $Dest) $max)
+}
+
 function Write-StillwaterPicker($Style, $Items, [int]$Cursor) {
   $os = Get-StillwaterOsLabel
   $version = Get-StillwaterVersion
@@ -123,9 +140,11 @@ function Write-StillwaterPicker($Style, $Items, [int]$Cursor) {
     $item = $Items[$i]
     $label = "{0,-22}" -f $item.Label
     $action = "{0,-10}" -f (Get-StillwaterPickerAction $item.App $item.Theme)
+    $note = "{0,-16}" -f $item.Note
+    $path = Get-StillwaterPickerPath $item.Dest
     $color = Get-StillwaterPickerActionColor $Style $item.App $item.Theme
     if (-not (Test-StillwaterPickerSelectable $item.App)) {
-      Write-Host ("{0}{1}│     {2}  {3}  {4}{5}" -f $Style.Clear, $Style.Muted, $label, $action, $item.Note, $Style.Reset)
+      Write-Host ("{0}{1}│     {2}  {3}  {4}  {5}{6}" -f $Style.Clear, $Style.Muted, $label, $action, $note, $path, $Style.Reset)
       continue
     }
     $check = if ($item.Selected) {
@@ -136,18 +155,17 @@ function Write-StillwaterPicker($Style, $Items, [int]$Cursor) {
       "{0}○{1}" -f $Style.Muted, $Style.Reset
     }
     $labelfg = if ($i -eq $Cursor) { $Style.Text } else { $Style.Muted }
-    Write-Host ("{0}{1}│{2}  {3}  {4}{5}  {6}{7}  {8}{9}{2}" -f `
-      $Style.Clear, $Style.Muted, $Style.Reset, $check, $labelfg, $label, $color, $action, $Style.Muted, $item.Note)
+    Write-Host ("{0}{1}│{2}  {3}  {4}{5}  {6}{7}  {8}{9}  {10}{2}" -f `
+      $Style.Clear, $Style.Muted, $Style.Reset, $check, $labelfg, $label, $color, $action, $Style.Muted, $note, $path)
   }
-  Write-Host ("{0}{1}└  Space to select · a all found · Enter to install{2}" -f $Style.Clear, $Style.Muted, $Style.Reset)
+  Write-Host ("{0}{1}└  Space selects, a selects all found, Enter installs{2}" -f $Style.Clear, $Style.Muted, $Style.Reset)
 }
 
 function Write-StillwaterPickerSummary($Style, $Items) {
   $names = @()
   foreach ($item in $Items) {
     if ($item.Selected) {
-      $action = Get-StillwaterPickerAction $item.App $item.Theme
-      $names += ("{0} ({1})" -f $item.Label, $action)
+      $names += (Get-StillwaterPickerSummaryName $item.Label $item.Theme)
     }
   }
   $os = Get-StillwaterOsLabel
@@ -155,7 +173,7 @@ function Write-StillwaterPickerSummary($Style, $Items) {
   Write-Host ("{0}{1}┌  {2}Stillwater{3}  {4}{5}  {6}{3}" -f $Style.Clear, $Style.Muted, $Style.Accent, $Style.Reset, $Style.Warm, $os, $version)
   Write-Host ("{0}{1}◇  {2}Which apps should get Stillwater?{3}" -f $Style.Clear, $Style.AccentHover, $Style.Text, $Style.Reset)
   if ($names.Count -eq 0) {
-    Write-Host ("{0}{1}│  nothing selected{2}" -f $Style.Clear, $Style.Muted, $Style.Reset)
+    Write-Host ("{0}{1}│  Nothing selected.{2}" -f $Style.Clear, $Style.Muted, $Style.Reset)
   } else {
     Write-Host ("{0}{1}│  {2}{3}{4}" -f $Style.Clear, $Style.Muted, $Style.Text, ($names -join ", "), $Style.Reset)
   }
@@ -183,7 +201,7 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
   $style = Get-StillwaterPickerStyle
   $items = @(ConvertTo-StillwaterPickerItems $Rows)
   if ($items.Count -eq 0) {
-    Write-Error "no adapters found"
+    Write-Error "No adapters found."
     return @()
   }
   $cursor = Get-StillwaterPickerCursor $items
@@ -214,7 +232,7 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
         }
         "quit" {
           Write-Host ("`e[{0}A" -f $rowsCount) -NoNewline
-          Write-Host ("{0}{1}■  Cancelled{2}" -f $style.Clear, $style.Error, $style.Reset)
+          Write-Host ("{0}{1}■  Cancelled.{2}" -f $style.Clear, $style.Error, $style.Reset)
           Write-Host "`e[J" -NoNewline
           throw "cancelled"
         }

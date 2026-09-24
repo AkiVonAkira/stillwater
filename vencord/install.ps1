@@ -33,11 +33,20 @@ function Test-VencordFound {
   return Test-StillwaterAnyDir (Get-VencordRoots)
 }
 
+function Get-VencordDest {
+  foreach ($dir in Get-VencordRoots) {
+    if (Test-Path -LiteralPath $dir -PathType Container) {
+      return (Join-Path $dir "themes\Stillwater.theme.css")
+    }
+  }
+  return (Join-Path $env:APPDATA "vesktop\themes\Stillwater.theme.css")
+}
+
 switch ($Action) {
   "status" {
     $app = if (Test-VencordFound) { "found" } else { "skip" }
     $pairs = @()
-    $dests = @()
+    $dests = @((Get-VencordDest))
     foreach ($dir in Get-VencordRoots) {
       if (Test-Path -LiteralPath $dir -PathType Container) {
         $dest = Join-Path $dir "themes\Stillwater.theme.css"

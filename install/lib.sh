@@ -70,7 +70,6 @@ stillwater_copy_tree() {
   local src="$1"
   local dest="$2"
   if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-    echo "would copy $src -> $dest" >&2
     return 0
   fi
   mkdir -p "$(dirname "$dest")"
@@ -83,7 +82,6 @@ stillwater_copy_file() {
   local src="$1"
   local dest="$2"
   if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-    echo "would copy $src -> $dest" >&2
     return 0
   fi
   mkdir -p "$(dirname "$dest")"
@@ -145,7 +143,6 @@ stillwater_retire_vscode_extensions() {
   local keep="$2"
   local dir
   if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-    echo "would retire old Stillwater folders in $parent" >&2
     return 0
   fi
   [[ -d "$parent" ]] || return 0
@@ -164,7 +161,6 @@ stillwater_register_vscode_extension() {
   local id="kayzel.stillwater-theme"
   local script="${STILLWATER_ROOT}/install/vscode-ext.cjs"
   if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-    echo "would register $id $version -> $dest" >&2
     return 0
   fi
   mkdir -p "$(dirname "$dest")"
@@ -220,7 +216,6 @@ stillwater_set_vscode_theme() {
   local settings="$1"
   local tmp
   if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-    echo "would set workbench.colorTheme in $settings" >&2
     return 0
   fi
   mkdir -p "$(dirname "$settings")"
@@ -243,10 +238,9 @@ stillwater_set_vscode_theme() {
 
 stillwater_run() {
   if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
-    echo "would run: $*" >&2
     return 0
   fi
-  "$@"
+  "$@" >/dev/null 2>&1
 }
 
 stillwater_id_wanted() {
@@ -270,7 +264,99 @@ stillwater_print_status() {
   local app="$3"
   local theme="$4"
   local note="${5:-}"
-  printf '%s|%s|%s|%s|%s\n' "$id" "$label" "$app" "$theme" "$note"
+  local dest="${6:-}"
+  printf '%s|%s|%s|%s|%s|%s\n' "$id" "$label" "$app" "$theme" "$note" "$dest"
+}
+
+stillwater_display_path() {
+  local path="$1"
+  local home="${HOME:-}"
+  local base=""
+  if [[ -z "$path" ]]; then
+    return 0
+  fi
+  path="${path//\\//}"
+  path="${path%/}"
+  home="${home//\\//}"
+  home="${home%/}"
+  if stillwater_has_cmd cygpath; then
+    path="$(cygpath -u "$path" 2>/dev/null || printf '%s' "$path")"
+    path="${path%/}"
+    if [[ -n "$home" ]]; then
+      home="$(cygpath -u "$home" 2>/dev/null || printf '%s' "$home")"
+      home="${home%/}"
+    fi
+  fi
+  base="${path##*/}"
+  if [[ "$base" == *.* ]]; then
+    path="${path%/*}"
+  fi
+  if [[ -n "$home" && ( "$path" == "$home" || "$path" == "$home"/* ) ]]; then
+    printf '~%s' "${path#"$home"}"
+    return 0
+  fi
+  printf '%s' "$path"
+}
+
+stillwater_term_cols() {
+  local n="${COLUMNS:-}"
+  if [[ -z "$n" ]] && stillwater_has_cmd tput; then
+    n="$(tput cols 2>/dev/null || true)"
+  fi
+  if [[ -z "$n" || "$n" -lt 40 ]]; then
+    n=80
+  fi
+  printf '%s' "$n"
+}
+
+stillwater_fit_left() {
+  local s="$1"
+  local max="$2"
+  local len=${#s}
+  if [[ -z "$s" || "$max" -le 0 ]]; then
+    return 0
+  fi
+  if [[ "$len" -le "$max" ]]; then
+    printf '%s' "$s"
+    return 0
+  fi
+  if [[ "$max" -le 1 ]]; then
+    printf '…'
+    return 0
+  fi
+  printf '…%s' "${s:$((len - max + 1))}"
+}
+
+stillwater_next_step() {
+  case "$1" in
+    cursor | vscode | vscode-insiders | vscodium | code-oss | windsurf)
+      printf 'Set Color Theme to Stillwater.'
+      ;;
+    zed)
+      printf 'Set the theme to Stillwater.'
+      ;;
+    helix)
+      printf 'Set theme to stillwater in config.toml.'
+      ;;
+    neovim)
+      printf 'Run :colorscheme stillwater.'
+      ;;
+    sublime)
+      printf 'Set Color Scheme to Stillwater.'
+      ;;
+    vencord)
+      printf 'Enable Stillwater in Vencord themes.'
+      ;;
+    t3)
+      printf 'Select Stillwater in T3 Code.'
+      ;;
+    spicetify)
+      printf 'Restart Spotify.'
+      ;;
+    ryoku)
+      printf 'Select Stillwater in Ryoku.'
+      ;;
+  esac
 }
 
 # Dest stamps where adapters keep one: JSON/TOML "1.0.0", CSS @version, ini "; version".
@@ -315,9 +401,9 @@ stillwater_status_note() {
   case "$state" in
     update)
       if [[ -n "$installed" && "$installed" != "$wanted" ]]; then
-        printf '%s -> %s' "$installed" "$wanted"
+        printf '%s to %s' "$installed" "$wanted"
       else
-        printf 'modified'
+        printf 'Modified'
       fi
       ;;
   esac
@@ -329,20 +415,24 @@ stillwater_print_copy_status() {
   local app="$3"
   local state="$4"
   shift 4
+  local dest_show=""
   local installed="" path
   for path in "$@"; do
     [[ -n "$path" ]] || continue
+    if [[ -z "$dest_show" ]]; then
+      dest_show="$path"
+    fi
     installed="$(stillwater_peek_version "$path")"
     if [[ -n "$installed" ]]; then
       break
     fi
   done
-  stillwater_print_status "$id" "$label" "$app" "$state" "$(stillwater_status_note "$state" "$installed")"
+  stillwater_print_status "$id" "$label" "$app" "$state" "$(stillwater_status_note "$state" "$installed")" "$dest_show"
 }
 
 stillwater_sort_status() {
-  local id label app theme note group action key
-  while IFS='|' read -r id label app theme note; do
+  local id label app theme note dest group action key
+  while IFS='|' read -r id label app theme note dest; do
     [[ -n "$id" ]] || continue
     case "$app" in
       found) group=0 ;;
@@ -356,7 +446,7 @@ stillwater_sort_status() {
       *) action=3 ;;
     esac
     key="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
-    printf '%s\t%s|%s|%s|%s|%s\n' "${group}${action}${key}" "$id" "$label" "$app" "$theme" "$note"
+    printf '%s\t%s|%s|%s|%s|%s|%s\n' "${group}${action}${key}" "$id" "$label" "$app" "$theme" "$note" "$dest"
   done | LC_ALL=C sort | cut -f2-
 }
 

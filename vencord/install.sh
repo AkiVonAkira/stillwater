@@ -41,6 +41,23 @@ found() {
   return 1
 }
 
+dest_file() {
+  local dir
+  while IFS= read -r dir; do
+    if [[ -d "$dir" ]]; then
+      printf '%s\n' "$dir/themes/Stillwater.theme.css"
+      return 0
+    fi
+  done < <(target_roots)
+  if [[ "$(stillwater_platform)" == windows ]]; then
+    printf '%s\n' "$APPDATA/vesktop/themes/Stillwater.theme.css"
+  elif [[ "$(stillwater_platform)" == darwin ]]; then
+    printf '%s\n' "$STILLWATER_SUPPORT/vesktop/themes/Stillwater.theme.css"
+  else
+    printf '%s\n' "$XDG_CONFIG_HOME/vesktop/themes/Stillwater.theme.css"
+  fi
+}
+
 case "$ACTION" in
   status)
     app="skip"
@@ -48,7 +65,7 @@ case "$ACTION" in
       app="found"
     fi
     pairs=()
-    dests=()
+    dests=("$(dest_file)")
     while IFS= read -r local_dir; do
       if [[ -d "$local_dir" ]]; then
         dest="$local_dir/themes/Stillwater.theme.css"
@@ -60,7 +77,7 @@ case "$ACTION" in
     if [[ ${#pairs[@]} -gt 0 ]]; then
       theme="$(stillwater_payload_state "${pairs[@]}")"
     fi
-    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$theme" ${dests[@]+"${dests[@]}"}
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$theme" "${dests[@]}"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]
@@ -83,7 +100,7 @@ case "$ACTION" in
     printf '%s\n' "$dests"
     ;;
   *)
-    echo "unknown action: $ACTION" >&2
+    echo "Unknown action: $ACTION" >&2
     exit 1
     ;;
 esac

@@ -13,8 +13,8 @@ usage() {
   cat <<'EOF'
 Install Stillwater into apps found on this OS. Missing apps are dimmed.
 
-  bash install.sh                 interactive picker (default)
-  bash install.sh --all           every found adapter (for agents)
+  bash install.sh                 interactive picker, default
+  bash install.sh --all           every found adapter, for agents
   bash install.sh --list
   bash install.sh --dry-run --all
   bash install.sh cursor t3
@@ -26,6 +26,7 @@ INTERACTIVE=0
 ALL=0
 ONLY=()
 STILLWATER_DRY_RUN=0
+USED_PICKER=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,7 +55,7 @@ while [[ $# -gt 0 ]]; do
       break
       ;;
     -*)
-      echo "unknown flag: $1" >&2
+      echo "Unknown flag: $1" >&2
       usage >&2
       exit 1
       ;;
@@ -68,7 +69,7 @@ done
 export STILLWATER_DRY_RUN
 
 if [[ "$ALL" == 1 && ${#ONLY[@]} -gt 0 ]]; then
-  echo "use --all or adapter ids, not both" >&2
+  echo "Use --all or adapter ids, not both." >&2
   exit 1
 fi
 
@@ -93,7 +94,7 @@ collect_status() {
 }
 
 print_list() {
-  local paint id label app theme note
+  local paint id label app theme note dest path
   stillwater_load_theme_ansi
   if [[ ! -t 1 ]]; then
     SW_RESET=""
@@ -105,7 +106,7 @@ print_list() {
     SW_WARM=""
   fi
   printf '%sStillwater%s  %s%s  %s%s\n' "$SW_ACCENT" "$SW_RESET" "$SW_WARM" "$(stillwater_os_label)" "$(stillwater_version)" "$SW_RESET"
-  while IFS='|' read -r id label app theme note; do
+  while IFS='|' read -r id label app theme note dest; do
     paint="$SW_MUTED"
     if [[ "$app" == found ]]; then
       case "$theme" in
@@ -114,9 +115,22 @@ print_list() {
         *) paint="$SW_ACCENT" ;;
       esac
     fi
-    printf '  %s%-22s%s  %-8s  %s%-10s%s  %-16s  %s\n' \
-      "$paint" "$label" "$SW_RESET" "$app" "$paint" "$theme" "$SW_RESET" "${note:-}" "$id"
+    path="$(stillwater_display_path "$dest")"
+    printf '  %s%-22s%s  %-8s  %s%-10s%s  %-16s  %s%-16s%s  %s%s%s\n' \
+      "$paint" "$label" "$SW_RESET" "$app" "$paint" "$theme" "$SW_RESET" "${note:-}" \
+      "$SW_MUTED" "$id" "$SW_RESET" "$SW_MUTED" "$path" "$SW_RESET"
   done < <(collect_status)
+}
+
+adapter_for_id() {
+  local id="$1" candidate
+  while IFS= read -r candidate; do
+    if "$BASH_EXE" "$candidate" owns "$id"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(adapter_scripts)
+  return 1
 }
 
 unknown_ids() {
@@ -127,8 +141,8 @@ unknown_ids() {
   known="$(collect_status | cut -d'|' -f1)"
   for id in "${ONLY[@]}"; do
     if ! printf '%s\n' "$known" | grep -qx "$id"; then
-      echo "unknown adapter: $id" >&2
-      echo "known: $(printf '%s' "$known" | tr '\n' ' ')" >&2
+      echo "Unknown adapter: $id" >&2
+      echo "Known: $(printf '%s' "$known" | tr '\n' ' ')" >&2
       return 1
     fi
   done
@@ -137,12 +151,13 @@ unknown_ids() {
 
 prompt_interactive() {
   if [[ ! -t 0 || ! -t 1 ]]; then
-    echo "install.sh needs a terminal, or pass --all / adapter ids" >&2
+    echo "install.sh needs a terminal, or pass --all or adapter ids." >&2
     exit 1
   fi
   if ! stillwater_picker "$(collect_status)"; then
     exit 0
   fi
+  USED_PICKER=1
   ONLY=("${STILLWATER_PICKED[@]+"${STILLWATER_PICKED[@]}"}")
 }
 
@@ -168,7 +183,15 @@ unknown_ids || exit 1
 
 installed=0
 skipped=0
-while IFS='|' read -r id label app _theme _note; do
+failed=0
+jobs_id=()
+jobs_label=()
+jobs_kind=()
+jobs_state=()
+jobs_hint=()
+jobs_next=()
+
+while IFS='|' read -r id label app _theme _note _dest; do
   if [[ "$FILTER" == 1 ]]; then
     if [[ ${#ONLY[@]} -eq 0 ]]; then
       continue
@@ -178,29 +201,125 @@ while IFS='|' read -r id label app _theme _note; do
     fi
   fi
   if [[ "$app" != found ]]; then
-    echo "skip  $label ($id) - not found"
     skipped=$((skipped + 1))
-    continue
-  fi
-  script=""
-  while IFS= read -r candidate; do
-    if "$BASH_EXE" "$candidate" owns "$id"; then
-      script="$candidate"
-      break
+    if [[ "$FILTER" == 1 ]]; then
+      jobs_id+=("$id")
+      jobs_label+=("$label")
+      jobs_kind+=("skip")
+      jobs_state+=("skip")
+      jobs_hint+=("Not found.")
+      jobs_next+=("")
     fi
-  done < <(adapter_scripts)
-  if [[ -z "$script" ]]; then
-    echo "skip  $label ($id) - no installer"
-    skipped=$((skipped + 1))
     continue
   fi
-  dest="$("$BASH_EXE" "$script" install "$id")"
-  if [[ "$STILLWATER_DRY_RUN" == 1 ]]; then
-    echo "would install  $label -> $dest"
-  else
-    echo "install  $label -> $dest"
-  fi
-  installed=$((installed + 1))
+  jobs_id+=("$id")
+  jobs_label+=("$label")
+  jobs_kind+=("install")
+  jobs_state+=("pending")
+  jobs_hint+=("")
+  jobs_next+=("$(stillwater_next_step "$id")")
 done < <(collect_status)
 
-echo "$installed installed, $skipped skipped"
+stillwater_picker_init_style
+CLACK=0
+if stillwater_clack; then
+  CLACK=1
+fi
+
+draw_jobs() {
+  local i
+  stillwater_clack_step "$SW_ACCENT" "$SW_DIAMOND" "Installing Stillwater."
+  for i in "${!jobs_id[@]}"; do
+    stillwater_clack_row "${jobs_state[$i]}" "${jobs_label[$i]}" "${jobs_hint[$i]}"
+  done
+}
+
+if [[ "$CLACK" == 1 ]]; then
+  if [[ "$USED_PICKER" != 1 ]]; then
+    stillwater_clack_header
+  fi
+  if [[ ${#jobs_id[@]} -gt 0 ]]; then
+    draw_jobs
+  fi
+fi
+
+for i in "${!jobs_id[@]}"; do
+  if [[ "${jobs_kind[$i]}" != install ]]; then
+    if [[ "$CLACK" != 1 ]]; then
+      echo "Skipped ${jobs_label[$i]}. Not found."
+    fi
+    continue
+  fi
+  if [[ "$CLACK" == 1 ]]; then
+    jobs_state[$i]="busy"
+    stillwater_clack_up $((${#jobs_id[@]} + 1))
+    draw_jobs
+  fi
+  script="$(adapter_for_id "${jobs_id[$i]}" || true)"
+  if [[ -z "$script" ]]; then
+    jobs_state[$i]="fail"
+    jobs_hint[$i]="No installer."
+    jobs_next[$i]=""
+    failed=$((failed + 1))
+    if [[ "$CLACK" != 1 ]]; then
+      echo "Skipped ${jobs_label[$i]}. No installer."
+    fi
+  elif dest="$("$BASH_EXE" "$script" install "${jobs_id[$i]}")"; then
+    jobs_state[$i]="ok"
+    installed=$((installed + 1))
+    if [[ "$CLACK" != 1 ]]; then
+      if [[ "$STILLWATER_DRY_RUN" == 1 ]]; then
+        echo "Would install ${jobs_label[$i]}."
+      else
+        echo "Installed ${jobs_label[$i]}."
+      fi
+    fi
+  else
+    jobs_state[$i]="fail"
+    jobs_hint[$i]="Failed."
+    jobs_next[$i]=""
+    failed=$((failed + 1))
+    if [[ "$CLACK" != 1 ]]; then
+      echo "Failed ${jobs_label[$i]}."
+    fi
+  fi
+  if [[ "$CLACK" == 1 ]]; then
+    stillwater_clack_up $((${#jobs_id[@]} + 1))
+    draw_jobs
+  fi
+done
+
+next_any=0
+for i in "${!jobs_id[@]}"; do
+  if [[ "${jobs_state[$i]}" == ok && -n "${jobs_next[$i]}" ]]; then
+    next_any=1
+    break
+  fi
+done
+if [[ "$next_any" == 1 ]]; then
+  if [[ "$CLACK" == 1 ]]; then
+    stillwater_clack_step "$SW_ACCENT_HOVER" "$SW_DONE" "Do this next."
+    for i in "${!jobs_id[@]}"; do
+      if [[ "${jobs_state[$i]}" == ok && -n "${jobs_next[$i]}" ]]; then
+        stillwater_clack_row next "${jobs_label[$i]}" "${jobs_next[$i]}"
+      fi
+    done
+  else
+    echo "Do this next."
+    for i in "${!jobs_id[@]}"; do
+      if [[ "${jobs_state[$i]}" == ok && -n "${jobs_next[$i]}" ]]; then
+        printf '  %-22s  %s\n' "${jobs_label[$i]}" "${jobs_next[$i]}"
+      fi
+    done
+  fi
+fi
+
+summary="Installed ${installed}, skipped ${skipped}."
+if [[ "$failed" -gt 0 ]]; then
+  summary="Installed ${installed}, skipped ${skipped}, failed ${failed}."
+fi
+if [[ "$CLACK" == 1 ]]; then
+  stillwater_clack_end "$summary"
+else
+  echo "$summary"
+fi
