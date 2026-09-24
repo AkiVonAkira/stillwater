@@ -58,9 +58,11 @@ switch ($Action) {
       New-Item -ItemType Directory -Force -Path $dest | Out-Null
       Copy-Item -Force (Join-Path $Root "spicetify\color.ini") $dest
       Copy-Item -Force (Join-Path $Root "spicetify\user.css") $dest
+      Copy-Item -Force (Join-Path $Root "spicetify\theme.js") $dest
     }
     if (Test-StillwaterCommand "spicetify") {
       Invoke-StillwaterCmd @("spicetify", "config", "current_theme", "stillwater", "color_scheme", "stillwater") | Out-Null
+      Invoke-StillwaterCmd @("spicetify", "config", "inject_css", "1", "replace_colors", "1", "overwrite_assets", "1", "inject_theme_js", "1") | Out-Null
       Invoke-StillwaterCmd @("spicetify", "apply") | Out-Null
     }
     Write-Output $dest

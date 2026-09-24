@@ -69,10 +69,11 @@ case "$ACTION" in
       echo "would copy spicetify theme -> $dest" >&2
     else
       mkdir -p "$dest"
-      cp -a "$ROOT/spicetify/color.ini" "$ROOT/spicetify/user.css" "$dest/"
+      cp -a "$ROOT/spicetify/color.ini" "$ROOT/spicetify/user.css" "$ROOT/spicetify/theme.js" "$dest/"
     fi
     if stillwater_has_cmd spicetify; then
       stillwater_run spicetify config current_theme stillwater color_scheme stillwater || true
+      stillwater_run spicetify config inject_css 1 replace_colors 1 overwrite_assets 1 inject_theme_js 1 || true
       stillwater_run spicetify apply || true
     fi
     printf '%s\n' "$dest"

@@ -43,4 +43,12 @@ theme="$TMP/.config/vesktop/themes/Stillwater.theme.css"
 grep -q "midnight-discord" "$theme" || fail "Vencord theme should be a midnight flavor"
 grep -q "#5aa8b4" "$theme" || fail "Vencord theme should map Stillwater accent"
 
+mkdir -p "$TMP/.config/spicetify"
+out="$("$BASH_EXE" "$ROOT/install.sh" spicetify)"
+printf '%s\n' "$out" | grep -q 'install  Spicetify' || fail "should install Spicetify"
+dest="$TMP/.config/spicetify/Themes/stillwater"
+[[ -f "$dest/color.ini" && -f "$dest/user.css" && -f "$dest/theme.js" ]] || fail "Spicetify theme files missing"
+grep -q "astromations/hazy" "$dest/user.css" || fail "Spicetify CSS should import Hazy"
+grep -q "5aa8b4" "$dest/color.ini" || fail "Spicetify colors should map Stillwater accent"
+
 echo "ok"
