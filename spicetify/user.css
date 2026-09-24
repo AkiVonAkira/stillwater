@@ -1,2 +1,8 @@
-/* Stillwater Spicetify adapter. Chrome from Hazy: https://github.com/Astromations/Hazy */
-@import url("https://cdn.jsdelivr.net/gh/astromations/hazy/app.css");
+/* Stillwater Spicetify adapter. Chrome from Dribbblish:
+ * https://github.com/spicetify/spicetify-themes (MIT)
+ */
+@import url("https://cdn.jsdelivr.net/gh/spicetify/spicetify-themes@master/Dribbblish/user.css");
+
+:root {
+    --corner-radius: 16px;
+}
