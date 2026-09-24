@@ -35,4 +35,12 @@ printf '%s\n' "$out" | grep -q 'install  Cursor' || fail "should install Cursor"
 printf '%s\n' "$out" | grep -q 'skip  Visual Studio Code' || fail "should skip VS Code"
 [[ -f "$TMP/.cursor/extensions/kayzel.stillwater-theme-1.0.0/package.json" ]] || fail "Cursor extension files missing"
 
+mkdir -p "$TMP/.config/vesktop"
+out="$("$BASH_EXE" "$ROOT/install.sh" vencord)"
+printf '%s\n' "$out" | grep -q 'install  Vencord' || fail "should install Vencord"
+theme="$TMP/.config/vesktop/themes/Stillwater.theme.css"
+[[ -f "$theme" ]] || fail "Vencord theme missing"
+grep -q "midnight-discord" "$theme" || fail "Vencord theme should be a midnight flavor"
+grep -q "#5aa8b4" "$theme" || fail "Vencord theme should map Stillwater accent"
+
 echo "ok"
