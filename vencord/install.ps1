@@ -35,8 +35,19 @@ function Test-VencordFound {
 
 switch ($Action) {
   "status" {
-    $state = if (Test-VencordFound) { "found" } else { "skip" }
-    Write-Output ("{0}|{1}|{2}" -f $Id, $Label, $state)
+    $app = if (Test-VencordFound) { "found" } else { "skip" }
+    $pairs = @()
+    $dests = @()
+    foreach ($dir in Get-VencordRoots) {
+      if (Test-Path -LiteralPath $dir -PathType Container) {
+        $dest = Join-Path $dir "themes\Stillwater.theme.css"
+        $pairs += $Src
+        $pairs += $dest
+        $dests += $dest
+      }
+    }
+    $theme = Get-StillwaterPayloadState $pairs
+    Write-StillwaterCopyStatus $Id $Label $app $theme $dests
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }

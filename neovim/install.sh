@@ -38,11 +38,15 @@ plugin_dest() {
 
 case "$ACTION" in
   status)
+    app="skip"
     if found; then
-      printf '%s|%s|found\n' "$ID" "$LABEL"
-    else
-      printf '%s|%s|skip\n' "$ID" "$LABEL"
+      app="found"
     fi
+    dest="$(plugin_dest)"
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(stillwater_payload_state \
+      "$ROOT/neovim/colors/stillwater.lua" "$dest/colors/stillwater.lua" \
+      "$ROOT/neovim/lua/stillwater/init.lua" "$dest/lua/stillwater/init.lua")" \
+      "$dest"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]

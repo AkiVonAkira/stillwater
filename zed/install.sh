@@ -63,11 +63,17 @@ install_extension() {
 
 case "$ACTION" in
   status)
+    app="skip"
     if found; then
-      printf '%s|%s|found\n' "$ID" "$LABEL"
-    else
-      printf '%s|%s|skip\n' "$ID" "$LABEL"
+      app="found"
     fi
+    dest="$(theme_dest)"
+    ext="$(ext_dest)"
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(stillwater_payload_state \
+      "$THEME_SRC" "$dest" \
+      "$ROOT/zed/extension.toml" "$ext/extension.toml" \
+      "$THEME_SRC" "$ext/themes/stillwater.json")" \
+      "$dest" "$ext/extension.toml" "$ext/themes/stillwater.json"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]

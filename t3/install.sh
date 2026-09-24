@@ -19,13 +19,48 @@ found() {
   stillwater_any_dir "$XDG_CONFIG_HOME/t3" "$HOME/.t3" "$APPDATA/t3" "$LOCALAPPDATA/t3"
 }
 
+theme_candidates() {
+  printf '%s\n' \
+    "$HOME/.t3/userdata/themes/stillwater.json" \
+    "$HOME/.t3/themes/stillwater.json" \
+    "$XDG_CONFIG_HOME/t3/userdata/themes/stillwater.json" \
+    "$XDG_CONFIG_HOME/t3/themes/stillwater.json" \
+    "$APPDATA/t3/userdata/themes/stillwater.json" \
+    "$APPDATA/t3/themes/stillwater.json" \
+    "$LOCALAPPDATA/t3/userdata/themes/stillwater.json" \
+    "$LOCALAPPDATA/t3/themes/stillwater.json"
+  if [[ -n "${T3CODE_HOME:-}" ]]; then
+    printf '%s\n' "$T3CODE_HOME/userdata/themes/stillwater.json"
+  fi
+}
+
+theme_state() {
+  local file states=()
+  while IFS= read -r file; do
+    if [[ -f "$file" ]]; then
+      states+=("$(stillwater_copy_state "$SRC" "$file")")
+    fi
+  done < <(theme_candidates)
+  if [[ ${#states[@]} -eq 0 ]]; then
+    echo none
+    return
+  fi
+  stillwater_merge_theme_state "${states[@]}"
+}
+
 case "$ACTION" in
   status)
+    app="skip"
     if found; then
-      printf '%s|%s|found\n' "$ID" "$LABEL"
-    else
-      printf '%s|%s|skip\n' "$ID" "$LABEL"
+      app="found"
     fi
+    dests=()
+    while IFS= read -r file; do
+      if [[ -f "$file" ]]; then
+        dests+=("$file")
+      fi
+    done < <(theme_candidates)
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(theme_state)" ${dests[@]+"${dests[@]}"}
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]

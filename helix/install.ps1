@@ -34,8 +34,9 @@ function Get-HelixDest {
 
 switch ($Action) {
   "status" {
-    $state = if (Test-HelixFound) { "found" } else { "skip" }
-    Write-Output ("{0}|{1}|{2}" -f $Id, $Label, $state)
+    $app = if (Test-HelixFound) { "found" } else { "skip" }
+    $dest = Get-HelixDest
+    Write-StillwaterCopyStatus $Id $Label $app (Get-StillwaterCopyState $Src $dest) $dest
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }

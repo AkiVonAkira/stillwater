@@ -99,6 +99,43 @@ stillwater_version() {
   sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$file" | head -n 1
 }
 
+stillwater_palette_hex() {
+  local key="$1"
+  local file="${STILLWATER_ROOT}/palette.json"
+  sed -n "s/^[[:space:]]*\"${key}\"[[:space:]]*:[[:space:]]*\"#\\([0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\)\".*/\\1/p" "$file" | head -n 1
+}
+
+stillwater_fg() {
+  local hex="${1#\#}"
+  if [[ ${#hex} -ne 6 ]]; then
+    return 0
+  fi
+  printf '\033[38;2;%d;%d;%dm' "$((16#${hex:0:2}))" "$((16#${hex:2:2}))" "$((16#${hex:4:2}))"
+}
+
+stillwater_load_theme_ansi() {
+  SW_RESET=$'\033[0m'
+  SW_ACCENT="$(stillwater_fg "$(stillwater_palette_hex accent)")"
+  SW_ACCENT_HOVER="$(stillwater_fg "$(stillwater_palette_hex accentHover)")"
+  SW_ACCENT_DEEP="$(stillwater_fg "$(stillwater_palette_hex accentDeep)")"
+  SW_TEXT="$(stillwater_fg "$(stillwater_palette_hex text)")"
+  SW_MUTED="$(stillwater_fg "$(stillwater_palette_hex textMuted)")"
+  SW_WARM="$(stillwater_fg "$(stillwater_palette_hex warm)")"
+  SW_WARN="$(stillwater_fg "$(stillwater_palette_hex warning)")"
+  SW_ERROR="$(stillwater_fg "$(stillwater_palette_hex error)")"
+  if [[ -n "${NO_COLOR:-}" || "${TERM:-}" == dumb ]]; then
+    SW_RESET=""
+    SW_ACCENT=""
+    SW_ACCENT_HOVER=""
+    SW_ACCENT_DEEP=""
+    SW_TEXT=""
+    SW_MUTED=""
+    SW_WARM=""
+    SW_WARN=""
+    SW_ERROR=""
+  fi
+}
+
 stillwater_vscode_ext_id() {
   printf 'kayzel.stillwater-theme-%s\n' "$(stillwater_version)"
 }
@@ -225,4 +262,237 @@ stillwater_id_wanted() {
     fi
   done
   return 1
+}
+
+stillwater_print_status() {
+  local id="$1"
+  local label="$2"
+  local app="$3"
+  local theme="$4"
+  local note="${5:-}"
+  printf '%s|%s|%s|%s|%s\n' "$id" "$label" "$app" "$theme" "$note"
+}
+
+# Dest stamps where adapters keep one: JSON/TOML "1.0.0", CSS @version, ini "; version".
+# Skips unquoted integers (T3 schema "version": 1) and schema_version.
+stillwater_peek_version() {
+  local path="$1"
+  local file="" ver
+  if [[ -f "$path" ]]; then
+    file="$path"
+  elif [[ -d "$path" ]]; then
+    for cand in \
+      "$path/package.json" \
+      "$path/extension.toml" \
+      "$path/color.ini" \
+      "$path/Stillwater.theme.css" \
+      "$path/meta.json"; do
+      if [[ -f "$cand" ]]; then
+        file="$cand"
+        break
+      fi
+    done
+  fi
+  [[ -n "$file" && -f "$file" ]] || return 0
+  ver="$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([0-9][0-9]*\.[0-9][0-9.]*\)".*/\1/p' "$file" | head -n 1)"
+  if [[ -z "$ver" ]]; then
+    ver="$(sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*"\([0-9][0-9]*\.[0-9][0-9.]*\)".*/\1/p' "$file" | head -n 1)"
+  fi
+  if [[ -z "$ver" ]]; then
+    ver="$(sed -n 's/.*@version[[:space:]]\{1,\}\([0-9][0-9]*\.[0-9][0-9.]*\).*/\1/p' "$file" | head -n 1)"
+  fi
+  if [[ -z "$ver" ]]; then
+    ver="$(sed -n 's/^[[:space:]]*[;#][[:space:]]*version[[:space:]]\{1,\}\([0-9][0-9]*\.[0-9][0-9.]*\).*/\1/p' "$file" | head -n 1)"
+  fi
+  printf '%s' "$ver"
+}
+
+stillwater_status_note() {
+  local state="$1"
+  local installed="${2:-}"
+  local wanted
+  wanted="$(stillwater_version)"
+  case "$state" in
+    update)
+      if [[ -n "$installed" && "$installed" != "$wanted" ]]; then
+        printf '%s -> %s' "$installed" "$wanted"
+      else
+        printf 'modified'
+      fi
+      ;;
+  esac
+}
+
+stillwater_print_copy_status() {
+  local id="$1"
+  local label="$2"
+  local app="$3"
+  local state="$4"
+  shift 4
+  local installed="" path
+  for path in "$@"; do
+    [[ -n "$path" ]] || continue
+    installed="$(stillwater_peek_version "$path")"
+    if [[ -n "$installed" ]]; then
+      break
+    fi
+  done
+  stillwater_print_status "$id" "$label" "$app" "$state" "$(stillwater_status_note "$state" "$installed")"
+}
+
+stillwater_sort_status() {
+  local id label app theme note group action key
+  while IFS='|' read -r id label app theme note; do
+    [[ -n "$id" ]] || continue
+    case "$app" in
+      found) group=0 ;;
+      skip) group=1 ;;
+      *) group=2 ;;
+    esac
+    case "$theme" in
+      update) action=0 ;;
+      none) action=1 ;;
+      current) action=2 ;;
+      *) action=3 ;;
+    esac
+    key="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
+    printf '%s\t%s|%s|%s|%s|%s\n' "${group}${action}${key}" "$id" "$label" "$app" "$theme" "$note"
+  done | LC_ALL=C sort | cut -f2-
+}
+
+stillwater_same_file() {
+  local src="$1"
+  local dest="$2"
+  [[ -f "$src" && -f "$dest" ]] || return 1
+  if stillwater_has_cmd cmp; then
+    cmp -s "$src" "$dest"
+    return
+  fi
+  [[ "$(wc -c <"$src")" == "$(wc -c <"$dest")" ]] || return 1
+  [[ "$(cksum <"$src")" == "$(cksum <"$dest")" ]]
+}
+
+stillwater_iter_files() {
+  local dir="$1"
+  local entry
+  local saved
+  saved="$(shopt -p nullglob)"
+  shopt -s nullglob
+  for entry in "$dir"/*; do
+    if [[ -d "$entry" ]]; then
+      stillwater_iter_files "$entry"
+    elif [[ -f "$entry" ]]; then
+      printf '%s\n' "$entry"
+    fi
+  done
+  eval "$saved"
+}
+
+stillwater_same_tree() {
+  local src="$1"
+  local dest="$2"
+  local file rel
+  [[ -d "$src" && -d "$dest" ]] || return 1
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    rel="${file#"$src"/}"
+    stillwater_same_file "$file" "$dest/$rel" || return 1
+  done < <(stillwater_iter_files "$src")
+  return 0
+}
+
+stillwater_copy_state() {
+  local src="$1"
+  local dest="$2"
+  if [[ -d "$src" ]]; then
+    if [[ ! -d "$dest" ]]; then
+      echo none
+      return
+    fi
+    if stillwater_same_tree "$src" "$dest"; then
+      echo current
+    else
+      echo update
+    fi
+    return
+  fi
+  if [[ ! -f "$dest" ]]; then
+    echo none
+    return
+  fi
+  if stillwater_same_file "$src" "$dest"; then
+    echo current
+  else
+    echo update
+  fi
+}
+
+stillwater_merge_theme_state() {
+  local any_current=0
+  local any_update=0
+  local any_none=0
+  local s
+  if [[ $# -eq 0 ]]; then
+    echo none
+    return
+  fi
+  for s in "$@"; do
+    case "$s" in
+      current) any_current=1 ;;
+      update) any_update=1 ;;
+      *) any_none=1 ;;
+    esac
+  done
+  if [[ "$any_update" == 1 ]]; then
+    echo update
+  elif [[ "$any_current" == 1 && "$any_none" == 1 ]]; then
+    echo update
+  elif [[ "$any_current" == 1 ]]; then
+    echo current
+  else
+    echo none
+  fi
+}
+
+stillwater_payload_state() {
+  local states=()
+  while [[ $# -ge 2 ]]; do
+    states+=("$(stillwater_copy_state "$1" "$2")")
+    shift 2
+  done
+  if [[ ${#states[@]} -eq 0 ]]; then
+    echo none
+    return
+  fi
+  stillwater_merge_theme_state "${states[@]}"
+}
+
+stillwater_vscode_payload_state() {
+  local src="$1"
+  local dest="$2"
+  local parent keep state old oldver
+  parent="$(dirname "$dest")"
+  keep="$(basename "$dest")"
+  state="$(stillwater_payload_state "$src/package.json" "$dest/package.json" "$src/themes" "$dest/themes")"
+  if [[ "$state" == current ]]; then
+    printf '%s|\n' current
+    return
+  fi
+  if [[ "$state" == update ]]; then
+    printf '%s|%s\n' update "$(stillwater_status_note update "$(stillwater_peek_version "$dest/package.json")")"
+    return
+  fi
+  for old in "$parent"/kayzel.stillwater-theme-*; do
+    [[ -e "$old" ]] || continue
+    if [[ "$(basename "$old")" != "$keep" ]]; then
+      oldver="$(stillwater_peek_version "$old/package.json")"
+      if [[ -z "$oldver" ]]; then
+        oldver="$(basename "$old")"
+        oldver="${oldver#kayzel.stillwater-theme-}"
+      fi
+      printf '%s|%s\n' update "$(stillwater_status_note update "$oldver")"
+      return
+    fi
+  done
+  printf '%s|\n' none
 }

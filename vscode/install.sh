@@ -126,11 +126,15 @@ product_found() {
 case "$ACTION" in
   status)
     while IFS= read -r id; do
+      app="skip"
       if product_found "$id"; then
-        printf '%s|%s|found\n' "$id" "$(label_of "$id")"
-      else
-        printf '%s|%s|skip\n' "$id" "$(label_of "$id")"
+        app="found"
       fi
+      dest="$(ext_dir "$id")"
+      payload="$(stillwater_vscode_payload_state "$SRC" "$dest")"
+      theme="${payload%%|*}"
+      note="${payload#*|}"
+      stillwater_print_status "$id" "$(label_of "$id")" "$app" "$theme" "$note"
     done < <(product_ids)
     ;;
   owns)

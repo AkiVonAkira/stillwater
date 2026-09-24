@@ -1,40 +1,47 @@
 # Stillwater
 
-A muted dark theme with warm surfaces and a cyan accent. Based on [feppz!](https://github.com/foxnne/feppz).
+A muted dark theme with warm surfaces and a cyan accent.
 
 ## Install
 
 ```bash
 bash install.sh
+bash install.sh --all
+bash install.sh --list
+bash install.sh --dry-run --all
+bash install.sh cursor t3
 ```
 
 ```powershell
 pwsh .\install.ps1
-```
-
-That opens a chooser for apps found on this OS. Agents and scripts can skip the prompt:
-
-```bash
-bash install.sh --all
-```
-
-```powershell
 pwsh .\install.ps1 -All
+pwsh .\install.ps1 -List
+pwsh .\install.ps1 -DryRun -All
+pwsh .\install.ps1 cursor t3
 ```
 
-Apps that aren't installed are skipped. Reload, then select Stillwater if it does not switch on its own.
+## Supported Apps
 
-- Cursor
-- Visual Studio Code
-- VS Code Insiders
-- VSCodium
-- Code - OSS
-- Windsurf
-- T3 Code
-- Ryoku (Linux)
-- Zed
-- Helix
-- Neovim
-- Sublime Text
-- Spicetify
-- Vencord / Vesktop
+- [Helix](https://helix-editor.com)
+- [Neovim](https://neovim.io)
+- [Ryoku](https://ryoku.dev) (Linux)
+- [Spicetify](https://spicetify.app)
+- [Sublime Text](https://www.sublimetext.com)
+- [T3 Code](https://t3.codes)
+- [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)
+- [Zed](https://zed.dev)
+
+### Visual Studio Code
+
+- [Visual Studio Code](https://code.visualstudio.com)
+- [VS Code Insiders](https://code.visualstudio.com/insiders/)
+- [Code - OSS](https://github.com/microsoft/vscode)
+- [Cursor](https://cursor.com)
+- [VSCodium](https://vscodium.com)
+- [Windsurf](https://windsurf.com)
+
+## Credits
+
+- [Dribbblish](https://github.com/spicetify/spicetify-themes/tree/master/Dribbblish)
+- [feppz!](https://github.com/foxnne/feppz)
+- [midnight](https://github.com/refact0r/midnight-discord)

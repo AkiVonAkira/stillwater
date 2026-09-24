@@ -44,8 +44,14 @@ function Get-SpicetifyDest {
 
 switch ($Action) {
   "status" {
-    $state = if (Test-SpicetifyFound) { "found" } else { "skip" }
-    Write-Output ("{0}|{1}|{2}" -f $Id, $Label, $state)
+    $app = if (Test-SpicetifyFound) { "found" } else { "skip" }
+    $dest = Get-SpicetifyDest
+    $theme = Get-StillwaterPayloadState @(
+      (Join-Path $Root "spicetify\color.ini"), (Join-Path $dest "color.ini"),
+      (Join-Path $Root "spicetify\user.css"), (Join-Path $dest "user.css"),
+      (Join-Path $Root "spicetify\theme.js"), (Join-Path $dest "theme.js")
+    )
+    Write-StillwaterCopyStatus $Id $Label $app $theme (Join-Path $dest "color.ini")
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }

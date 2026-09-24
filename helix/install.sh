@@ -46,11 +46,12 @@ dest_file() {
 
 case "$ACTION" in
   status)
+    app="skip"
     if found; then
-      printf '%s|%s|found\n' "$ID" "$LABEL"
-    else
-      printf '%s|%s|skip\n' "$ID" "$LABEL"
+      app="found"
     fi
+    dest="$(dest_file)"
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(stillwater_copy_state "$SRC" "$dest")" "$dest"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]

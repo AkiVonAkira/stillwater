@@ -82,10 +82,49 @@ function Copy-StillwaterFile([string]$Src, [string]$Dest) {
   Copy-Item -Force $Src $Dest
 }
 
+function Get-StillwaterPalette {
+  if (-not $script:StillwaterPalette) {
+    $file = Join-Path $env:STILLWATER_ROOT "palette.json"
+    $script:StillwaterPalette = (Get-Content -Raw -LiteralPath $file | ConvertFrom-Json).palette
+  }
+  return $script:StillwaterPalette
+}
+
 function Get-StillwaterVersion {
   $file = Join-Path $env:STILLWATER_ROOT "palette.json"
   $spec = Get-Content -Raw -LiteralPath $file | ConvertFrom-Json
   return [string]$spec.version
+}
+
+function ConvertTo-StillwaterFg([string]$Hex) {
+  $h = $Hex.TrimStart("#")
+  if ($h.Length -ne 6) { return "" }
+  $r = [Convert]::ToInt32($h.Substring(0, 2), 16)
+  $g = [Convert]::ToInt32($h.Substring(2, 2), 16)
+  $b = [Convert]::ToInt32($h.Substring(4, 2), 16)
+  return "`e[38;2;${r};${g};${b}m"
+}
+
+function Get-StillwaterThemeAnsi {
+  $p = Get-StillwaterPalette
+  if ($env:NO_COLOR) {
+    return @{
+      Reset = ""; Accent = ""; AccentHover = ""; AccentDeep = ""
+      Text = ""; Muted = ""; Warm = ""; Warn = ""; Error = ""; Clear = ""
+    }
+  }
+  return @{
+    Reset = "`e[0m"
+    Accent = ConvertTo-StillwaterFg $p.accent
+    AccentHover = ConvertTo-StillwaterFg $p.accentHover
+    AccentDeep = ConvertTo-StillwaterFg $p.accentDeep
+    Text = ConvertTo-StillwaterFg $p.text
+    Muted = ConvertTo-StillwaterFg $p.textMuted
+    Warm = ConvertTo-StillwaterFg $p.warm
+    Warn = ConvertTo-StillwaterFg $p.warning
+    Error = ConvertTo-StillwaterFg $p.error
+    Clear = "`e[2K"
+  }
 }
 
 function Get-StillwaterVsCodeExtId {
@@ -201,4 +240,160 @@ function Invoke-StillwaterCmd([string[]]$Cmd) {
 function Test-StillwaterIdWanted([string]$Id, [string[]]$Only) {
   if (-not $Only -or $Only.Count -eq 0) { return $true }
   return $Only -contains $Id
+}
+
+function Write-StillwaterStatus([string]$Id, [string]$Label, [string]$App, [string]$Theme, [string]$Note = "") {
+  Write-Output ("{0}|{1}|{2}|{3}|{4}" -f $Id, $Label, $App, $Theme, $Note)
+}
+
+function Get-StillwaterPeekVersion([string]$Path) {
+  if (-not $Path) { return "" }
+  $file = $null
+  if (Test-Path -LiteralPath $Path -PathType Leaf) {
+    $file = $Path
+  } elseif (Test-Path -LiteralPath $Path -PathType Container) {
+    foreach ($name in @("package.json", "extension.toml", "color.ini", "Stillwater.theme.css", "meta.json")) {
+      $cand = Join-Path $Path $name
+      if (Test-Path -LiteralPath $cand -PathType Leaf) {
+        $file = $cand
+        break
+      }
+    }
+  }
+  if (-not $file) { return "" }
+  $text = Get-Content -Raw -LiteralPath $file
+  foreach ($pattern in @(
+      '(?m)^\s*"version"\s*:\s*"([0-9]+\.[0-9][0-9.]*)"',
+      '(?m)^\s*version\s*=\s*"([0-9]+\.[0-9][0-9.]*)"',
+      '@version\s+([0-9]+\.[0-9][0-9.]*)',
+      '(?m)^\s*[;#]\s*version\s+([0-9]+\.[0-9][0-9.]*)'
+    )) {
+    $m = [regex]::Match($text, $pattern)
+    if ($m.Success) { return $m.Groups[1].Value }
+  }
+  return ""
+}
+
+function Get-StillwaterStatusNote([string]$State, [string]$Installed = "") {
+  if ($State -ne "update") { return "" }
+  $wanted = Get-StillwaterVersion
+  if ($Installed -and $Installed -ne $wanted) {
+    return ("{0} -> {1}" -f $Installed, $wanted)
+  }
+  return "modified"
+}
+
+function Write-StillwaterCopyStatus([string]$Id, [string]$Label, [string]$App, [string]$State, [string[]]$Dests = @()) {
+  $installed = ""
+  foreach ($path in @($Dests)) {
+    if (-not $path) { continue }
+    $installed = Get-StillwaterPeekVersion $path
+    if ($installed) { break }
+  }
+  Write-StillwaterStatus $Id $Label $App $State (Get-StillwaterStatusNote $State $installed)
+}
+
+function Sort-StillwaterStatus([string[]]$Rows) {
+  if (-not $Rows) { return @() }
+  $Rows | ForEach-Object {
+    $parts = $_.Split("|")
+    [pscustomobject]@{
+      Raw = $_
+      AppRank = switch ($parts[2]) { "found" { 0 } "skip" { 1 } default { 2 } }
+      ThemeRank = switch ($(if ($parts.Count -gt 3) { $parts[3] } else { "none" })) {
+        "update" { 0 }
+        "none" { 1 }
+        "current" { 2 }
+        default { 3 }
+      }
+      Label = $parts[1]
+    }
+  } | Sort-Object AppRank, ThemeRank, { $_.Label.ToLowerInvariant() } | ForEach-Object { $_.Raw }
+}
+
+function Test-StillwaterSameFile([string]$Src, [string]$Dest) {
+  if (-not (Test-Path -LiteralPath $Src -PathType Leaf)) { return $false }
+  if (-not (Test-Path -LiteralPath $Dest -PathType Leaf)) { return $false }
+  $a = Get-FileHash -LiteralPath $Src -Algorithm SHA256
+  $b = Get-FileHash -LiteralPath $Dest -Algorithm SHA256
+  return $a.Hash -eq $b.Hash
+}
+
+function Test-StillwaterSameTree([string]$Src, [string]$Dest) {
+  if (-not (Test-Path -LiteralPath $Src -PathType Container)) { return $false }
+  if (-not (Test-Path -LiteralPath $Dest -PathType Container)) { return $false }
+  $root = (Resolve-Path -LiteralPath $Src).Path.TrimEnd("\", "/")
+  foreach ($file in Get-ChildItem -LiteralPath $Src -Recurse -File) {
+    $rel = $file.FullName.Substring($root.Length).TrimStart("\", "/")
+    $other = Join-Path $Dest $rel
+    if (-not (Test-StillwaterSameFile $file.FullName $other)) { return $false }
+  }
+  return $true
+}
+
+function Get-StillwaterCopyState([string]$Src, [string]$Dest) {
+  if (Test-Path -LiteralPath $Src -PathType Container) {
+    if (-not (Test-Path -LiteralPath $Dest -PathType Container)) { return "none" }
+    if (Test-StillwaterSameTree $Src $Dest) { return "current" }
+    return "update"
+  }
+  if (-not (Test-Path -LiteralPath $Dest -PathType Leaf)) { return "none" }
+  if (Test-StillwaterSameFile $Src $Dest) { return "current" }
+  return "update"
+}
+
+function Merge-StillwaterThemeState([string[]]$States) {
+  if (-not $States -or $States.Count -eq 0) { return "none" }
+  $anyCurrent = $false
+  $anyUpdate = $false
+  $anyNone = $false
+  foreach ($s in $States) {
+    switch ($s) {
+      "current" { $anyCurrent = $true }
+      "update" { $anyUpdate = $true }
+      default { $anyNone = $true }
+    }
+  }
+  if ($anyUpdate) { return "update" }
+  if ($anyCurrent -and $anyNone) { return "update" }
+  if ($anyCurrent) { return "current" }
+  return "none"
+}
+
+function Get-StillwaterPayloadState([string[]]$Pairs) {
+  if (-not $Pairs -or $Pairs.Count -lt 2) { return "none" }
+  $states = @()
+  for ($i = 0; $i -lt $Pairs.Count; $i += 2) {
+    $states += Get-StillwaterCopyState $Pairs[$i] $Pairs[$i + 1]
+  }
+  return (Merge-StillwaterThemeState $states)
+}
+
+function Get-StillwaterVsCodePayloadState([string]$Src, [string]$Dest) {
+  $parent = Split-Path -Parent $Dest
+  $keep = Split-Path -Leaf $Dest
+  $state = Get-StillwaterPayloadState @(
+    (Join-Path $Src "package.json"), (Join-Path $Dest "package.json"),
+    (Join-Path $Src "themes"), (Join-Path $Dest "themes")
+  )
+  if ($state -eq "current") { return @{ Theme = "current"; Note = "" } }
+  if ($state -eq "update") {
+    return @{
+      Theme = "update"
+      Note = (Get-StillwaterStatusNote "update" (Get-StillwaterPeekVersion (Join-Path $Dest "package.json")))
+    }
+  }
+  if (Test-Path -LiteralPath $parent -PathType Container) {
+    $old = Get-ChildItem -LiteralPath $parent -Directory -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -like "kayzel.stillwater-theme-*" -and $_.Name -ne $keep } |
+      Select-Object -First 1
+    if ($old) {
+      $oldver = Get-StillwaterPeekVersion (Join-Path $old.FullName "package.json")
+      if (-not $oldver) {
+        $oldver = $old.Name -replace "^kayzel\.stillwater-theme-", ""
+      }
+      return @{ Theme = "update"; Note = (Get-StillwaterStatusNote "update" $oldver) }
+    }
+  }
+  return @{ Theme = "none"; Note = "" }
 }

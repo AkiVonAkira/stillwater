@@ -43,11 +43,24 @@ found() {
 
 case "$ACTION" in
   status)
+    app="skip"
     if found; then
-      printf '%s|%s|found\n' "$ID" "$LABEL"
-    else
-      printf '%s|%s|skip\n' "$ID" "$LABEL"
+      app="found"
     fi
+    pairs=()
+    dests=()
+    while IFS= read -r local_dir; do
+      if [[ -d "$local_dir" ]]; then
+        dest="$local_dir/themes/Stillwater.theme.css"
+        pairs+=("$SRC" "$dest")
+        dests+=("$dest")
+      fi
+    done < <(target_roots)
+    theme="none"
+    if [[ ${#pairs[@]} -gt 0 ]]; then
+      theme="$(stillwater_payload_state "${pairs[@]}")"
+    fi
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$theme" ${dests[@]+"${dests[@]}"}
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]

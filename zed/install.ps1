@@ -42,8 +42,19 @@ function Get-ZedExtDest {
 
 switch ($Action) {
   "status" {
-    $state = if (Test-ZedFound) { "found" } else { "skip" }
-    Write-Output ("{0}|{1}|{2}" -f $Id, $Label, $state)
+    $app = if (Test-ZedFound) { "found" } else { "skip" }
+    $dest = Get-ZedThemeDest
+    $ext = Get-ZedExtDest
+    $theme = Get-StillwaterPayloadState @(
+      $ThemeSrc, $dest,
+      (Join-Path $Root "zed\extension.toml"), (Join-Path $ext "extension.toml"),
+      $ThemeSrc, (Join-Path $ext "themes\stillwater.json")
+    )
+    Write-StillwaterCopyStatus $Id $Label $app $theme @(
+      $dest,
+      (Join-Path $ext "extension.toml"),
+      (Join-Path $ext "themes\stillwater.json")
+    )
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }

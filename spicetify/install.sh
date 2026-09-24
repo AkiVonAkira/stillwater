@@ -53,11 +53,16 @@ dest_dir() {
 
 case "$ACTION" in
   status)
+    app="skip"
     if found; then
-      printf '%s|%s|found\n' "$ID" "$LABEL"
-    else
-      printf '%s|%s|skip\n' "$ID" "$LABEL"
+      app="found"
     fi
+    dest="$(dest_dir)"
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(stillwater_payload_state \
+      "$ROOT/spicetify/color.ini" "$dest/color.ini" \
+      "$ROOT/spicetify/user.css" "$dest/user.css" \
+      "$ROOT/spicetify/theme.js" "$dest/theme.js")" \
+      "$dest/color.ini"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]

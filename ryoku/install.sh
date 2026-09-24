@@ -21,14 +21,18 @@ found() {
 case "$ACTION" in
   status)
     if [[ "$(stillwater_platform)" != linux ]]; then
-      printf '%s|%s|n/a\n' "$ID" "$LABEL"
+      stillwater_print_copy_status "$ID" "$LABEL" "n/a" "none"
       exit 0
     fi
+    app="skip"
     if found; then
-      printf '%s|%s|found\n' "$ID" "$LABEL"
-    else
-      printf '%s|%s|skip\n' "$ID" "$LABEL"
+      app="found"
     fi
+    dest="$XDG_DATA_HOME/ryoku/themes/stillwater"
+    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(stillwater_payload_state \
+      "$ROOT/ryoku/scheme.json" "$dest/scheme.json" \
+      "$ROOT/ryoku/meta.json" "$dest/meta.json")" \
+      "$dest"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]

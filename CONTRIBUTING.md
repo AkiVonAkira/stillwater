@@ -8,9 +8,8 @@ Work lands on `main` through pull requests. Do not push to `main`. Do not open e
 - `palette.json` is the color and version source. Adapters map it. Do not invent a second palette.
 - The installer is OS/app based (`linux/arch`, `macos`, `windows`). Never key off a machine name.
 - If an app is not installed and none of its alternate paths exist, skip it and continue.
-- `install.sh` / `install.ps1` are interactive by default. Agents use `--all` / `-All`. Do not add a Python installer.
+- `install.sh` / `install.ps1` are interactive by default. No Node, no build. Agents use `--all` / `-All`. Do not add a Python installer.
 - Each adapter is that app's native theme, plugin, or extension. Sideload it locally. Do not list it on a marketplace yet.
-- Keep the repo private until the interactive installer can grow into a public chooser.
 
 ## Checks
 

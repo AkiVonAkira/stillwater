@@ -15,7 +15,7 @@ $Label = "Ryoku"
 
 switch ($Action) {
   "status" {
-    Write-Output ("{0}|{1}|n/a" -f $Id, $Label)
+    Write-StillwaterCopyStatus $Id $Label "n/a" "none"
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }

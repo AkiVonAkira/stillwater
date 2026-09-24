@@ -32,8 +32,13 @@ function Get-NvimPluginDest {
 
 switch ($Action) {
   "status" {
-    $state = if (Test-NvimFound) { "found" } else { "skip" }
-    Write-Output ("{0}|{1}|{2}" -f $Id, $Label, $state)
+    $app = if (Test-NvimFound) { "found" } else { "skip" }
+    $dest = Get-NvimPluginDest
+    $theme = Get-StillwaterPayloadState @(
+      (Join-Path $Root "neovim\colors\stillwater.lua"), (Join-Path $dest "colors\stillwater.lua"),
+      (Join-Path $Root "neovim\lua\stillwater\init.lua"), (Join-Path $dest "lua\stillwater\init.lua")
+    )
+    Write-StillwaterCopyStatus $Id $Label $app $theme $dest
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }

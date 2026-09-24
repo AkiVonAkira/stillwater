@@ -77,8 +77,10 @@ function Test-ProductFound($Product) {
 switch ($Action) {
   "status" {
     foreach ($product in $Products) {
-      $state = if (Test-ProductFound $product) { "found" } else { "skip" }
-      Write-Output ("{0}|{1}|{2}" -f $product.Id, $product.Label, $state)
+      $app = if (Test-ProductFound $product) { "found" } else { "skip" }
+      $dest = Get-ExtDir $product.Id
+      $payload = Get-StillwaterVsCodePayloadState $Src $dest
+      Write-StillwaterStatus $product.Id $product.Label $app $payload.Theme $payload.Note
     }
   }
   "owns" {

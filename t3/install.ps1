@@ -23,10 +23,38 @@ function Test-T3Found {
   )
 }
 
+function Get-T3ThemeCandidates {
+  $paths = @(
+    (Join-Path $env:HOME ".t3\userdata\themes\stillwater.json"),
+    (Join-Path $env:HOME ".t3\themes\stillwater.json"),
+    (Join-Path $env:XDG_CONFIG_HOME "t3\userdata\themes\stillwater.json"),
+    (Join-Path $env:XDG_CONFIG_HOME "t3\themes\stillwater.json"),
+    (Join-Path $env:APPDATA "t3\userdata\themes\stillwater.json"),
+    (Join-Path $env:APPDATA "t3\themes\stillwater.json"),
+    (Join-Path $env:LOCALAPPDATA "t3\userdata\themes\stillwater.json"),
+    (Join-Path $env:LOCALAPPDATA "t3\themes\stillwater.json")
+  )
+  if ($env:T3CODE_HOME) {
+    $paths += (Join-Path $env:T3CODE_HOME "userdata\themes\stillwater.json")
+  }
+  return $paths
+}
+
+function Get-T3ThemeState {
+  $states = @()
+  foreach ($file in Get-T3ThemeCandidates) {
+    if (Test-Path -LiteralPath $file -PathType Leaf) {
+      $states += Get-StillwaterCopyState $Src $file
+    }
+  }
+  return (Merge-StillwaterThemeState $states)
+}
+
 switch ($Action) {
   "status" {
-    $state = if (Test-T3Found) { "found" } else { "skip" }
-    Write-Output ("{0}|{1}|{2}" -f $Id, $Label, $state)
+    $app = if (Test-T3Found) { "found" } else { "skip" }
+    $dests = @(Get-T3ThemeCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+    Write-StillwaterCopyStatus $Id $Label $app (Get-T3ThemeState) $dests
   }
   "owns" {
     if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }
