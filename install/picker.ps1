@@ -198,9 +198,40 @@ function Get-StillwaterJobsNext([string]$Text) {
   return (Get-StillwaterFitLeft $Text $max)
 }
 
+function Get-StillwaterKeymapPlain {
+  return "└  ↑↓ jk nav  ·  space toggle  ·  a all  ·  n none  ·  enter apply  ·  q abort"
+}
+
+function Write-StillwaterHintPair($Style, [string]$Key, [string]$Verb) {
+  Write-Host ("{0}{1}{2} {3}{4}{2}" -f $Style.Accent, $Key, $Style.Reset, $Style.Muted, $Verb) -NoNewline
+}
+
+function Write-StillwaterHintSep($Style) {
+  Write-Host ("  {0}·{1}  " -f $Style.Muted, $Style.Reset) -NoNewline
+}
+
 function Write-StillwaterKeymapSelect($Style) {
-  Write-Host ("{0}{1}{2}  {3}↑↓ jk{4}  {3}space{4}  {3}a/n{4}  {3}enter{4}  {3}q{4}{4}" -f `
-    $Style.Clear, $Style.Muted, $Style.Corner, $Style.Accent, $Style.Reset)
+  $cols = Get-StillwaterTermCols
+  $plain = Get-StillwaterKeymapPlain
+  $wrap = $script:StillwaterFooterLines -eq 2 -or $plain.Length -ge $cols
+  Write-Host ("{0}{1}{2}  " -f $Style.Clear, $Style.Muted, $Style.Corner) -NoNewline
+  Write-StillwaterHintPair $Style "↑↓ jk" "nav"
+  Write-StillwaterHintSep $Style
+  Write-StillwaterHintPair $Style "space" "toggle"
+  Write-StillwaterHintSep $Style
+  Write-StillwaterHintPair $Style "a" "all"
+  if ($wrap) {
+    Write-Host $Style.Reset
+    Write-Host ("{0}{1}   " -f $Style.Clear, $Style.Muted) -NoNewline
+  } else {
+    Write-StillwaterHintSep $Style
+  }
+  Write-StillwaterHintPair $Style "n" "none"
+  Write-StillwaterHintSep $Style
+  Write-StillwaterHintPair $Style "enter" "apply"
+  Write-StillwaterHintSep $Style
+  Write-StillwaterHintPair $Style "q" "abort"
+  Write-Host $Style.Reset
 }
 
 function Write-StillwaterPickerRow($Style, $Item, [int]$Index, [int]$Cursor) {
@@ -227,7 +258,7 @@ function Write-StillwaterPickerRow($Style, $Item, [int]$Index, [int]$Cursor) {
 
 function Write-StillwaterPickerRowAt($Style, $Items, [int]$Cursor, [int]$Index) {
   $saved = [Console]::CursorTop
-  $line = $saved - (1 + $Items.Count - $Index)
+  $line = $saved - ($script:StillwaterFooterLines + $Items.Count - $Index)
   if ($line -lt 0) { $line = 0 }
   [Console]::SetCursorPosition(0, $line)
   Write-StillwaterPickerRow $Style $Items[$Index] $Index $Cursor
@@ -241,6 +272,12 @@ function Initialize-StillwaterPickerLayout($Style, $Items) {
     $item | Add-Member -NotePropertyName NotePad -NotePropertyValue ("{0,-16}" -f $item.Note) -Force
     $item | Add-Member -NotePropertyName PathPad -NotePropertyValue (Get-StillwaterPickerPath $item.Dest) -Force
     $item | Add-Member -NotePropertyName ActionColor -NotePropertyValue (Get-StillwaterPickerActionColor $Style $item.App $item.Theme) -Force
+  }
+  $plain = Get-StillwaterKeymapPlain
+  if ($plain.Length -ge (Get-StillwaterTermCols)) {
+    $script:StillwaterFooterLines = 2
+  } else {
+    $script:StillwaterFooterLines = 1
   }
 }
 
@@ -336,7 +373,8 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
   }
   $cursor = Get-StillwaterPickerCursor $items
   Initialize-StillwaterPickerLayout $style $items
-  $rowsCount = $items.Count + 3
+  if (-not $script:StillwaterFooterLines) { $script:StillwaterFooterLines = 1 }
+  $rowsCount = $items.Count + 2 + $script:StillwaterFooterLines
   $script:StillwaterPickerRows = $rowsCount
   $script:StillwaterUiKeepHidden = $false
   $oldVisible = $true

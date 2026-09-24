@@ -54,9 +54,17 @@ stillwater_picker_cache
 bar="$(stillwater_progress_bar 1 2 4 1)"
 [[ "$bar" == $'██▒░' ]] || fail "progress bar should fill completed cells and mark the busy cell"
 keymap="$(stillwater_keymap_select)"
-printf '%s' "$keymap" | grep -q space || fail "keymap should include space"
-printf '%s' "$keymap" | grep -q enter || fail "keymap should include enter"
+printf '%s' "$keymap" | grep -q toggle || fail "keymap should include toggle"
+printf '%s' "$keymap" | grep -q apply || fail "keymap should include apply"
+printf '%s' "$keymap" | grep -q abort || fail "keymap should include abort"
 if printf '%s' "$keymap" | grep -q 'Space selects'; then fail "keymap should not use the prose hint"; fi
+SW_COLS=40
+SW_FOOTER_LINES=2
+[[ "$(stillwater_keymap_select | wc -l)" -eq 2 ]] || fail "narrow terminals should wrap the keymap"
+SW_COLS=120
+SW_FOOTER_LINES=1
+[[ "$(stillwater_keymap_select | wc -l)" -eq 1 ]] || fail "wide terminals should keep the keymap on one line"
+unset SW_COLS SW_FOOTER_LINES
 [[ "$(stillwater_display_path "$HOME/foo/bar")" == "~/foo/bar" ]] || fail "display path should use ~"
 [[ "$(stillwater_display_path "$HOME/.t3/userdata/themes/stillwater.json")" == "~/.t3/userdata/themes" ]] || fail "display path should drop the file name"
 [[ "$(stillwater_display_path "$HOME/.cursor/extensions/kayzel.stillwater-theme-1.0.0")" == "~/.cursor/extensions" ]] || fail "display path should drop the extension folder name"

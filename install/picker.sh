@@ -212,6 +212,12 @@ stillwater_picker_cache() {
     fi
     SW_ROW_COLOR+=("$(stillwater_picker_action_color "${SW_APPS[$i]}" "${SW_THEMES[$i]}")")
   done
+  SW_KEYMAP_PLAIN="$(stillwater_keymap_plain)"
+  if [[ ${#SW_KEYMAP_PLAIN} -ge cols ]]; then
+    SW_FOOTER_LINES=2
+  else
+    SW_FOOTER_LINES=1
+  fi
 }
 
 stillwater_picker_first() {
@@ -270,18 +276,46 @@ stillwater_picker_none() {
 }
 
 stillwater_picker_rows() {
-  echo $((${#SW_IDS[@]} + 3))
+  echo $((${#SW_IDS[@]} + 2 + ${SW_FOOTER_LINES:-1}))
+}
+
+stillwater_hint_pair() {
+  printf '%s%s%s %s%s%s' "$SW_ACCENT" "$1" "$SW_RESET" "$SW_MUTED" "$2" "$SW_RESET"
+}
+
+stillwater_hint_sep() {
+  printf '  %s·%s  ' "$SW_MUTED" "$SW_RESET"
+}
+
+stillwater_keymap_plain() {
+  printf '└  ↑↓ jk nav  ·  space toggle  ·  a all  ·  n none  ·  enter apply  ·  q abort'
 }
 
 stillwater_keymap_select() {
-  printf '%s%s%s  %s↑↓ jk%s  %sspace%s  %sa/n%s  %senter%s  %sq%s%s\n' \
-    "$SW_CLEAR" "$SW_MUTED" "$SW_CORNER" \
-    "$SW_ACCENT" "$SW_RESET" \
-    "$SW_ACCENT" "$SW_RESET" \
-    "$SW_ACCENT" "$SW_RESET" \
-    "$SW_ACCENT" "$SW_RESET" \
-    "$SW_ACCENT" "$SW_RESET" \
-    "$SW_RESET"
+  local cols="${SW_COLS:-$(stillwater_term_cols)}"
+  local plain wrap=0
+  plain="${SW_KEYMAP_PLAIN:-$(stillwater_keymap_plain)}"
+  if [[ "${SW_FOOTER_LINES:-0}" -eq 2 || ${#plain} -ge cols ]]; then
+    wrap=1
+  fi
+  printf '%s%s%s  ' "$SW_CLEAR" "$SW_MUTED" "$SW_CORNER"
+  stillwater_hint_pair '↑↓ jk' nav
+  stillwater_hint_sep
+  stillwater_hint_pair space toggle
+  stillwater_hint_sep
+  stillwater_hint_pair a all
+  if [[ "$wrap" == 1 ]]; then
+    printf '%s\n' "$SW_RESET"
+    printf '%s%s   ' "$SW_CLEAR" "$SW_MUTED"
+  else
+    stillwater_hint_sep
+  fi
+  stillwater_hint_pair n none
+  stillwater_hint_sep
+  stillwater_hint_pair enter apply
+  stillwater_hint_sep
+  stillwater_hint_pair q abort
+  printf '%s\n' "$SW_RESET"
 }
 
 stillwater_picker_print_row() {
@@ -329,13 +363,14 @@ stillwater_picker_redraw() {
 
 stillwater_picker_repaint_rows() {
   local n="${#SW_IDS[@]}"
+  local footer="${SW_FOOTER_LINES:-1}"
   local i up down
   for i in "$@"; do
     [[ -n "$i" ]] || continue
-    up=$((1 + n - i))
+    up=$((footer + n - i))
     printf '\033[%dA' "$up" >&2
     stillwater_picker_print_row "$i"
-    down=$((n - i))
+    down=$((n - i - 1 + footer))
     if [[ "$down" -gt 0 ]]; then
       printf '\033[%dB' "$down" >&2
     fi
