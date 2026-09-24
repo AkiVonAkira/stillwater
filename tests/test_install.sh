@@ -159,11 +159,23 @@ for settings in "$TMP/.config/Code/User/settings.json" "$TMP/AppData/Roaming/Cod
 done
 [[ "$applied" == 1 ]] || fail "VS Code should switch workbench.colorTheme to Stillwater"
 
+mkdir -p "$TMP/.config/vesktop"
+printf '%s\n' '{}' >"$TMP/.config/vesktop/settings.json"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vesktop[[:space:]]+found[[:space:]]+none' || fail "Vesktop-only should label as Vesktop"
+if printf '%s\n' "$list" | grep -q 'Vencord /'; then fail "Vencord should not appear unless Vencord itself is installed"; fi
+if printf '%s\n' "$list" | grep -q Equibop; then fail "Equibop should be labeled Equicord"; fi
+mkdir -p "$TMP/.config/equibop/themes"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+if printf '%s\n' "$list" | grep -q Equicord; then fail "a leftover equibop themes dir is not Equicord"; fi
+rm -rf "$TMP/.config/vesktop" "$TMP/.config/equibop"
 mkdir -p "$TMP/.config/Vencord"
+printf '%s\n' '{}' >"$TMP/.config/Vencord/settings.json"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord[[:space:]]+found[[:space:]]+none' || fail "Vencord-only should label as Vencord"
 if printf '%s\n' "$list" | grep -q 'Vencord / Vesktop'; then fail "Vesktop should not appear until it is installed"; fi
 mkdir -p "$TMP/.config/vesktop"
+printf '%s\n' '{}' >"$TMP/.config/vesktop/settings.json"
 out="$("$BASH_EXE" "$ROOT/install.sh" vencord)"
 printf '%s\n' "$out" | grep -q 'Installed Vencord' || fail "should install Vencord"
 theme="$TMP/.config/vesktop/themes/Stillwater.theme.css"
@@ -225,11 +237,13 @@ list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'T3 Code[[:space:]]+found[[:space:]]+update' || fail "edited T3 theme should show update"
 
 mkdir -p "$TMP/.config/equibop"
+printf '%s\n' '{}' >"$TMP/.config/equibop/settings.json"
 out="$("$BASH_EXE" "$ROOT/install.sh" vencord)"
 printf '%s\n' "$out" | grep -q 'Installed Vencord' || fail "reinstall Vencord should still work"
-[[ -f "$TMP/.config/equibop/themes/Stillwater.theme.css" ]] || fail "Vencord install should write Equibop when it is present"
+[[ -f "$TMP/.config/equibop/themes/Stillwater.theme.css" ]] || fail "Vencord install should write Equibop when Equicord is present"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
-printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop / Equibop[[:space:]]+found[[:space:]]+current' || fail "installed Equibop should join the Vencord row"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop / Equicord[[:space:]]+found[[:space:]]+current' || fail "Equibop should join the row as Equicord"
+if printf '%s\n' "$list" | grep -q Equibop; then fail "the picker should say Equicord, not Equibop"; fi
 if printf '%s\n' "$list" | grep -q 'Equicord / Equibop'; then fail "Equicord should not be a separate picker row"; fi
 if err="$("$BASH_EXE" "$ROOT/install.sh" equicord 2>&1)"; then
   fail "equicord should not be its own adapter id"

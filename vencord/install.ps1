@@ -15,7 +15,14 @@ $Src = Join-Path $Root "vencord\Stillwater.theme.css"
 $ClientNames = @("Vencord", "vesktop", "Vesktop", "equicord", "Equicord", "equibop", "Equibop")
 
 function Get-VencordBases {
-  @($env:APPDATA, $env:XDG_CONFIG_HOME)
+  switch (Get-StillwaterPlatform) {
+    "windows" { @($env:APPDATA) }
+    "darwin" {
+      $support = Join-Path $env:HOME "Library\Application Support"
+      @($support, $env:XDG_CONFIG_HOME)
+    }
+    default { @($env:XDG_CONFIG_HOME) }
+  }
 }
 
 function Get-VencordRoots {
@@ -29,31 +36,43 @@ function Get-VencordRoots {
   return $roots
 }
 
+function Test-VencordLive([string]$Dir) {
+  if (-not (Test-Path -LiteralPath $Dir -PathType Container)) { return $false }
+  if (Test-Path -LiteralPath (Join-Path $Dir "settings.json") -PathType Leaf) { return $true }
+  if (Test-Path -LiteralPath (Join-Path $Dir "settings") -PathType Container) { return $true }
+  if (Test-Path -LiteralPath (Join-Path $Dir "sessionData") -PathType Container) { return $true }
+  return $false
+}
+
 function Test-VencordClient([string[]]$Names) {
   foreach ($base in Get-VencordBases) {
     if (-not $base) { continue }
     foreach ($name in $Names) {
-      if (Test-Path -LiteralPath (Join-Path $base $name) -PathType Container) { return $true }
+      if (Test-VencordLive (Join-Path $base $name)) { return $true }
     }
   }
   return $false
 }
 
 function Get-VencordLabel {
-  $parts = @("Vencord")
+  $parts = @()
+  if (Test-VencordClient @("Vencord")) { $parts += "Vencord" }
   if (Test-VencordClient @("vesktop", "Vesktop")) { $parts += "Vesktop" }
-  if (Test-VencordClient @("equicord", "Equicord")) { $parts += "Equicord" }
-  if (Test-VencordClient @("equibop", "Equibop")) { $parts += "Equibop" }
+  if (Test-VencordClient @("equicord", "Equicord", "equibop", "Equibop")) { $parts += "Equicord" }
+  if ($parts.Count -eq 0) { return "Vencord" }
   return ($parts -join " / ")
 }
 
 function Test-VencordFound {
-  return Test-StillwaterAnyDir (Get-VencordRoots)
+  foreach ($dir in Get-VencordRoots) {
+    if (Test-VencordLive $dir) { return $true }
+  }
+  return $false
 }
 
 function Get-VencordDest {
   foreach ($dir in Get-VencordRoots) {
-    if (Test-Path -LiteralPath $dir -PathType Container) {
+    if (Test-VencordLive $dir) {
       return (Join-Path $dir "themes\Stillwater.theme.css")
     }
   }
@@ -66,7 +85,7 @@ switch ($Action) {
     $pairs = @()
     $dests = @((Get-VencordDest))
     foreach ($dir in Get-VencordRoots) {
-      if (Test-Path -LiteralPath $dir -PathType Container) {
+      if (Test-VencordLive $dir) {
         $dest = Join-Path $dir "themes\Stillwater.theme.css"
         $pairs += $Src
         $pairs += $dest
@@ -82,7 +101,7 @@ switch ($Action) {
   "install" {
     $written = @()
     foreach ($dir in Get-VencordRoots) {
-      if (Test-Path -LiteralPath $dir -PathType Container) {
+      if (Test-VencordLive $dir) {
         $dest = Join-Path $dir "themes\Stillwater.theme.css"
         Copy-StillwaterFile $Src $dest
         $written += $dest

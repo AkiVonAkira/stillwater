@@ -12,23 +12,36 @@ ID="vencord"
 SRC="$ROOT/vencord/Stillwater.theme.css"
 
 bases() {
-  printf '%s\n' "$XDG_CONFIG_HOME" "$STILLWATER_SUPPORT" "$APPDATA"
+  case "$(stillwater_platform)" in
+    windows) printf '%s\n' "$APPDATA" ;;
+    darwin) printf '%s\n' "$STILLWATER_SUPPORT" "$XDG_CONFIG_HOME" ;;
+    *) printf '%s\n' "$XDG_CONFIG_HOME" ;;
+  esac
 }
 
 target_roots() {
   local base name
   while IFS= read -r base; do
+    [[ -n "$base" ]] || continue
     for name in Vencord vesktop Vesktop equicord Equicord equibop Equibop; do
       printf '%s\n' "$base/$name"
     done
   done < <(bases)
 }
 
+# Empty leftovers (often only themes/ from us) are not a client.
+client_live() {
+  local dir="$1"
+  [[ -d "$dir" ]] || return 1
+  [[ -f "$dir/settings.json" || -d "$dir/settings" || -d "$dir/sessionData" ]]
+}
+
 client_present() {
   local name base
   for name in "$@"; do
     while IFS= read -r base; do
-      if [[ -d "$base/$name" ]]; then
+      [[ -n "$base" ]] || continue
+      if client_live "$base/$name"; then
         return 0
       fi
     done < <(bases)
@@ -37,23 +50,23 @@ client_present() {
 }
 
 label_of() {
-  local parts="Vencord"
+  local out=""
+  if client_present Vencord; then
+    out="Vencord"
+  fi
   if client_present vesktop Vesktop; then
-    parts="$parts / Vesktop"
+    if [[ -n "$out" ]]; then out="$out / Vesktop"; else out="Vesktop"; fi
   fi
-  if client_present equicord Equicord; then
-    parts="$parts / Equicord"
+  if client_present equicord Equicord equibop Equibop; then
+    if [[ -n "$out" ]]; then out="$out / Equicord"; else out="Equicord"; fi
   fi
-  if client_present equibop Equibop; then
-    parts="$parts / Equibop"
-  fi
-  printf '%s\n' "$parts"
+  printf '%s\n' "${out:-Vencord}"
 }
 
 found() {
   local dir
   while IFS= read -r dir; do
-    if [[ -d "$dir" ]]; then
+    if client_live "$dir"; then
       return 0
     fi
   done < <(target_roots)
@@ -63,7 +76,7 @@ found() {
 dest_file() {
   local dir
   while IFS= read -r dir; do
-    if [[ -d "$dir" ]]; then
+    if client_live "$dir"; then
       printf '%s\n' "$dir/themes/Stillwater.theme.css"
       return 0
     fi
@@ -86,7 +99,7 @@ case "$ACTION" in
     pairs=()
     dests=("$(dest_file)")
     while IFS= read -r local_dir; do
-      if [[ -d "$local_dir" ]]; then
+      if client_live "$local_dir"; then
         dest="$local_dir/themes/Stillwater.theme.css"
         pairs+=("$SRC" "$dest")
         dests+=("$dest")
@@ -106,7 +119,7 @@ case "$ACTION" in
     dests=""
     local_dir=""
     while IFS= read -r local_dir; do
-      if [[ -d "$local_dir" ]]; then
+      if client_live "$local_dir"; then
         dest="$local_dir/themes/Stillwater.theme.css"
         stillwater_copy_file "$SRC" "$dest"
         if [[ -n "$dests" ]]; then
