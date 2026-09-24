@@ -46,10 +46,9 @@ stillwater_picker_init_style
 [[ "$(stillwater_next_step zed)" == "Set the theme to Stillwater." ]] || fail "zed next step"
 [[ "$(stillwater_next_step neovim)" == "Run :colorscheme stillwater." ]] || fail "neovim next step"
 [[ "$(stillwater_next_step vencord)" == "Enable Stillwater in Vencord themes." ]] || fail "vencord next step"
-[[ "$(stillwater_next_step equicord)" == "Enable Stillwater in Equicord themes." ]] || fail "equicord next step"
 [[ "$(stillwater_next_step obsidian)" == "Set the Appearance theme to Stillwater." ]] || fail "obsidian next step"
 [[ "$(stillwater_next_step prism)" == "Set the Widgets theme to Stillwater." ]] || fail "prism next step"
-[[ "$(stillwater_next_step yasb)" == "Reload YASB to apply styles.css." ]] || fail "yasb next step"
+[[ "$(stillwater_next_step yasb)" == "Reload YASB to apply colors." ]] || fail "yasb next step"
 [[ "$(stillwater_next_step kitty)" == "Reload Kitty to apply Stillwater." ]] || fail "kitty next step"
 [[ "$(stillwater_next_step ghostty)" == "Set theme = Stillwater in Ghostty config." ]] || fail "ghostty next step"
 [[ "$(stillwater_next_step btop)" == "Set color_theme to stillwater in btop.conf." ]] || fail "btop next step"
@@ -61,7 +60,7 @@ stillwater_picker_init_style
 [[ "$(stillwater_peek_version "$ROOT/spicetify/color.ini")" == 1.0.0 ]] || fail "peek spicetify ini version"
 [[ "$(stillwater_peek_version "$ROOT/obsidian/manifest.json")" == 1.0.0 ]] || fail "peek obsidian manifest version"
 [[ "$(stillwater_peek_version "$ROOT/prism/theme.json")" == 1.0.0 ]] || fail "peek prism theme version"
-[[ "$(stillwater_peek_version "$ROOT/yasb/styles.css")" == 1.0.0 ]] || fail "peek yasb @version"
+[[ "$(stillwater_peek_version "$ROOT/yasb/root.css")" == 1.0.0 ]] || fail "peek yasb @version"
 [[ "$(stillwater_peek_version "$ROOT/kitty/Stillwater.conf")" == 1.0.0 ]] || fail "peek kitty version"
 [[ "$(stillwater_peek_version "$ROOT/ghostty/Stillwater")" == 1.0.0 ]] || fail "peek ghostty version"
 [[ "$(stillwater_peek_version "$ROOT/btop/stillwater.theme")" == 1.0.0 ]] || fail "peek btop version"
@@ -160,6 +159,10 @@ for settings in "$TMP/.config/Code/User/settings.json" "$TMP/AppData/Roaming/Cod
 done
 [[ "$applied" == 1 ]] || fail "VS Code should switch workbench.colorTheme to Stillwater"
 
+mkdir -p "$TMP/.config/Vencord"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vencord[[:space:]]+found[[:space:]]+none' || fail "Vencord-only should label as Vencord"
+if printf '%s\n' "$list" | grep -q 'Vencord / Vesktop'; then fail "Vesktop should not appear until it is installed"; fi
 mkdir -p "$TMP/.config/vesktop"
 out="$("$BASH_EXE" "$ROOT/install.sh" vencord)"
 printf '%s\n' "$out" | grep -q 'Installed Vencord' || fail "should install Vencord"
@@ -190,6 +193,11 @@ fi
 tmpcss="$(mktemp)"
 sed 's/@version 1.0.0/@version 0.9.0/' "$theme" >"$tmpcss"
 mv "$tmpcss" "$theme"
+vencord_theme="$TMP/.config/Vencord/themes/Stillwater.theme.css"
+if [[ -f "$vencord_theme" ]]; then
+  sed 's/@version 1.0.0/@version 0.9.0/' "$vencord_theme" >"$tmpcss"
+  mv "$tmpcss" "$vencord_theme"
+fi
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to 1\.0\.0' || fail "old Vencord stamp should show version update"
 "$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
@@ -219,13 +227,14 @@ printf '%s\n' "$list" | grep -E -q 'T3 Code[[:space:]]+found[[:space:]]+update' 
 mkdir -p "$TMP/.config/equibop"
 out="$("$BASH_EXE" "$ROOT/install.sh" vencord)"
 printf '%s\n' "$out" | grep -q 'Installed Vencord' || fail "reinstall Vencord should still work"
-[[ ! -f "$TMP/.config/equibop/themes/Stillwater.theme.css" ]] || fail "Vencord install should not write Equibop"
-out="$("$BASH_EXE" "$ROOT/install.sh" equicord)"
-printf '%s\n' "$out" | grep -q 'Installed Equicord' || fail "should install Equicord"
-[[ -f "$TMP/.config/equibop/themes/Stillwater.theme.css" ]] || fail "Equicord theme missing"
+[[ -f "$TMP/.config/equibop/themes/Stillwater.theme.css" ]] || fail "Vencord install should write Equibop when it is present"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
-printf '%s\n' "$list" | grep -E -q 'Equicord / Equibop[[:space:]]+found[[:space:]]+current' || fail "installed Equicord should be current"
-printf '%s\n' "$out" | grep -q 'Enable Stillwater in Equicord themes.' || fail "Equicord next step"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop / Equibop[[:space:]]+found[[:space:]]+current' || fail "installed Equibop should join the Vencord row"
+if printf '%s\n' "$list" | grep -q 'Equicord / Equibop'; then fail "Equicord should not be a separate picker row"; fi
+if err="$("$BASH_EXE" "$ROOT/install.sh" equicord 2>&1)"; then
+  fail "equicord should not be its own adapter id"
+fi
+printf '%s\n' "$err" | grep -qi 'Unknown adapter' || fail "unknown equicord id should say unknown"
 
 mkdir -p "$TMP/.config/obsidian" "$TMP/vault/.obsidian"
 printf '%s\n' '{"vaults":{"t":{"path":"'"$TMP"'/vault"}}}' >"$TMP/.config/obsidian/obsidian.json"
@@ -246,10 +255,32 @@ printf '%s\n' "$out" | grep -q 'Installed Prism Launcher.' || fail "should insta
 grep -q "#5aa8b4" "$TMP/.local/share/PrismLauncher/themes/Stillwater/theme.json" || fail "Prism theme should map Stillwater accent"
 
 mkdir -p "$TMP/.config/yasb"
+printf '%s\n' ':root {
+  --background: #ff00ff;
+  --text: #00ff00;
+  --accent: #0000ff;
+}
+.yasb-bar {
+  padding: 99px;
+  background-color: var(--background);
+}' >"$TMP/.config/yasb/styles.css"
 out="$("$BASH_EXE" "$ROOT/install.sh" yasb)"
 printf '%s\n' "$out" | grep -q 'Installed YASB.' || fail "should install YASB"
-[[ -f "$TMP/.config/yasb/styles.css" ]] || fail "YASB styles.css missing"
-grep -q "#5aa8b4" "$TMP/.config/yasb/styles.css" || fail "YASB styles should map Stillwater accent"
+grep -q 'padding: 99px' "$TMP/.config/yasb/styles.css" || fail "YASB should keep layout CSS"
+grep -q 'background-color: var(--background)' "$TMP/.config/yasb/styles.css" || fail "YASB should keep layout var() use"
+grep -q -- '--background: #1d2021' "$TMP/.config/yasb/styles.css" || fail "YASB should patch background regardless of the old hex"
+grep -q -- '--text: #ebdbb2' "$TMP/.config/yasb/styles.css" || fail "YASB should patch text regardless of the old hex"
+grep -q -- '--accent: #5aa8b4' "$TMP/.config/yasb/styles.css" || fail "YASB should patch accent regardless of the old hex"
+if grep -q '#ff00ff' "$TMP/.config/yasb/styles.css"; then fail "YASB should not leave the old background hex"; fi
+printf '%s\n' ':root {
+  --base: #11111b;
+  --blue: #89b4fa;
+}
+.widget { margin: 7px; }' >"$TMP/.config/yasb/styles.css"
+"$BASH_EXE" "$ROOT/install.sh" yasb >/dev/null
+grep -q 'margin: 7px' "$TMP/.config/yasb/styles.css" || fail "YASB should keep a different theme layout"
+grep -q -- '--base: #1d2021' "$TMP/.config/yasb/styles.css" || fail "YASB should map --base by name"
+grep -q -- '--blue: #5aa8b4' "$TMP/.config/yasb/styles.css" || fail "YASB should map --blue by name"
 
 rm -rf "$TMP/.config/kitty"
 mkdir -p "$TMP/.config/kitty"

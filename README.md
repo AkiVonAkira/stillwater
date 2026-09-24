@@ -23,7 +23,6 @@ pwsh .\install.ps1 cursor t3
 ## Supported Apps
 
 - [btop](https://github.com/aristocratos/btop)
-- [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop)
 - [Ghostty](https://ghostty.org)
 - [Helix](https://helix-editor.com)
 - [Kitty](https://sw.kovidgoyal.net/kitty/)
@@ -34,7 +33,7 @@ pwsh .\install.ps1 cursor t3
 - [Spicetify](https://spicetify.app)
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
-- [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)
+- [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop) / [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop)
 - [Windows Terminal](https://aka.ms/terminal)
 - [YASB](https://github.com/amnweb/yasb)
 - [Zed](https://zed.dev)

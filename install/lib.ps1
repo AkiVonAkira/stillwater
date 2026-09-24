@@ -272,13 +272,12 @@ function Get-StillwaterNextStep([string]$Id) {
     "neovim" { return "Run :colorscheme stillwater." }
     "sublime" { return "Set Color Scheme to Stillwater." }
     "vencord" { return "Enable Stillwater in Vencord themes." }
-    "equicord" { return "Enable Stillwater in Equicord themes." }
     "t3" { return "Select Stillwater in T3 Code." }
     "spicetify" { return "Restart Spotify." }
     "ryoku" { return "Select Stillwater in Ryoku." }
     "obsidian" { return "Set the Appearance theme to Stillwater." }
     "prism" { return "Set the Widgets theme to Stillwater." }
-    "yasb" { return "Reload YASB to apply styles.css." }
+    "yasb" { return "Reload YASB to apply colors." }
     "kitty" { return "Reload Kitty to apply Stillwater." }
     "ghostty" { return "Set theme = Stillwater in Ghostty config." }
     "btop" { return "Set color_theme to stillwater in btop.conf." }

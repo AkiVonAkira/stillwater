@@ -347,9 +347,6 @@ stillwater_next_step() {
     vencord)
       printf 'Enable Stillwater in Vencord themes.'
       ;;
-    equicord)
-      printf 'Enable Stillwater in Equicord themes.'
-      ;;
     t3)
       printf 'Select Stillwater in T3 Code.'
       ;;
@@ -366,7 +363,7 @@ stillwater_next_step() {
       printf 'Set the Widgets theme to Stillwater.'
       ;;
     yasb)
-      printf 'Reload YASB to apply styles.css.'
+      printf 'Reload YASB to apply colors.'
       ;;
     kitty)
       printf 'Reload Kitty to apply Stillwater.'

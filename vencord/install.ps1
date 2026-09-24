@@ -10,59 +10,78 @@ if (-not $Root) { $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.M
 . (Join-Path $Root "install\lib.ps1")
 Initialize-StillwaterPaths
 
+$Id = "vencord"
 $Src = Join-Path $Root "vencord\Stillwater.theme.css"
+$ClientNames = @("Vencord", "vesktop", "Vesktop", "equicord", "Equicord", "equibop", "Equibop")
 
-$Products = @(
-  @{ Id = "vencord"; Label = "Vencord / Vesktop"; Names = @("Vencord", "vesktop", "Vesktop") },
-  @{ Id = "equicord"; Label = "Equicord / Equibop"; Names = @("equicord", "Equicord", "equibop", "Equibop") }
-)
+function Get-VencordBases {
+  @($env:APPDATA, $env:XDG_CONFIG_HOME)
+}
 
-function Get-ProductRoots($Product) {
+function Get-VencordRoots {
   $roots = @()
-  foreach ($name in $Product.Names) {
-    $roots += (Join-Path $env:APPDATA $name)
-    $roots += (Join-Path $env:XDG_CONFIG_HOME $name)
+  foreach ($base in Get-VencordBases) {
+    if (-not $base) { continue }
+    foreach ($name in $ClientNames) {
+      $roots += (Join-Path $base $name)
+    }
   }
   return $roots
 }
 
-function Get-ProductDest($Product) {
-  foreach ($dir in Get-ProductRoots $Product) {
+function Test-VencordClient([string[]]$Names) {
+  foreach ($base in Get-VencordBases) {
+    if (-not $base) { continue }
+    foreach ($name in $Names) {
+      if (Test-Path -LiteralPath (Join-Path $base $name) -PathType Container) { return $true }
+    }
+  }
+  return $false
+}
+
+function Get-VencordLabel {
+  $parts = @("Vencord")
+  if (Test-VencordClient @("vesktop", "Vesktop")) { $parts += "Vesktop" }
+  if (Test-VencordClient @("equicord", "Equicord")) { $parts += "Equicord" }
+  if (Test-VencordClient @("equibop", "Equibop")) { $parts += "Equibop" }
+  return ($parts -join " / ")
+}
+
+function Test-VencordFound {
+  return Test-StillwaterAnyDir (Get-VencordRoots)
+}
+
+function Get-VencordDest {
+  foreach ($dir in Get-VencordRoots) {
     if (Test-Path -LiteralPath $dir -PathType Container) {
       return (Join-Path $dir "themes\Stillwater.theme.css")
     }
   }
-  $fallback = if ($Product.Id -eq "equicord") { "equibop" } else { "vesktop" }
-  return (Join-Path $env:APPDATA "$fallback\themes\Stillwater.theme.css")
+  return (Join-Path $env:APPDATA "Vencord\themes\Stillwater.theme.css")
 }
 
 switch ($Action) {
   "status" {
-    foreach ($product in $Products) {
-      $roots = @(Get-ProductRoots $product)
-      $app = if (Test-StillwaterAnyDir $roots) { "found" } else { "skip" }
-      $pairs = @()
-      $dests = @((Get-ProductDest $product))
-      foreach ($dir in $roots) {
-        if (Test-Path -LiteralPath $dir -PathType Container) {
-          $dest = Join-Path $dir "themes\Stillwater.theme.css"
-          $pairs += $Src
-          $pairs += $dest
-          $dests += $dest
-        }
+    $app = if (Test-VencordFound) { "found" } else { "skip" }
+    $pairs = @()
+    $dests = @((Get-VencordDest))
+    foreach ($dir in Get-VencordRoots) {
+      if (Test-Path -LiteralPath $dir -PathType Container) {
+        $dest = Join-Path $dir "themes\Stillwater.theme.css"
+        $pairs += $Src
+        $pairs += $dest
+        $dests += $dest
       }
-      $theme = Get-StillwaterPayloadState $pairs
-      Write-StillwaterCopyStatus $product.Id $product.Label $app $theme $dests
     }
+    $theme = Get-StillwaterPayloadState $pairs
+    Write-StillwaterCopyStatus $Id (Get-VencordLabel) $app $theme $dests
   }
   "owns" {
-    if ($Only[0] -in @("vencord", "equicord")) { Write-Output "yes" } else { Write-Output "no" }
+    if ($Only[0] -eq $Id) { Write-Output "yes" } else { Write-Output "no" }
   }
   "install" {
-    $id = $Only[0]
-    $product = $Products | Where-Object { $_.Id -eq $id } | Select-Object -First 1
     $written = @()
-    foreach ($dir in Get-ProductRoots $product) {
+    foreach ($dir in Get-VencordRoots) {
       if (Test-Path -LiteralPath $dir -PathType Container) {
         $dest = Join-Path $dir "themes\Stillwater.theme.css"
         Copy-StillwaterFile $Src $dest

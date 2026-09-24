@@ -1,0 +1,10 @@
+/* Stillwater YASB colors.
+ * @version 1.0.0
+ */
+:root {
+    --background: #1d2021;
+    --text: #ebdbb2;
+    --accent: #5aa8b4;
+    --icon: #5aa8b4;
+    --label: #ebdbb2;
+}
