@@ -347,6 +347,9 @@ stillwater_next_step() {
     vencord)
       printf 'Enable Stillwater in Vencord themes.'
       ;;
+    equicord)
+      printf 'Enable Stillwater in Equicord themes.'
+      ;;
     t3)
       printf 'Select Stillwater in T3 Code.'
       ;;
@@ -355,6 +358,27 @@ stillwater_next_step() {
       ;;
     ryoku)
       printf 'Select Stillwater in Ryoku.'
+      ;;
+    obsidian)
+      printf 'Set the Appearance theme to Stillwater.'
+      ;;
+    prism)
+      printf 'Set the Widgets theme to Stillwater.'
+      ;;
+    yasb)
+      printf 'Reload YASB to apply styles.css.'
+      ;;
+    kitty)
+      printf 'Reload Kitty to apply Stillwater.'
+      ;;
+    ghostty)
+      printf 'Set theme = Stillwater in Ghostty config.'
+      ;;
+    btop)
+      printf 'Set color_theme to stillwater in btop.conf.'
+      ;;
+    windows-terminal)
+      printf 'Set the color scheme to Stillwater.'
       ;;
   esac
 }
@@ -372,7 +396,10 @@ stillwater_peek_version() {
       "$path/extension.toml" \
       "$path/color.ini" \
       "$path/Stillwater.theme.css" \
-      "$path/meta.json"; do
+      "$path/meta.json" \
+      "$path/manifest.json" \
+      "$path/theme.json" \
+      "$path/stillwater.json"; do
       if [[ -f "$cand" ]]; then
         file="$cand"
         break

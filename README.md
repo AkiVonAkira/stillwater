@@ -22,13 +22,21 @@ pwsh .\install.ps1 cursor t3
 
 ## Supported Apps
 
+- [btop](https://github.com/aristocratos/btop)
+- [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop)
+- [Ghostty](https://ghostty.org)
 - [Helix](https://helix-editor.com)
+- [Kitty](https://sw.kovidgoyal.net/kitty/)
 - [Neovim](https://neovim.io)
+- [Obsidian](https://obsidian.md)
+- [Prism Launcher](https://prismlauncher.org)
 - [Ryoku](https://ryoku.dev) (Linux)
 - [Spicetify](https://spicetify.app)
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
 - [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)
+- [Windows Terminal](https://aka.ms/terminal)
+- [YASB](https://github.com/amnweb/yasb)
 - [Zed](https://zed.dev)
 
 ### Visual Studio Code

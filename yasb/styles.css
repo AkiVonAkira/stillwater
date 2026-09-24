@@ -1,0 +1,103 @@
+/* Stillwater YASB adapter.
+ * @version 1.0.0
+ */
+
+* {
+    font-size: 13px;
+    color: #ebdbb2;
+    background-color: transparent;
+}
+
+.yasb-bar {
+    background-color: #1d2021;
+    border: 1px solid #3c3836;
+    padding: 0 8px;
+}
+
+.widget {
+    padding: 0 6px;
+    margin: 0 2px;
+}
+
+.widget-container {
+    background-color: #222526;
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+.label {
+    color: #ebdbb2;
+}
+
+.icon {
+    color: #5aa8b4;
+}
+
+.clock-widget .label {
+    color: #ebdbb2;
+}
+
+.media-widget .label {
+    color: #c4a489;
+}
+
+.ws-btn,
+.workspace-btn,
+.glazewm-workspaces .ws-btn,
+.komorebi-workspaces .ws-btn {
+    color: #8f8f99;
+    background-color: transparent;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.ws-btn:hover,
+.workspace-btn:hover {
+    color: #ebdbb2;
+    background-color: #3a4e64;
+}
+
+.ws-btn.focused_populated,
+.ws-btn.focused_empty,
+.ws-btn.active,
+.workspace-btn.active {
+    color: #1d2021;
+    background-color: #5aa8b4;
+}
+
+.context-menu,
+.context-menu .menu-checkbox {
+    background-color: #222526;
+    border: 1px solid #3c3836;
+    color: #ebdbb2;
+    padding: 4px 0;
+}
+
+.context-menu::item,
+.context-menu .menu-checkbox {
+    background-color: transparent;
+    padding: 6px 12px;
+    margin: 2px 6px;
+    border-radius: 6px;
+}
+
+.context-menu::item:selected,
+.context-menu .menu-checkbox:hover {
+    background-color: #3a4e64;
+    color: #ebdbb2;
+}
+
+.context-menu::separator {
+    height: 1px;
+    background-color: #3c3836;
+    margin: 4px 8px;
+}
+
+.tooltip {
+    background-color: #1a1c1d;
+    border: 1px solid #3c3836;
+    border-radius: 4px;
+    color: #ebdbb2;
+    padding: 6px 12px;
+    font-size: 12px;
+}

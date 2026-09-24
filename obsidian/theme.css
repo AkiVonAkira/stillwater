@@ -1,0 +1,92 @@
+/* Stillwater. Warm gruvbox surfaces, muted cyan accent.
+ * @version 1.0.0
+ */
+
+.theme-dark,
+.theme-light {
+  --color-base-00: #1d2021;
+  --color-base-05: #1a1c1d;
+  --color-base-10: #1d2021;
+  --color-base-20: #222526;
+  --color-base-25: #2a2e2f;
+  --color-base-30: #3c3836;
+  --color-base-35: #4a4543;
+  --color-base-40: #5c5652;
+  --color-base-50: #8f8f99;
+  --color-base-60: #a89888;
+  --color-base-70: #c4a489;
+  --color-base-100: #ebdbb2;
+
+  --accent-h: 188;
+  --accent-s: 38%;
+  --accent-l: 53%;
+
+  --background-primary: #1d2021;
+  --background-primary-alt: #1a1c1d;
+  --background-secondary: #222526;
+  --background-secondary-alt: #1a1c1d;
+  --background-modifier-hover: #3a4e64;
+  --background-modifier-active-hover: color-mix(in srgb, #3a4e64 70%, transparent);
+  --background-modifier-border: #3c3836;
+  --background-modifier-border-hover: #5aa8b4;
+  --background-modifier-border-focus: #5aa8b4;
+  --background-modifier-error: #f44747;
+  --background-modifier-error-hover: #f44747;
+  --background-modifier-success: #a6e22e;
+  --background-modifier-message: #222526;
+  --background-modifier-form-field: #1a1c1d;
+
+  --interactive-normal: #222526;
+  --interactive-hover: #2a2e2f;
+  --interactive-accent: #5aa8b4;
+  --interactive-accent-hover: #6ebcc6;
+
+  --text-normal: #ebdbb2;
+  --text-muted: #8f8f99;
+  --text-faint: #3c3836;
+  --text-on-accent: #1d2021;
+  --text-on-accent-inverted: #ebdbb2;
+  --text-success: #a6e22e;
+  --text-warning: #d9c679;
+  --text-error: #f44747;
+  --text-accent: #5aa8b4;
+  --text-accent-hover: #6ebcc6;
+  --text-selection: #3a4e64;
+  --caret-color: #5aa8b4;
+
+  --color-red: #f44747;
+  --color-orange: #fd971f;
+  --color-yellow: #d9c679;
+  --color-green: #a6e22e;
+  --color-cyan: #5aa8b4;
+  --color-blue: #66d9ef;
+  --color-purple: #ae81ff;
+  --color-pink: #f92672;
+
+  --code-normal: #f8f8f2;
+  --code-comment: #88846f;
+  --code-function: #a6e22e;
+  --code-important: #f92672;
+  --code-keyword: #f92672;
+  --code-operator: #f92672;
+  --code-property: #66d9ef;
+  --code-punctuation: #c4a489;
+  --code-string: #e6db74;
+  --code-tag: #f92672;
+  --code-value: #ae81ff;
+
+  --titlebar-background: #1d2021;
+  --titlebar-background-focused: #1d2021;
+  --tab-container-background: #1a1c1d;
+  --ribbon-background: #1a1c1d;
+  --divider-color: #3c3836;
+  --prompt-border-color: #3c3836;
+  --modal-border-color: #3c3836;
+  --checkbox-color: #5aa8b4;
+  --checkbox-marker-color: #1d2021;
+  --slider-track-background: #3c3836;
+  --icon-color: #8f8f99;
+  --icon-color-hover: #ebdbb2;
+  --icon-color-active: #5aa8b4;
+  --icon-color-focused: #5aa8b4;
+}

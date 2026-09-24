@@ -1,0 +1,30 @@
+{
+  "name": "Stillwater",
+  "version": "1.0.0",
+  "widgets": "Fusion",
+  "qssFilePath": "themeStyle.css",
+  "colors": {
+    "Window": "#1d2021",
+    "WindowText": "#ebdbb2",
+    "Base": "#1a1c1d",
+    "AlternateBase": "#222526",
+    "Text": "#ebdbb2",
+    "Button": "#222526",
+    "ButtonText": "#ebdbb2",
+    "BrightText": "#f8f8f2",
+    "ToolTipBase": "#222526",
+    "ToolTipText": "#ebdbb2",
+    "PlaceholderText": "#8f8f99",
+    "Light": "#3c3836",
+    "Midlight": "#222526",
+    "Mid": "#3c3836",
+    "Dark": "#1a1c1d",
+    "Shadow": "#1d2021",
+    "Highlight": "#5aa8b4",
+    "HighlightedText": "#1d2021",
+    "Link": "#5aa8b4",
+    "LinkVisited": "#3d7a88",
+    "fadeAmount": 0.5,
+    "fadeColor": "#1d2021"
+  }
+}

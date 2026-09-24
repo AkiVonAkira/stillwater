@@ -1,0 +1,20 @@
+/* Stillwater Prism adapter.
+ * version 1.0.0
+ */
+
+QToolTip {
+    color: #ebdbb2;
+    background-color: #222526;
+    border: 1px solid #3c3836;
+}
+
+QMenu {
+    background-color: #222526;
+    color: #ebdbb2;
+    border: 1px solid #3c3836;
+}
+
+QMenu::item:selected {
+    background-color: #5aa8b4;
+    color: #1d2021;
+}

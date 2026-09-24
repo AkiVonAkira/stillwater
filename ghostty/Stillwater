@@ -1,0 +1,26 @@
+# Stillwater. kayzel.
+# version 1.0.0
+# Warm gruvbox surfaces, muted cyan accent.
+
+background = #1d2021
+foreground = #ebdbb2
+cursor-color = #5aa8b4
+cursor-text = #1d2021
+selection-background = #3a4e64
+selection-foreground = #ebdbb2
+palette = 0=#1d2021
+palette = 1=#f44747
+palette = 2=#a6e22e
+palette = 3=#d9c679
+palette = 4=#66d9ef
+palette = 5=#ae81ff
+palette = 6=#5aa8b4
+palette = 7=#ebdbb2
+palette = 8=#3c3836
+palette = 9=#f44747
+palette = 10=#a6e22e
+palette = 11=#e6db74
+palette = 12=#66d9ef
+palette = 13=#ae81ff
+palette = 14=#6ebcc6
+palette = 15=#f8f8f2

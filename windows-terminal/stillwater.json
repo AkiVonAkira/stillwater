@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "schemes": [
+    {
+      "name": "Stillwater",
+      "background": "#1D2021",
+      "foreground": "#EBDBB2",
+      "cursorColor": "#5AA8B4",
+      "selectionBackground": "#3A4E64",
+      "black": "#1D2021",
+      "red": "#F44747",
+      "green": "#A6E22E",
+      "yellow": "#D9C679",
+      "blue": "#66D9EF",
+      "purple": "#AE81FF",
+      "cyan": "#5AA8B4",
+      "white": "#EBDBB2",
+      "brightBlack": "#3C3836",
+      "brightRed": "#F44747",
+      "brightGreen": "#A6E22E",
+      "brightYellow": "#E6DB74",
+      "brightBlue": "#66D9EF",
+      "brightPurple": "#AE81FF",
+      "brightCyan": "#6EBCC6",
+      "brightWhite": "#F8F8F2"
+    }
+  ]
+}
