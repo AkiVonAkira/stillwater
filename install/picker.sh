@@ -181,12 +181,37 @@ stillwater_picker_path() {
   local dest="$1"
   local used="${2:-60}"
   local cols max
-  cols="$(stillwater_term_cols)"
+  cols="${SW_COLS:-$(stillwater_term_cols)}"
   max=$((cols - used))
   if [[ "$max" -lt 8 ]]; then
     return 0
   fi
   stillwater_fit_left "$(stillwater_display_path "$dest")" "$max"
+}
+
+stillwater_picker_cache() {
+  local i cols max
+  SW_OS_LABEL="$(stillwater_os_label)"
+  SW_VERSION="$(stillwater_version)"
+  SW_COLS="$(stillwater_term_cols)"
+  cols="$SW_COLS"
+  max=$((cols - 60))
+  SW_ROW_LABEL=()
+  SW_ROW_ACTION=()
+  SW_ROW_NOTE=()
+  SW_ROW_PATH=()
+  SW_ROW_COLOR=()
+  for i in "${!SW_IDS[@]}"; do
+    SW_ROW_LABEL+=("$(printf '%-22s' "${SW_LABELS[$i]}")")
+    SW_ROW_ACTION+=("$(printf '%-10s' "$(stillwater_picker_action "${SW_APPS[$i]}" "${SW_THEMES[$i]}")")")
+    SW_ROW_NOTE+=("$(printf '%-16s' "${SW_NOTES[$i]}")")
+    if [[ "$max" -lt 8 ]]; then
+      SW_ROW_PATH+=("")
+    else
+      SW_ROW_PATH+=("$(stillwater_fit_left "$(stillwater_display_path "${SW_DESTS[$i]}")" "$max")")
+    fi
+    SW_ROW_COLOR+=("$(stillwater_picker_action_color "${SW_APPS[$i]}" "${SW_THEMES[$i]}")")
+  done
 }
 
 stillwater_picker_first() {
@@ -248,57 +273,51 @@ stillwater_picker_rows() {
   echo $((${#SW_IDS[@]} + 3))
 }
 
-stillwater_hint_pair() {
-  printf '%s%s%s %s%s%s' "$SW_ACCENT" "$1" "$SW_RESET" "$SW_MUTED" "$2" "$SW_RESET"
+stillwater_keymap_select() {
+  printf '%s%s%s  %s↑↓ jk%s  %sspace%s  %sa/n%s  %senter%s  %sq%s%s\n' \
+    "$SW_CLEAR" "$SW_MUTED" "$SW_CORNER" \
+    "$SW_ACCENT" "$SW_RESET" \
+    "$SW_ACCENT" "$SW_RESET" \
+    "$SW_ACCENT" "$SW_RESET" \
+    "$SW_ACCENT" "$SW_RESET" \
+    "$SW_ACCENT" "$SW_RESET" \
+    "$SW_RESET"
 }
 
-stillwater_keymap_select() {
-  printf '%s%s%s  ' "$SW_CLEAR" "$SW_MUTED" "$SW_CORNER"
-  stillwater_hint_pair '↑↓ jk' nav
-  printf '  %s·%s  ' "$SW_MUTED" "$SW_RESET"
-  stillwater_hint_pair space toggle
-  printf '  %s·%s  ' "$SW_MUTED" "$SW_RESET"
-  stillwater_hint_pair a all
-  printf '  %s·%s  ' "$SW_MUTED" "$SW_RESET"
-  stillwater_hint_pair n none
-  printf '  %s·%s  ' "$SW_MUTED" "$SW_RESET"
-  stillwater_hint_pair enter apply
-  printf '  %s·%s  ' "$SW_MUTED" "$SW_RESET"
-  stillwater_hint_pair q abort
-  printf '%s\n' "$SW_RESET"
+stillwater_picker_print_row() {
+  local i="$1"
+  local check labelfg
+  if ! stillwater_picker_selectable "${SW_APPS[$i]}"; then
+    printf '%s%s%s     %s  %s  %s  %s%s\n' \
+      "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" \
+      "${SW_ROW_LABEL[$i]}" "${SW_ROW_ACTION[$i]}" "${SW_ROW_NOTE[$i]}" "${SW_ROW_PATH[$i]}" "$SW_RESET" >&2
+    return
+  fi
+  if [[ "${SW_SELECTED[$i]}" == 1 ]]; then
+    check="${SW_ACCENT}${SW_ON}${SW_RESET}"
+  elif [[ "$i" -eq "$SW_CURSOR" ]]; then
+    check="${SW_ACCENT_HOVER}${SW_OFF}${SW_RESET}"
+  else
+    check="${SW_MUTED}${SW_OFF}${SW_RESET}"
+  fi
+  if [[ "$i" -eq "$SW_CURSOR" ]]; then
+    labelfg="$SW_TEXT"
+  else
+    labelfg="$SW_MUTED"
+  fi
+  printf '%s%s%s%s  %s  %s%s  %s%s  %s%s  %s%s%s\n' \
+    "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$SW_RESET" "$check" "$labelfg" "${SW_ROW_LABEL[$i]}" \
+    "${SW_ROW_COLOR[$i]}" "${SW_ROW_ACTION[$i]}" "$SW_MUTED" "${SW_ROW_NOTE[$i]}" "${SW_ROW_PATH[$i]}" "$SW_RESET" >&2
 }
 
 stillwater_picker_draw() {
-  local i check label action note path color labelfg
+  local i
   printf '%s%s%s  %sStillwater%s  %s%s  %s%s\n' \
-    "$SW_CLEAR" "$SW_MUTED" "$SW_START" "$SW_ACCENT" "$SW_RESET" "$SW_WARM" "$(stillwater_os_label)" "$(stillwater_version)" "$SW_RESET" >&2
+    "$SW_CLEAR" "$SW_MUTED" "$SW_START" "$SW_ACCENT" "$SW_RESET" "$SW_WARM" "$SW_OS_LABEL" "$SW_VERSION" "$SW_RESET" >&2
   printf '%s%s%s  %sselect%s\n' \
     "$SW_CLEAR" "$SW_ACCENT" "$SW_DIAMOND" "$SW_TEXT" "$SW_RESET" >&2
   for i in "${!SW_IDS[@]}"; do
-    label="$(printf '%-22s' "${SW_LABELS[$i]}")"
-    action="$(printf '%-10s' "$(stillwater_picker_action "${SW_APPS[$i]}" "${SW_THEMES[$i]}")")"
-    note="$(printf '%-16s' "${SW_NOTES[$i]}")"
-    path="$(stillwater_picker_path "${SW_DESTS[$i]}")"
-    color="$(stillwater_picker_action_color "${SW_APPS[$i]}" "${SW_THEMES[$i]}")"
-    if ! stillwater_picker_selectable "${SW_APPS[$i]}"; then
-      printf '%s%s%s     %s  %s  %s  %s%s\n' \
-        "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$label" "$action" "$note" "$path" "$SW_RESET" >&2
-      continue
-    fi
-    if [[ "${SW_SELECTED[$i]}" == 1 ]]; then
-      check="${SW_ACCENT}${SW_ON}${SW_RESET}"
-    elif [[ "$i" -eq "$SW_CURSOR" ]]; then
-      check="${SW_ACCENT_HOVER}${SW_OFF}${SW_RESET}"
-    else
-      check="${SW_MUTED}${SW_OFF}${SW_RESET}"
-    fi
-    if [[ "$i" -eq "$SW_CURSOR" ]]; then
-      labelfg="$SW_TEXT"
-    else
-      labelfg="$SW_MUTED"
-    fi
-    printf '%s%s%s%s  %s  %s%s  %s%s  %s%s  %s%s%s\n' \
-      "$SW_CLEAR" "$SW_MUTED" "$SW_PIPE" "$SW_RESET" "$check" "$labelfg" "$label" "$color" "$action" "$SW_MUTED" "$note" "$path" "$SW_RESET" >&2
+    stillwater_picker_print_row "$i"
   done
   stillwater_keymap_select >&2
 }
@@ -306,6 +325,21 @@ stillwater_picker_draw() {
 stillwater_picker_redraw() {
   printf '\033[%dA' "$1" >&2
   stillwater_picker_draw
+}
+
+stillwater_picker_repaint_rows() {
+  local n="${#SW_IDS[@]}"
+  local i up down
+  for i in "$@"; do
+    [[ -n "$i" ]] || continue
+    up=$((1 + n - i))
+    printf '\033[%dA' "$up" >&2
+    stillwater_picker_print_row "$i"
+    down=$((n - i))
+    if [[ "$down" -gt 0 ]]; then
+      printf '\033[%dB' "$down" >&2
+    fi
+  done
 }
 
 stillwater_picker_erase() {
@@ -349,7 +383,7 @@ stillwater_jobs_next() {
   local text="$1"
   local cols max
   [[ -n "$text" ]] || return 0
-  cols="$(stillwater_term_cols)"
+  cols="${SW_COLS:-$(stillwater_term_cols)}"
   max=$((cols - 42))
   if [[ "$max" -lt 12 ]]; then
     printf '%s' "$text"
@@ -460,15 +494,28 @@ stillwater_picker() {
   printf '%s' "$SW_HIDE" >&2
   trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
   trap 'stillwater_picker_restore' EXIT
+  stillwater_picker_cache
   stillwater_picker_draw
-  local rows key
+  local rows key prev
   rows="$(stillwater_picker_rows)"
   SW_PICKER_ROWS="$rows"
   while true; do
     key="$(stillwater_picker_read_key || true)"
     case "$key" in
-      up) stillwater_picker_move -1 ;;
-      down) stillwater_picker_move 1 ;;
+      up)
+        prev="$SW_CURSOR"
+        stillwater_picker_move -1
+        if [[ "$prev" != "$SW_CURSOR" ]]; then
+          stillwater_picker_repaint_rows "$prev" "$SW_CURSOR"
+        fi
+        ;;
+      down)
+        prev="$SW_CURSOR"
+        stillwater_picker_move 1
+        if [[ "$prev" != "$SW_CURSOR" ]]; then
+          stillwater_picker_repaint_rows "$prev" "$SW_CURSOR"
+        fi
+        ;;
       space)
         if stillwater_picker_selectable "${SW_APPS[$SW_CURSOR]}"; then
           if [[ "${SW_SELECTED[$SW_CURSOR]}" == 1 ]]; then
@@ -476,10 +523,17 @@ stillwater_picker() {
           else
             SW_SELECTED[$SW_CURSOR]=1
           fi
+          stillwater_picker_repaint_rows "$SW_CURSOR"
         fi
         ;;
-      all) stillwater_picker_toggle_all ;;
-      none) stillwater_picker_none ;;
+      all)
+        stillwater_picker_toggle_all
+        stillwater_picker_redraw "$rows"
+        ;;
+      none)
+        stillwater_picker_none
+        stillwater_picker_redraw "$rows"
+        ;;
       enter)
         local i
         for i in "${!SW_IDS[@]}"; do
@@ -499,7 +553,6 @@ stillwater_picker() {
         return 1
         ;;
     esac
-        stillwater_picker_redraw "$rows"
   done
 }
 

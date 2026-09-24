@@ -10,19 +10,24 @@ stillwater_platform() {
 }
 
 stillwater_os_label() {
+  if [[ -n "${STILLWATER_OS_LABEL:-}" ]]; then
+    printf '%s' "$STILLWATER_OS_LABEL"
+    return 0
+  fi
   case "$(stillwater_platform)" in
-    darwin) echo macos ;;
-    windows) echo windows ;;
+    darwin) STILLWATER_OS_LABEL=macos ;;
+    windows) STILLWATER_OS_LABEL=windows ;;
     *)
       if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
         . /etc/os-release
-        echo "linux/${ID:-linux}"
+        STILLWATER_OS_LABEL="linux/${ID:-linux}"
       else
-        echo linux
+        STILLWATER_OS_LABEL=linux
       fi
       ;;
   esac
+  printf '%s' "$STILLWATER_OS_LABEL"
 }
 
 stillwater_init_paths() {
@@ -89,12 +94,13 @@ stillwater_copy_file() {
 }
 
 stillwater_version() {
-  local file="${STILLWATER_ROOT}/palette.json"
-  if stillwater_has_cmd node; then
-    node --input-type=commonjs -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).version||''))" "$file"
-    return
+  if [[ -n "${STILLWATER_VERSION:-}" ]]; then
+    printf '%s' "$STILLWATER_VERSION"
+    return 0
   fi
-  sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$file" | head -n 1
+  local file="${STILLWATER_ROOT}/palette.json"
+  STILLWATER_VERSION="$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$file" | head -n 1)"
+  printf '%s' "$STILLWATER_VERSION"
 }
 
 stillwater_palette_hex() {

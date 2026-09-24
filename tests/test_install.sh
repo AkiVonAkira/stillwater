@@ -48,11 +48,14 @@ stillwater_picker_selectable found || fail "found should be selectable"
 if stillwater_picker_selectable skip; then fail "skip should not be selectable"; fi
 stillwater_picker_init_style
 [[ "$SW_ON" == "●" && "$SW_OFF" == "○" ]] || fail "picker selection should use circles"
+stillwater_picker_cache
+[[ "${#SW_ROW_LABEL[@]}" -eq 4 ]] || fail "picker cache should keep a padded row per app"
+[[ "$(stillwater_version)" == 1.0.0 ]] || fail "version should read palette.json"
 bar="$(stillwater_progress_bar 1 2 4 1)"
 [[ "$bar" == $'██▒░' ]] || fail "progress bar should fill completed cells and mark the busy cell"
 keymap="$(stillwater_keymap_select)"
-printf '%s' "$keymap" | grep -q apply || fail "keymap should include apply"
-printf '%s' "$keymap" | grep -q toggle || fail "keymap should include toggle"
+printf '%s' "$keymap" | grep -q space || fail "keymap should include space"
+printf '%s' "$keymap" | grep -q enter || fail "keymap should include enter"
 if printf '%s' "$keymap" | grep -q 'Space selects'; then fail "keymap should not use the prose hint"; fi
 [[ "$(stillwater_display_path "$HOME/foo/bar")" == "~/foo/bar" ]] || fail "display path should use ~"
 [[ "$(stillwater_display_path "$HOME/.t3/userdata/themes/stillwater.json")" == "~/.t3/userdata/themes" ]] || fail "display path should drop the file name"

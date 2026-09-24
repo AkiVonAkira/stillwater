@@ -13,18 +13,23 @@ function Get-StillwaterPlatform {
 }
 
 function Get-StillwaterOsLabel {
-  switch (Get-StillwaterPlatform) {
-    "darwin" { return "macos" }
-    "windows" { return "windows" }
+  if ($null -ne $script:StillwaterOsLabel -and $script:StillwaterOsLabel -ne "") {
+    return $script:StillwaterOsLabel
+  }
+  $script:StillwaterOsLabel = switch (Get-StillwaterPlatform) {
+    "darwin" { "macos" }
+    "windows" { "windows" }
     default {
       $release = "/etc/os-release"
       if (Test-Path $release) {
         $id = (Select-String -Path $release -Pattern '^ID=(.*)$').Matches.Groups[1].Value.Trim('"')
-        if ($id) { return "linux/$id" }
+        if ($id) { "linux/$id" } else { "linux" }
+      } else {
+        "linux"
       }
-      return "linux"
     }
   }
+  return $script:StillwaterOsLabel
 }
 
 function Initialize-StillwaterPaths {
@@ -85,9 +90,13 @@ function Get-StillwaterPalette {
 }
 
 function Get-StillwaterVersion {
+  if ($null -ne $script:StillwaterVersion -and $script:StillwaterVersion -ne "") {
+    return $script:StillwaterVersion
+  }
   $file = Join-Path $env:STILLWATER_ROOT "palette.json"
   $spec = Get-Content -Raw -LiteralPath $file | ConvertFrom-Json
-  return [string]$spec.version
+  $script:StillwaterVersion = [string]$spec.version
+  return $script:StillwaterVersion
 }
 
 function ConvertTo-StillwaterFg([string]$Hex) {

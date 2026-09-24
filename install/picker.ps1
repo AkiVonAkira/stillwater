@@ -198,24 +198,50 @@ function Get-StillwaterJobsNext([string]$Text) {
   return (Get-StillwaterFitLeft $Text $max)
 }
 
-function Write-StillwaterHintPair($Style, [string]$Key, [string]$Verb) {
-  Write-Host ("{0}{1}{2} {3}{4}{2}" -f $Style.Accent, $Key, $Style.Reset, $Style.Muted, $Verb) -NoNewline
+function Write-StillwaterKeymapSelect($Style) {
+  Write-Host ("{0}{1}{2}  {3}↑↓ jk{4}  {3}space{4}  {3}a/n{4}  {3}enter{4}  {3}q{4}{4}" -f `
+    $Style.Clear, $Style.Muted, $Style.Corner, $Style.Accent, $Style.Reset)
 }
 
-function Write-StillwaterKeymapSelect($Style) {
-  Write-Host ("{0}{1}{2}  " -f $Style.Clear, $Style.Muted, $Style.Corner) -NoNewline
-  Write-StillwaterHintPair $Style "↑↓ jk" "nav"
-  Write-Host ("  {0}·{1}  " -f $Style.Muted, $Style.Reset) -NoNewline
-  Write-StillwaterHintPair $Style "space" "toggle"
-  Write-Host ("  {0}·{1}  " -f $Style.Muted, $Style.Reset) -NoNewline
-  Write-StillwaterHintPair $Style "a" "all"
-  Write-Host ("  {0}·{1}  " -f $Style.Muted, $Style.Reset) -NoNewline
-  Write-StillwaterHintPair $Style "n" "none"
-  Write-Host ("  {0}·{1}  " -f $Style.Muted, $Style.Reset) -NoNewline
-  Write-StillwaterHintPair $Style "enter" "apply"
-  Write-Host ("  {0}·{1}  " -f $Style.Muted, $Style.Reset) -NoNewline
-  Write-StillwaterHintPair $Style "q" "abort"
-  Write-Host $Style.Reset
+function Write-StillwaterPickerRow($Style, $Item, [int]$Index, [int]$Cursor) {
+  $label = $Item.LabelPad
+  $action = $Item.ActionPad
+  $note = $Item.NotePad
+  $path = $Item.PathPad
+  $color = $Item.ActionColor
+  if (-not (Test-StillwaterPickerSelectable $Item.App)) {
+    Write-Host ("{0}{1}│     {2}  {3}  {4}  {5}{6}" -f $Style.Clear, $Style.Muted, $label, $action, $note, $path, $Style.Reset)
+    return
+  }
+  $check = if ($Item.Selected) {
+    "{0}●{1}" -f $Style.Accent, $Style.Reset
+  } elseif ($Index -eq $Cursor) {
+    "{0}○{1}" -f $Style.AccentHover, $Style.Reset
+  } else {
+    "{0}○{1}" -f $Style.Muted, $Style.Reset
+  }
+  $labelfg = if ($Index -eq $Cursor) { $Style.Text } else { $Style.Muted }
+  Write-Host ("{0}{1}│{2}  {3}  {4}{5}  {6}{7}  {8}{9}  {10}{2}" -f `
+    $Style.Clear, $Style.Muted, $Style.Reset, $check, $labelfg, $label, $color, $action, $Style.Muted, $note, $path)
+}
+
+function Write-StillwaterPickerRowAt($Style, $Items, [int]$Cursor, [int]$Index) {
+  $saved = [Console]::CursorTop
+  $line = $saved - (1 + $Items.Count - $Index)
+  if ($line -lt 0) { $line = 0 }
+  [Console]::SetCursorPosition(0, $line)
+  Write-StillwaterPickerRow $Style $Items[$Index] $Index $Cursor
+  [Console]::SetCursorPosition(0, $saved)
+}
+
+function Initialize-StillwaterPickerLayout($Style, $Items) {
+  foreach ($item in $Items) {
+    $item | Add-Member -NotePropertyName LabelPad -NotePropertyValue ("{0,-22}" -f $item.Label) -Force
+    $item | Add-Member -NotePropertyName ActionPad -NotePropertyValue ("{0,-10}" -f (Get-StillwaterPickerAction $item.App $item.Theme)) -Force
+    $item | Add-Member -NotePropertyName NotePad -NotePropertyValue ("{0,-16}" -f $item.Note) -Force
+    $item | Add-Member -NotePropertyName PathPad -NotePropertyValue (Get-StillwaterPickerPath $item.Dest) -Force
+    $item | Add-Member -NotePropertyName ActionColor -NotePropertyValue (Get-StillwaterPickerActionColor $Style $item.App $item.Theme) -Force
+  }
 }
 
 function Write-StillwaterPicker($Style, $Items, [int]$Cursor) {
@@ -224,26 +250,7 @@ function Write-StillwaterPicker($Style, $Items, [int]$Cursor) {
   Write-Host ("{0}{1}┌  {2}Stillwater{3}  {4}{5}  {6}{3}" -f $Style.Clear, $Style.Muted, $Style.Accent, $Style.Reset, $Style.Warm, $os, $version)
   Write-Host ("{0}{1}◆  {2}select{3}" -f $Style.Clear, $Style.Accent, $Style.Text, $Style.Reset)
   for ($i = 0; $i -lt $Items.Count; $i++) {
-    $item = $Items[$i]
-    $label = "{0,-22}" -f $item.Label
-    $action = "{0,-10}" -f (Get-StillwaterPickerAction $item.App $item.Theme)
-    $note = "{0,-16}" -f $item.Note
-    $path = Get-StillwaterPickerPath $item.Dest
-    $color = Get-StillwaterPickerActionColor $Style $item.App $item.Theme
-    if (-not (Test-StillwaterPickerSelectable $item.App)) {
-      Write-Host ("{0}{1}│     {2}  {3}  {4}  {5}{6}" -f $Style.Clear, $Style.Muted, $label, $action, $note, $path, $Style.Reset)
-      continue
-    }
-    $check = if ($item.Selected) {
-      "{0}●{1}" -f $Style.Accent, $Style.Reset
-    } elseif ($i -eq $Cursor) {
-      "{0}○{1}" -f $Style.AccentHover, $Style.Reset
-    } else {
-      "{0}○{1}" -f $Style.Muted, $Style.Reset
-    }
-    $labelfg = if ($i -eq $Cursor) { $Style.Text } else { $Style.Muted }
-    Write-Host ("{0}{1}│{2}  {3}  {4}{5}  {6}{7}  {8}{9}  {10}{2}" -f `
-      $Style.Clear, $Style.Muted, $Style.Reset, $check, $labelfg, $label, $color, $action, $Style.Muted, $note, $path)
+    Write-StillwaterPickerRow $Style $Items[$i] $i $Cursor
   }
   Write-StillwaterKeymapSelect $Style
 }
@@ -328,6 +335,7 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
     return @()
   }
   $cursor = Get-StillwaterPickerCursor $items
+  Initialize-StillwaterPickerLayout $style $items
   $rowsCount = $items.Count + 3
   $script:StillwaterPickerRows = $rowsCount
   $script:StillwaterUiKeepHidden = $false
@@ -340,16 +348,38 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
   try {
     while ($true) {
       $key = Read-StillwaterPickerKey
+      $prev = $cursor
       switch ($key) {
-        "up" { $cursor = Move-StillwaterPickerCursor $items $cursor -1 }
-        "down" { $cursor = Move-StillwaterPickerCursor $items $cursor 1 }
+        "up" {
+          $cursor = Move-StillwaterPickerCursor $items $cursor -1
+          if ($cursor -ne $prev) {
+            Write-StillwaterPickerRowAt $style $items $cursor $prev
+            Write-StillwaterPickerRowAt $style $items $cursor $cursor
+          }
+        }
+        "down" {
+          $cursor = Move-StillwaterPickerCursor $items $cursor 1
+          if ($cursor -ne $prev) {
+            Write-StillwaterPickerRowAt $style $items $cursor $prev
+            Write-StillwaterPickerRowAt $style $items $cursor $cursor
+          }
+        }
         "space" {
           if (Test-StillwaterPickerSelectable $items[$cursor].App) {
             $items[$cursor].Selected = -not $items[$cursor].Selected
+            Write-StillwaterPickerRowAt $style $items $cursor $cursor
           }
         }
-        "all" { Set-StillwaterPickerAll $items }
-        "none" { foreach ($item in $items) { $item.Selected = $false } }
+        "all" {
+          Set-StillwaterPickerAll $items
+          Write-Host ("`e[{0}A" -f $rowsCount) -NoNewline
+          Write-StillwaterPicker $style $items $cursor
+        }
+        "none" {
+          foreach ($item in $items) { $item.Selected = $false }
+          Write-Host ("`e[{0}A" -f $rowsCount) -NoNewline
+          Write-StillwaterPicker $style $items $cursor
+        }
         "enter" {
           $script:StillwaterUiKeepHidden = $true
           return @($items | Where-Object { $_.Selected } | ForEach-Object { $_.Id })
@@ -361,8 +391,6 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
           throw "cancelled"
         }
       }
-      Write-Host ("`e[{0}A" -f $rowsCount) -NoNewline
-      Write-StillwaterPicker $style $items $cursor
     }
   } finally {
     if (-not $script:StillwaterUiKeepHidden) {
