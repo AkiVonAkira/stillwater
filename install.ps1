@@ -170,6 +170,20 @@ function Write-StillwaterJobFrame {
   Write-StillwaterJobs $style $jobs $spinI (Get-StillwaterJobSummary)
 }
 
+function Get-StillwaterFailureMessage($ErrorRecord) {
+  $ex = $null
+  if ($ErrorRecord -is [System.Management.Automation.ErrorRecord]) {
+    $ex = $ErrorRecord.Exception
+  } elseif ($ErrorRecord -is [System.Exception]) {
+    $ex = $ErrorRecord
+  } else {
+    $ex = $ErrorRecord.Exception
+  }
+  while ($ex -and $ex.InnerException) { $ex = $ex.InnerException }
+  if ($ex -and $ex.Message) { return $ex.Message }
+  return [string]$ErrorRecord
+}
+
 function Invoke-StillwaterInstallJob($Script, [string]$Id) {
   if (-not $clack) {
     $null = & $Script -Action install -Only @($Id)
@@ -177,10 +191,12 @@ function Invoke-StillwaterInstallJob($Script, [string]$Id) {
   }
   $ps = [powershell]::Create()
   try {
+    # Do not name the home argument $home. $HOME is a read-only automatic
+    # variable, and binding it in a nested runspace fails every adapter.
     [void]$ps.AddScript({
-      param($path, $ident, $root, $home, $dry)
+      param($path, $ident, $root, $stillwaterHome, $dry)
       $env:STILLWATER_ROOT = $root
-      if ($home) { $env:STILLWATER_HOME = $home }
+      if ($stillwaterHome) { $env:STILLWATER_HOME = $stillwaterHome }
       $env:STILLWATER_DRY_RUN = $dry
       & $path -Action install -Only @($ident)
     }).AddArgument($Script).AddArgument($Id).AddArgument($Root).AddArgument($env:STILLWATER_HOME).AddArgument($env:STILLWATER_DRY_RUN)
@@ -193,7 +209,7 @@ function Invoke-StillwaterInstallJob($Script, [string]$Id) {
     }
     $null = $ps.EndInvoke($handle)
     if ($ps.HadErrors) {
-      throw $ps.Streams.Error[0].Exception
+      throw $ps.Streams.Error[0]
     }
   } finally {
     $ps.Dispose()
@@ -239,9 +255,9 @@ foreach ($job in $jobs) {
       }
     } catch {
       $job.State = "fail"
-      $job.Next = ""
+      $job.Next = Get-StillwaterFailureMessage $_
       $failed++
-      if (-not $clack) { Write-Host ("Failed {0}." -f $job.Label) }
+      if (-not $clack) { Write-Host ("Failed {0}: {1}" -f $job.Label, $job.Next) }
     }
   }
   if ($clack) {

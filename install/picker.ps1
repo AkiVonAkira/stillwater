@@ -327,15 +327,18 @@ function Write-StillwaterJobs($Style, $Jobs, [int]$SpinI, [string]$Summary = "")
     $vcolor = Get-StillwaterJobVerbColor $Style $job.Theme $job.State
     $mark = Get-StillwaterJobMark $Style $job.Theme $job.State $SpinI
     $labelfg = $Style.Muted
+    $nextfg = $Style.Muted
     $next = ""
     if ($job.State -eq "ok") {
       $labelfg = $Style.Text
       $next = Get-StillwaterJobsNext $job.Next
     } elseif ($job.State -eq "fail") {
       $labelfg = $Style.Text
+      $nextfg = $Style.Error
+      $next = Get-StillwaterJobsNext $job.Next
     }
-    Write-Host ("{0}{1}│{2}  {3}  {4}{5}{2}  {6}{7}{2}  {1}{8}{2}" -f `
-      $Style.Clear, $Style.Muted, $Style.Reset, $mark, $labelfg, $label, $vcolor, $verb, $next)
+    Write-Host ("{0}{1}│{2}  {3}  {4}{5}{2}  {6}{7}{2}  {8}{9}{2}" -f `
+      $Style.Clear, $Style.Muted, $Style.Reset, $mark, $labelfg, $label, $vcolor, $verb, $nextfg, $next)
   }
   if ($running) {
     $bar = Get-StillwaterProgressBar $done $Jobs.Count 24 $busy

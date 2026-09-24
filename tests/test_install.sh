@@ -42,6 +42,9 @@ stillwater_picker_parse $'cursor|Cursor|found|none||/tmp/cursor\nvscode|Visual S
 [[ "$(stillwater_job_verb update busy)" == updating ]] || fail "update busy is updating"
 [[ "$(stillwater_job_verb update ok)" == updated ]] || fail "update done is updated"
 [[ "$(stillwater_job_verb none fail)" == failed ]] || fail "fail verb"
+if grep -E -q 'param\([^)]*\$home([, )])' "$ROOT/install.ps1"; then
+  fail "nested install job must not bind \$home; HOME is read-only in a nested runspace"
+fi
 [[ "$(stillwater_job_verb none skip)" == missing ]] || fail "skip verb is missing"
 [[ "$(stillwater_palette_hex accent)" == 5aa8b4 ]] || fail "picker colors should read palette.json"
 stillwater_picker_selectable found || fail "found should be selectable"
