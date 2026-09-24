@@ -186,12 +186,12 @@ skipped=0
 failed=0
 jobs_id=()
 jobs_label=()
+jobs_theme=()
 jobs_kind=()
 jobs_state=()
-jobs_hint=()
 jobs_next=()
 
-while IFS='|' read -r id label app _theme _note _dest; do
+while IFS='|' read -r id label app theme _note _dest; do
   if [[ "$FILTER" == 1 ]]; then
     if [[ ${#ONLY[@]} -eq 0 ]]; then
       continue
@@ -205,18 +205,18 @@ while IFS='|' read -r id label app _theme _note _dest; do
     if [[ "$FILTER" == 1 ]]; then
       jobs_id+=("$id")
       jobs_label+=("$label")
+      jobs_theme+=("$theme")
       jobs_kind+=("skip")
       jobs_state+=("skip")
-      jobs_hint+=("Not found.")
       jobs_next+=("")
     fi
     continue
   fi
   jobs_id+=("$id")
   jobs_label+=("$label")
+  jobs_theme+=("$theme")
   jobs_kind+=("install")
   jobs_state+=("pending")
-  jobs_hint+=("")
   jobs_next+=("$(stillwater_next_step "$id")")
 done < <(collect_status)
 
@@ -226,21 +226,64 @@ if stillwater_clack; then
   CLACK=1
 fi
 
-draw_jobs() {
-  local i
-  stillwater_clack_step "$SW_ACCENT" "$SW_DIAMOND" "Installing Stillwater."
-  for i in "${!jobs_id[@]}"; do
-    stillwater_clack_row "${jobs_state[$i]}" "${jobs_label[$i]}" "${jobs_hint[$i]}"
+job_summary() {
+  if [[ "$failed" -gt 0 ]]; then
+    printf 'Installed %s, skipped %s, failed %s.' "$installed" "$skipped" "$failed"
+  else
+    printf 'Installed %s, skipped %s.' "$installed" "$skipped"
+  fi
+}
+
+load_jobs() {
+  SW_JOB_LABELS=("${jobs_label[@]+"${jobs_label[@]}"}")
+  SW_JOB_THEMES=("${jobs_theme[@]+"${jobs_theme[@]}"}")
+  SW_JOB_STATES=("${jobs_state[@]+"${jobs_state[@]}"}")
+  SW_JOB_NEXTS=("${jobs_next[@]+"${jobs_next[@]}"}")
+}
+
+paint_jobs() {
+  load_jobs
+  stillwater_jobs_draw "$(job_summary)"
+}
+
+repaint_jobs() {
+  load_jobs
+  stillwater_jobs_redraw "$(job_summary)"
+}
+
+run_install() {
+  local script="$1"
+  local id="$2"
+  local out err pid rc
+  if [[ "$CLACK" != 1 ]]; then
+    "$BASH_EXE" "$script" install "$id" >/dev/null
+    return
+  fi
+  out="$(mktemp)"
+  err="$(mktemp)"
+  set +e
+  "$BASH_EXE" "$script" install "$id" >"$out" 2>"$err" &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    SW_SPIN_I=$((SW_SPIN_I + 1))
+    repaint_jobs
+    sleep 0.07
   done
+  wait "$pid"
+  rc=$?
+  set -e
+  rm -f "$out" "$err"
+  return "$rc"
 }
 
 if [[ "$CLACK" == 1 ]]; then
-  if [[ "$USED_PICKER" != 1 ]]; then
-    stillwater_clack_header
+  printf '%s' "$SW_HIDE" >&2
+  if [[ "$USED_PICKER" == 1 ]]; then
+    stillwater_picker_erase "${SW_PICKER_ROWS:-0}"
   fi
-  if [[ ${#jobs_id[@]} -gt 0 ]]; then
-    draw_jobs
-  fi
+  trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
+  trap 'stillwater_picker_restore' EXIT
+  paint_jobs
 fi
 
 for i in "${!jobs_id[@]}"; do
@@ -252,19 +295,17 @@ for i in "${!jobs_id[@]}"; do
   fi
   if [[ "$CLACK" == 1 ]]; then
     jobs_state[$i]="busy"
-    stillwater_clack_up $((${#jobs_id[@]} + 1))
-    draw_jobs
+    repaint_jobs
   fi
   script="$(adapter_for_id "${jobs_id[$i]}" || true)"
   if [[ -z "$script" ]]; then
     jobs_state[$i]="fail"
-    jobs_hint[$i]="No installer."
     jobs_next[$i]=""
     failed=$((failed + 1))
     if [[ "$CLACK" != 1 ]]; then
       echo "Skipped ${jobs_label[$i]}. No installer."
     fi
-  elif dest="$("$BASH_EXE" "$script" install "${jobs_id[$i]}")"; then
+  elif run_install "$script" "${jobs_id[$i]}"; then
     jobs_state[$i]="ok"
     installed=$((installed + 1))
     if [[ "$CLACK" != 1 ]]; then
@@ -276,7 +317,6 @@ for i in "${!jobs_id[@]}"; do
     fi
   else
     jobs_state[$i]="fail"
-    jobs_hint[$i]="Failed."
     jobs_next[$i]=""
     failed=$((failed + 1))
     if [[ "$CLACK" != 1 ]]; then
@@ -284,8 +324,7 @@ for i in "${!jobs_id[@]}"; do
     fi
   fi
   if [[ "$CLACK" == 1 ]]; then
-    stillwater_clack_up $((${#jobs_id[@]} + 1))
-    draw_jobs
+    repaint_jobs
   fi
 done
 
@@ -296,15 +335,17 @@ for i in "${!jobs_id[@]}"; do
     break
   fi
 done
-if [[ "$next_any" == 1 ]]; then
-  if [[ "$CLACK" == 1 ]]; then
-    stillwater_clack_step "$SW_ACCENT_HOVER" "$SW_DONE" "Do this next."
-    for i in "${!jobs_id[@]}"; do
-      if [[ "${jobs_state[$i]}" == ok && -n "${jobs_next[$i]}" ]]; then
-        stillwater_clack_row next "${jobs_label[$i]}" "${jobs_next[$i]}"
-      fi
-    done
-  else
+
+summary="Installed ${installed}, skipped ${skipped}."
+if [[ "$failed" -gt 0 ]]; then
+  summary="Installed ${installed}, skipped ${skipped}, failed ${failed}."
+fi
+if [[ "$CLACK" == 1 ]]; then
+  repaint_jobs
+  stillwater_picker_restore
+  trap - EXIT INT TERM
+else
+  if [[ "$next_any" == 1 ]]; then
     echo "Do this next."
     for i in "${!jobs_id[@]}"; do
       if [[ "${jobs_state[$i]}" == ok && -n "${jobs_next[$i]}" ]]; then
@@ -312,14 +353,5 @@ if [[ "$next_any" == 1 ]]; then
       fi
     done
   fi
-fi
-
-summary="Installed ${installed}, skipped ${skipped}."
-if [[ "$failed" -gt 0 ]]; then
-  summary="Installed ${installed}, skipped ${skipped}, failed ${failed}."
-fi
-if [[ "$CLACK" == 1 ]]; then
-  stillwater_clack_end "$summary"
-else
   echo "$summary"
 fi

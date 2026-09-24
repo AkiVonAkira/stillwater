@@ -98,39 +98,9 @@ function Test-StillwaterClack {
   try { return -not [Console]::IsOutputRedirected } catch { return $true }
 }
 
-function Write-StillwaterClackHeader($Style) {
-  Write-Host ("{0}{1}┌  {2}Stillwater{3}  {4}{5}  {6}{3}" -f $Style.Clear, $Style.Muted, $Style.Accent, $Style.Reset, $Style.Warm, (Get-StillwaterOsLabel), (Get-StillwaterVersion))
-}
-
-function Write-StillwaterClackStep($Style, [string]$Color, [string]$Mark, [string]$Text) {
-  Write-Host ("{0}{1}{2}  {3}{4}{5}" -f $Style.Clear, $Color, $Mark, $Style.Text, $Text, $Style.Reset)
-}
-
-function Write-StillwaterClackRow($Style, [string]$State, [string]$Label, [string]$Hint = "") {
-  if ($State -eq "next") {
-    Write-Host ("{0}{1}│  {2}{3,-22}{4}  {1}{5}{4}" -f $Style.Clear, $Style.Muted, $Style.Text, $Label, $Style.Reset, $Hint)
-    return
-  }
-  $mark = "○"
-  $color = $Style.Muted
-  $labelfg = $Style.Muted
-  $hintfg = $Style.Muted
-  switch ($State) {
-    "ok" { $mark = "●"; $color = $Style.Accent; $labelfg = $Style.Text }
-    "fail" { $mark = "■"; $color = $Style.Error; $labelfg = $Style.Text; $hintfg = $Style.Error }
-    "busy" { $mark = "○"; $color = $Style.AccentHover; $labelfg = $Style.Text }
-    "skip" { $mark = "○"; $color = $Style.Muted; $labelfg = $Style.Muted }
-  }
-  Write-Host ("{0}{1}│  {2}{3}{4}  {5}{6,-22}{4}  {7}{8}{4}" -f `
-    $Style.Clear, $Style.Muted, $color, $mark, $Style.Reset, $labelfg, $Label, $hintfg, $Hint)
-}
-
-function Write-StillwaterClackEnd($Style, [string]$Text) {
-  Write-Host ("{0}{1}└  {2}{3}" -f $Style.Clear, $Style.Muted, $Text, $Style.Reset)
-}
-
-function Write-StillwaterClackUp([int]$Rows) {
-  Write-Host ("`e[{0}A" -f $Rows) -NoNewline
+function Restore-StillwaterUi($Style) {
+  try { [Console]::CursorVisible = $true } catch { }
+  if ($Style.Show) { Write-Host $Style.Show -NoNewline }
 }
 
 function Invoke-StillwaterInteractive {
@@ -172,29 +142,71 @@ foreach ($row in Get-StillwaterStatus) {
     $skipped++
     if ($Filter) {
       $jobs += [pscustomobject]@{
-        Id = $item.Id; Label = $item.Label; Kind = "skip"; State = "skip"; Hint = "Not found."; Next = ""
+        Id = $item.Id; Label = $item.Label; Theme = $item.Theme
+        Kind = "skip"; State = "skip"; Next = ""
       }
     }
     continue
   }
   $jobs += [pscustomobject]@{
-    Id = $item.Id; Label = $item.Label; Kind = "install"; State = "pending"; Hint = ""; Next = (Get-StillwaterNextStep $item.Id)
+    Id = $item.Id; Label = $item.Label; Theme = $item.Theme
+    Kind = "install"; State = "pending"; Next = (Get-StillwaterNextStep $item.Id)
   }
 }
 $jobs = @($jobs)
 
 $style = Get-StillwaterPickerStyle
 $clack = Test-StillwaterClack
-function Write-StillwaterJobs {
-  Write-StillwaterClackStep $style $style.Accent "◆" "Installing Stillwater."
-  foreach ($job in $jobs) {
-    Write-StillwaterClackRow $style $job.State $job.Label $job.Hint
+$spinI = 0
+
+function Get-StillwaterJobSummary {
+  if ($failed -gt 0) {
+    return ("Installed {0}, skipped {1}, failed {2}." -f $installed, $skipped, $failed)
+  }
+  return ("Installed {0}, skipped {1}." -f $installed, $skipped)
+}
+
+function Write-StillwaterJobFrame {
+  Write-StillwaterJobs $style $jobs $spinI (Get-StillwaterJobSummary)
+}
+
+function Invoke-StillwaterInstallJob($Script, [string]$Id) {
+  if (-not $clack) {
+    $null = & $Script -Action install -Only @($Id)
+    return
+  }
+  $ps = [powershell]::Create()
+  try {
+    [void]$ps.AddScript({
+      param($path, $ident, $root, $home, $dry)
+      $env:STILLWATER_ROOT = $root
+      if ($home) { $env:STILLWATER_HOME = $home }
+      $env:STILLWATER_DRY_RUN = $dry
+      & $path -Action install -Only @($ident)
+    }).AddArgument($Script).AddArgument($Id).AddArgument($Root).AddArgument($env:STILLWATER_HOME).AddArgument($env:STILLWATER_DRY_RUN)
+    $handle = $ps.BeginInvoke()
+    while (-not $handle.IsCompleted) {
+      $script:spinI++
+      Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
+      Write-StillwaterJobFrame
+      Start-Sleep -Milliseconds 70
+    }
+    $null = $ps.EndInvoke($handle)
+    if ($ps.HadErrors) {
+      throw $ps.Streams.Error[0].Exception
+    }
+  } finally {
+    $ps.Dispose()
   }
 }
 
 if ($clack) {
-  if (-not $UsedPicker) { Write-StillwaterClackHeader $style }
-  if ($jobs.Count -gt 0) { Write-StillwaterJobs }
+  try { [Console]::CursorVisible = $false } catch { }
+  Write-Host $style.Hide -NoNewline
+  if ($UsedPicker -and $script:StillwaterPickerRows) {
+    Write-Host ("`e[{0}A" -f $script:StillwaterPickerRows) -NoNewline
+  }
+  Write-StillwaterJobFrame
 }
 
 foreach ($job in $jobs) {
@@ -204,19 +216,18 @@ foreach ($job in $jobs) {
   }
   if ($clack) {
     $job.State = "busy"
-    Write-StillwaterClackUp ($jobs.Count + 1)
-    Write-StillwaterJobs
+    Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
+    Write-StillwaterJobFrame
   }
   $script = Get-StillwaterAdapterScript $job.Id
   if (-not $script) {
     $job.State = "fail"
-    $job.Hint = "No installer."
     $job.Next = ""
     $failed++
     if (-not $clack) { Write-Host ("Skipped {0}. No installer." -f $job.Label) }
   } else {
     try {
-      $null = & $script -Action install -Only @($job.Id)
+      Invoke-StillwaterInstallJob $script $job.Id
       $job.State = "ok"
       $installed++
       if (-not $clack) {
@@ -228,37 +239,29 @@ foreach ($job in $jobs) {
       }
     } catch {
       $job.State = "fail"
-      $job.Hint = "Failed."
       $job.Next = ""
       $failed++
       if (-not $clack) { Write-Host ("Failed {0}." -f $job.Label) }
     }
   }
   if ($clack) {
-    Write-StillwaterClackUp ($jobs.Count + 1)
-    Write-StillwaterJobs
+    Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
+    Write-StillwaterJobFrame
   }
 }
 
 $nextJobs = @($jobs | Where-Object { $_.State -eq "ok" -and $_.Next })
-if ($nextJobs.Count -gt 0) {
-  if ($clack) {
-    Write-StillwaterClackStep $style $style.AccentHover "◇" "Do this next."
-    foreach ($job in $nextJobs) {
-      Write-StillwaterClackRow $style "next" $job.Label $job.Next
-    }
-  } else {
+$summary = Get-StillwaterJobSummary
+if ($clack) {
+  Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
+  Write-StillwaterJobFrame
+  Restore-StillwaterUi $style
+} else {
+  if ($nextJobs.Count -gt 0) {
     Write-Host "Do this next."
     foreach ($job in $nextJobs) {
       Write-Host ("  {0,-22}  {1}" -f $job.Label, $job.Next)
     }
   }
-}
-
-$summary = "Installed {0}, skipped {1}." -f $installed, $skipped
-if ($failed -gt 0) { $summary = "Installed {0}, skipped {1}, failed {2}." -f $installed, $skipped, $failed }
-if ($clack) {
-  Write-StillwaterClackEnd $style $summary
-} else {
   Write-Host $summary
 }
