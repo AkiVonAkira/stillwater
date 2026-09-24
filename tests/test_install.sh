@@ -294,6 +294,7 @@ out="$("$BASH_EXE" "$ROOT/install.sh" prism)"
 printf '%s\n' "$out" | grep -q 'Installed Prism Launcher.' || fail "should install Prism Launcher"
 [[ -f "$TMP/.local/share/PrismLauncher/themes/Stillwater/theme.json" ]] || fail "Prism theme.json missing"
 [[ -f "$TMP/.local/share/PrismLauncher/themes/Stillwater/themeStyle.css" ]] || fail "Prism themeStyle.css missing"
+grep -q '"widgets": "windows11"' "$TMP/.local/share/PrismLauncher/themes/Stillwater/theme.json" || fail "Prism should use the Windows 11 widget style"
 grep -q "#5aa8b4" "$TMP/.local/share/PrismLauncher/themes/Stillwater/theme.json" || fail "Prism theme should map Stillwater accent"
 
 mkdir -p "$TMP/.config/yasb"

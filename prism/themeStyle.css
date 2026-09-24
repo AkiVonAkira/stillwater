@@ -1,20 +1,149 @@
-/* Stillwater Prism adapter.
+/* Stillwater Prism adapter on the Windows 11 widget style.
  * version 1.0.0
  */
+
+QMainWindow, QDialog, QWidget#mainWindow {
+    background-color: #1d2021;
+    color: #ebdbb2;
+}
 
 QToolTip {
     color: #ebdbb2;
     background-color: #222526;
     border: 1px solid #3c3836;
+    border-radius: 4px;
+    padding: 4px 8px;
 }
 
 QMenu {
     background-color: #222526;
     color: #ebdbb2;
     border: 1px solid #3c3836;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QMenu::item {
+    border-radius: 4px;
+    padding: 6px 28px 6px 12px;
 }
 
 QMenu::item:selected {
+    background-color: #3a4e64;
+    color: #ebdbb2;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: #3c3836;
+    margin: 4px 8px;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QComboBox {
+    background-color: #1a1c1d;
+    color: #ebdbb2;
+    border: 1px solid #3c3836;
+    border-radius: 4px;
+    padding: 4px 8px;
+    selection-background-color: #3a4e64;
+    selection-color: #ebdbb2;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
+    border: 1px solid #5aa8b4;
+}
+
+QPushButton {
+    background-color: #222526;
+    color: #ebdbb2;
+    border: 1px solid #3c3836;
+    border-radius: 4px;
+    padding: 6px 14px;
+}
+
+QPushButton:hover {
+    background-color: #3c3836;
+}
+
+QPushButton:pressed {
+    background-color: #1a1c1d;
+}
+
+QPushButton:default {
     background-color: #5aa8b4;
     color: #1d2021;
+    border: 1px solid #5aa8b4;
+}
+
+QPushButton:default:hover {
+    background-color: #6ebcc6;
+}
+
+QTabBar::tab {
+    background-color: #222526;
+    color: #8f8f99;
+    border: 1px solid #3c3836;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 6px 12px;
+}
+
+QTabBar::tab:selected {
+    background-color: #1d2021;
+    color: #ebdbb2;
+}
+
+QHeaderView::section {
+    background-color: #222526;
+    color: #ebdbb2;
+    border: none;
+    border-bottom: 1px solid #3c3836;
+    padding: 6px 8px;
+}
+
+QTreeView, QListView, QTableView {
+    background-color: #1a1c1d;
+    alternate-background-color: #222526;
+    color: #ebdbb2;
+    border: 1px solid #3c3836;
+    border-radius: 4px;
+    selection-background-color: #3a4e64;
+    selection-color: #ebdbb2;
+}
+
+QScrollBar:vertical, QScrollBar:horizontal {
+    background: #1d2021;
+    border: none;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: #3c3836;
+    border-radius: 4px;
+    min-height: 24px;
+    min-width: 24px;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: #5aa8b4;
+}
+
+QStatusBar {
+    background-color: #222526;
+    color: #8f8f99;
+}
+
+QGroupBox {
+    border: 1px solid #3c3836;
+    border-radius: 6px;
+    margin-top: 12px;
+    padding-top: 8px;
+    color: #ebdbb2;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+    color: #c4a489;
 }
