@@ -1,0 +1,25 @@
+# Harbor Style
+# version 1.0.0
+# Warm gruvbox surfaces, muted cyan accent.
+name: Stillwater
+blurb: Warm gruvbox surfaces, muted cyan accent.
+layout: sidebar
+card: flat
+button: flat
+font: sentient-switzer
+bokeh: false
+swatch: #1d2021, #222526, #5aa8b4
+
+@tokens
+--color-canvas: #1d2021
+--color-surface: #222526
+--color-elevated: #282c2d
+--color-raised: #3c3836
+--color-ink: #ebdbb2
+--color-ink-muted: #8f8f99
+--color-ink-subtle: #8f8f99
+--color-edge: #3c38368c
+--color-edge-soft: #3c383640
+--color-accent: #5aa8b4
+--color-accent-soft: #5aa8b42e
+--color-danger: #f44747

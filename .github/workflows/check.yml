@@ -33,6 +33,8 @@ jobs:
           if (!ven.includes("@version " + spec.version)) throw new Error("vencord version mismatch");
           const spice = fs.readFileSync("spicetify/color.ini", "utf8");
           if (!spice.includes("version " + spec.version)) throw new Error("spicetify version mismatch");
+          const harbor = fs.readFileSync("harbor/Stillwater.harborstyle", "utf8");
+          if (!harbor.includes("# version " + spec.version)) throw new Error("harbor version mismatch");
           EOF
       - name: Rebuild CSS
         run: |

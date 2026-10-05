@@ -383,6 +383,9 @@ stillwater_next_step() {
     ghostty)
       printf 'Set theme = Stillwater in Ghostty config.'
       ;;
+    harbor)
+      printf 'Import Stillwater.harborstyle under Settings, Theme & appearance.'
+      ;;
     btop)
       printf 'Set color_theme to stillwater in btop.conf.'
       ;;

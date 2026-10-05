@@ -81,6 +81,7 @@ unset SW_COLS SW_FOOTER_LINES
 [[ "$(stillwater_next_step yasb)" == "Reload YASB to apply colors." ]] || fail "yasb next step"
 [[ "$(stillwater_next_step kitty)" == "Reload Kitty to apply Stillwater." ]] || fail "kitty next step"
 [[ "$(stillwater_next_step ghostty)" == "Set theme = Stillwater in Ghostty config." ]] || fail "ghostty next step"
+[[ "$(stillwater_next_step harbor)" == "Import Stillwater.harborstyle under Settings, Theme & appearance." ]] || fail "harbor next step"
 [[ "$(stillwater_next_step btop)" == "Set color_theme to stillwater in btop.conf." ]] || fail "btop next step"
 [[ "$(stillwater_next_step windows-terminal)" == "Set the color scheme to Stillwater." ]] || fail "windows-terminal next step"
 [[ "$(stillwater_next_step spicetify)" == "Restart Spotify." ]] || fail "spicetify next step"
@@ -94,6 +95,7 @@ unset SW_COLS SW_FOOTER_LINES
 [[ "$(stillwater_peek_version "$ROOT/yasb/root.css")" == 1.0.0 ]] || fail "peek yasb @version"
 [[ "$(stillwater_peek_version "$ROOT/kitty/Stillwater.conf")" == 1.0.0 ]] || fail "peek kitty version"
 [[ "$(stillwater_peek_version "$ROOT/ghostty/Stillwater")" == 1.0.0 ]] || fail "peek ghostty version"
+[[ "$(stillwater_peek_version "$ROOT/harbor/Stillwater.harborstyle")" == 1.0.0 ]] || fail "peek harbor version"
 [[ "$(stillwater_peek_version "$ROOT/btop/stillwater.theme")" == 1.0.0 ]] || fail "peek btop version"
 [[ "$(stillwater_peek_version "$ROOT/windows-terminal/stillwater.json")" == 1.0.0 ]] || fail "peek windows-terminal version"
 [[ -z "$(stillwater_peek_version "$ROOT/t3/stillwater.json")" ]] || fail "t3 schema version is not a theme stamp"
@@ -108,6 +110,7 @@ printf '%s\n' "$list" | grep -q '1.0.0' || fail "list should show version"
 printf '%s\n' "$list" | grep -q 'Cursor' || fail "missing Cursor row"
 printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+skip' || fail "empty home should skip Cursor"
 printf '%s\n' "$list" | grep -E -q 'Spotifast[[:space:]]+skip' || fail "empty home should skip Spotifast"
+printf '%s\n' "$list" | grep -E -q 'Harbor[[:space:]]+skip' || fail "empty home should skip Harbor"
 printf '%s\n' "$list" | grep -E -q 'Visual Studio Code[[:space:]]+skip' || fail "empty home should skip VS Code"
 code_n="$(printf '%s\n' "$list" | grep -n 'Code - OSS' | head -n 1 | cut -d: -f1)"
 cursor_n="$(printf '%s\n' "$list" | grep -n 'Cursor' | head -n 1 | cut -d: -f1)"
@@ -406,5 +409,20 @@ grep -q '"window": "#1d2021"' "$spotifast_cfg/themes/stillwater.json" || fail "S
 grep -q '"custom_theme": "stillwater.json"' "$spotifast_cfg/settings.json" || fail "Spotifast settings should select stillwater.json"
 grep -q '"volume": 37' "$spotifast_cfg/settings.json" || fail "Spotifast settings should keep other preferences"
 if grep -q '"version"' "$spotifast_cfg/themes/stillwater.json"; then fail "Spotifast palette files reject unknown fields"; fi
+
+case "$(stillwater_platform)" in
+  windows) harbor_data="$TMP/AppData/Roaming/app.harbor" ;;
+  darwin) harbor_data="$TMP/Library/Application Support/app.harbor" ;;
+  *) harbor_data="$TMP/.local/share/app.harbor" ;;
+esac
+mkdir -p "$harbor_data"
+out="$("$BASH_EXE" "$ROOT/install.sh" harbor)"
+printf '%s\n' "$out" | grep -q 'Installed Harbor.' || fail "should install Harbor"
+[[ -f "$harbor_data/themes/Stillwater.harborstyle" ]] || fail "Harbor theme missing"
+grep -q '#5aa8b4' "$harbor_data/themes/Stillwater.harborstyle" || fail "Harbor theme should map Stillwater accent"
+grep -q '#1d2021' "$harbor_data/themes/Stillwater.harborstyle" || fail "Harbor theme should map Stillwater canvas"
+grep -q 'name: Stillwater' "$harbor_data/themes/Stillwater.harborstyle" || fail "Harbor theme should be named Stillwater"
+grep -q 'layout: sidebar' "$harbor_data/themes/Stillwater.harborstyle" || fail "Harbor theme should use the sidebar layout"
+printf '%s\n' "$out" | grep -q 'Import Stillwater.harborstyle' || fail "Harbor next step"
 
 echo "ok"
