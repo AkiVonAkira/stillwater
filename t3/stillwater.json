@@ -35,7 +35,7 @@
     "errorForeground": "#f8f8f2",
     "errorSurface": "#3a2424",
     "warning": "#d9c679",
-    "warningForeground": "#1d2021",
+    "warningForeground": "#e6db74",
     "warningSurface": "#3a3424",
     "update": "#5aa8b4",
     "updateForeground": "#1d2021",
