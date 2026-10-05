@@ -284,6 +284,7 @@ function Get-StillwaterNextStep([string]$Id) {
     "equicord" { return "Enable Stillwater in Equicord themes." }
     "t3" { return "Select Stillwater in T3 Code." }
     "spicetify" { return "Restart Spotify." }
+    "spotifast" { return "Select Stillwater under Settings, Appearance, Theme." }
     "ryoku" { return "Select Stillwater in Ryoku." }
     "obsidian" { return "Set the Appearance theme to Stillwater." }
     "prism" { return "Set the Widgets theme to Stillwater." }

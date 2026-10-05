@@ -32,6 +32,7 @@ pwsh .\install.ps1 cursor t3
 - [Prism Launcher](https://prismlauncher.org)
 - [Ryoku](https://ryoku.dev) (Linux)
 - [Spicetify](https://spicetify.app)
+- [Spotifast](https://spotifast.rocks)
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
 - [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)

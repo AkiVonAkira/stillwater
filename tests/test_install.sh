@@ -84,6 +84,7 @@ unset SW_COLS SW_FOOTER_LINES
 [[ "$(stillwater_next_step btop)" == "Set color_theme to stillwater in btop.conf." ]] || fail "btop next step"
 [[ "$(stillwater_next_step windows-terminal)" == "Set the color scheme to Stillwater." ]] || fail "windows-terminal next step"
 [[ "$(stillwater_next_step spicetify)" == "Restart Spotify." ]] || fail "spicetify next step"
+[[ "$(stillwater_next_step spotifast)" == "Select Stillwater under Settings, Appearance, Theme." ]] || fail "spotifast next step"
 [[ "$(stillwater_peek_version "$ROOT/vscode/package.json")" == 1.0.0 ]] || fail "peek vscode package version"
 [[ "$(stillwater_peek_version "$ROOT/zed/extension.toml")" == 1.0.0 ]] || fail "peek zed toml version"
 [[ "$(stillwater_peek_version "$ROOT/vencord/Stillwater.theme.css")" == 1.0.0 ]] || fail "peek vencord @version"
@@ -106,6 +107,7 @@ printf '%s\n' "$list" | grep -q 'Stillwater' || fail "missing OS header"
 printf '%s\n' "$list" | grep -q '1.0.0' || fail "list should show version"
 printf '%s\n' "$list" | grep -q 'Cursor' || fail "missing Cursor row"
 printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+skip' || fail "empty home should skip Cursor"
+printf '%s\n' "$list" | grep -E -q 'Spotifast[[:space:]]+skip' || fail "empty home should skip Spotifast"
 printf '%s\n' "$list" | grep -E -q 'Visual Studio Code[[:space:]]+skip' || fail "empty home should skip VS Code"
 code_n="$(printf '%s\n' "$list" | grep -n 'Code - OSS' | head -n 1 | cut -d: -f1)"
 cursor_n="$(printf '%s\n' "$list" | grep -n 'Cursor' | head -n 1 | cut -d: -f1)"
@@ -385,5 +387,24 @@ out="$("$BASH_EXE" "$ROOT/install.sh" windows-terminal)"
 printf '%s\n' "$out" | grep -q 'Installed Windows Terminal.' || fail "should install Windows Terminal"
 [[ -f "$TMP/AppData/Local/Microsoft/Windows Terminal/Fragments/Stillwater/stillwater.json" ]] || fail "Windows Terminal fragment missing"
 grep -q '5AA8B4' "$TMP/AppData/Local/Microsoft/Windows Terminal/Fragments/Stillwater/stillwater.json" || fail "Windows Terminal scheme should map Stillwater accent"
+
+case "$(stillwater_platform)" in
+  windows) spotifast_cfg="$TMP/AppData/Roaming/paolino/spotifast/config" ;;
+  darwin) spotifast_cfg="$TMP/Library/Application Support/me.paolino.spotifast" ;;
+  *) spotifast_cfg="$TMP/.config/spotifast" ;;
+esac
+mkdir -p "$spotifast_cfg"
+printf '%s\n' '{
+  "volume": 37,
+  "custom_theme": null
+}' >"$spotifast_cfg/settings.json"
+out="$("$BASH_EXE" "$ROOT/install.sh" spotifast)"
+printf '%s\n' "$out" | grep -q 'Installed Spotifast.' || fail "should install Spotifast"
+[[ -f "$spotifast_cfg/themes/stillwater.json" ]] || fail "Spotifast theme missing"
+grep -q '#5aa8b4' "$spotifast_cfg/themes/stillwater.json" || fail "Spotifast theme should map Stillwater accent"
+grep -q '"window": "#1d2021"' "$spotifast_cfg/themes/stillwater.json" || fail "Spotifast theme should map Stillwater canvas"
+grep -q '"custom_theme": "stillwater.json"' "$spotifast_cfg/settings.json" || fail "Spotifast settings should select stillwater.json"
+grep -q '"volume": 37' "$spotifast_cfg/settings.json" || fail "Spotifast settings should keep other preferences"
+if grep -q '"version"' "$spotifast_cfg/themes/stillwater.json"; then fail "Spotifast palette files reject unknown fields"; fi
 
 echo "ok"

@@ -362,6 +362,9 @@ stillwater_next_step() {
     spicetify)
       printf 'Restart Spotify.'
       ;;
+    spotifast)
+      printf 'Select Stillwater under Settings, Appearance, Theme.'
+      ;;
     ryoku)
       printf 'Select Stillwater in Ryoku.'
       ;;
