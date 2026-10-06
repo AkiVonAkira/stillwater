@@ -37,6 +37,7 @@ pwsh .\install.ps1 cursor t3
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
 - [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)
+- [Starship](https://starship.rs) (Windows PowerShell)
 - [Windows Terminal](https://aka.ms/terminal)
 - [YASB](https://github.com/amnweb/yasb)
 - [Zed](https://zed.dev)

@@ -392,6 +392,9 @@ stillwater_next_step() {
     windows-terminal)
       printf 'Set the color scheme to Stillwater.'
       ;;
+    starship)
+      printf 'Open a new PowerShell tab.'
+      ;;
   esac
 }
 
