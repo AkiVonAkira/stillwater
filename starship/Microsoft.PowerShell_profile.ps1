@@ -4,8 +4,10 @@ try {
   if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) { return }
 } catch { }
 
-if (Get-Command neofetch -ErrorAction SilentlyContinue) {
-  neofetch
+if ($env:WT_SESSION -and -not $env:CURSOR_AGENT) {
+  if (Get-Command neofetch -ErrorAction SilentlyContinue) {
+    neofetch
+  }
 }
 
 if (Get-Command starship -ErrorAction SilentlyContinue) {

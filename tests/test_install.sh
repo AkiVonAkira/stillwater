@@ -402,6 +402,7 @@ printf '%s\n' "$out" | grep -q 'Installed Starship.' || fail "should install Sta
 grep -q '#5aa8b4' "$TMP/.config/starship.toml" || fail "starship.toml should map Stillwater accent"
 grep -q 'starship init powershell' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "PowerShell profile should init starship"
 grep -q 'neofetch' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "PowerShell profile should run neofetch"
+grep -q 'WT_SESSION' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "neofetch should require a Windows Terminal session"
 printf '%s\n' "$out" | grep -q 'Open a new PowerShell tab.' || fail "Starship next step"
 
 case "$(stillwater_platform)" in
