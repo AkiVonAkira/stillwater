@@ -4,6 +4,10 @@ try {
   if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) { return }
 } catch { }
 
+if (Get-Command neofetch -ErrorAction SilentlyContinue) {
+  neofetch
+}
+
 if (Get-Command starship -ErrorAction SilentlyContinue) {
   Invoke-Expression (& starship init powershell)
 }
