@@ -4,8 +4,13 @@ try {
   if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) { return }
 } catch { }
 
-if ($env:WT_SESSION -and -not $env:CURSOR_AGENT) {
-  if (Get-Command neofetch -ErrorAction SilentlyContinue) {
+if ($env:WT_SESSION -and -not $env:CURSOR_AGENT -and -not $env:STILLWATER_FETCHED) {
+  $env:STILLWATER_FETCHED = "1"
+  $extra = [Environment]::GetCommandLineArgs() | Select-Object -Skip 1
+  $scripted = $extra | Where-Object {
+    $_ -like '*.ps1' -or $_ -match '^(?i)-+(f|c|file|command|encodedcommand)$'
+  }
+  if (-not $scripted -and (Get-Command neofetch -ErrorAction SilentlyContinue)) {
     neofetch
   }
 }

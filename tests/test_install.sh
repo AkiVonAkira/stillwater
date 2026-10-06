@@ -403,6 +403,8 @@ grep -q '#5aa8b4' "$TMP/.config/starship.toml" || fail "starship.toml should map
 grep -q 'starship init powershell' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "PowerShell profile should init starship"
 grep -q 'neofetch' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "PowerShell profile should run neofetch"
 grep -q 'WT_SESSION' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "neofetch should require a Windows Terminal session"
+grep -q 'STILLWATER_FETCHED' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "neofetch should run once per Windows Terminal tab"
+grep -q 'GetCommandLineArgs' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "neofetch should skip scripted pwsh launches"
 printf '%s\n' "$out" | grep -q 'Open a new PowerShell tab.' || fail "Starship next step"
 
 case "$(stillwater_platform)" in
