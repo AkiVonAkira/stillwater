@@ -1,0 +1,44 @@
+# Stillwater. kayzel.
+# version 1.0.0
+# Warm gruvbox surfaces, muted cyan accent.
+
+add_newline = false
+palette = "stillwater"
+
+format = """
+$directory$git_branch$cmd_duration
+$character"""
+
+[palettes.stillwater]
+dir_bg = "#222526"
+git_bg = "#1a1c1d"
+time_bg = "#3c3836"
+dir_fg = "#c4a489"
+git_fg = "#5aa8b4"
+time_fg = "#d9c679"
+crimson = "#f44747"
+
+[directory]
+style = "fg:dir_fg bg:dir_bg bold"
+truncation_length = 3
+truncation_symbol = "…/"
+read_only = " 󰌾"
+read_only_style = "fg:crimson bg:dir_bg bold"
+format = "[](fg:dir_bg)[󰉋 $path ]($style)[$read_only]($read_only_style)[](fg:dir_bg) "
+
+[git_branch]
+symbol = "󰊢 "
+style = "fg:git_fg bg:git_bg bold"
+format = "[](fg:git_bg)[$symbol$branch ]($style)[](fg:git_bg) "
+
+[cmd_duration]
+min_time = 500
+style = "fg:time_fg bg:time_bg bold"
+format = "[](fg:time_bg)[󰔚 $duration ]($style)[](fg:time_bg) "
+
+[character]
+success_symbol = "[λ ](bold fg:dir_fg)"
+error_symbol = "[λ ](bold fg:crimson)"
+
+[package]
+disabled = true
