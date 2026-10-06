@@ -22,7 +22,9 @@ profile_dest() {
 }
 
 found() {
-  if stillwater_any_cmd pwsh powershell; then
+  # Profile path is Documents/PowerShell, which is Windows PowerShell 7.
+  # Host pwsh on Linux (including GitHub-hosted Ubuntu) is not that install.
+  if [[ "$(stillwater_platform)" == windows ]] && stillwater_any_cmd pwsh powershell; then
     return 0
   fi
   stillwater_any_dir "$HOME/Documents/PowerShell"

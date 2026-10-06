@@ -24,7 +24,9 @@ function Get-StarshipProfileDest {
 }
 
 function Test-StarshipFound {
-  if (Test-StillwaterAnyCommand @("pwsh", "powershell")) { return $true }
+  if ((Get-StillwaterPlatform) -eq "windows" -and (Test-StillwaterAnyCommand @("pwsh", "powershell"))) {
+    return $true
+  }
   $docs = Join-Path $env:USERPROFILE "Documents\PowerShell"
   return (Test-Path -LiteralPath $docs -PathType Container)
 }
