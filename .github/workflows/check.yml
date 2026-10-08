@@ -18,7 +18,7 @@ jobs:
         run: npm ci
       - name: Validate JSON
         run: |
-          node --input-type=commonjs -e "const fs=require('fs'); for (const file of ['palette.json','vscode/package.json','t3/stillwater.json','ryoku/scheme.json','ryoku/meta.json']) JSON.parse(fs.readFileSync(file,'utf8'));"
+          node --input-type=commonjs -e "const fs=require('fs'); for (const file of ['palette.json','vscode/package.json','t3/stillwater.json','voltius/stillwater.json','ryoku/scheme.json','ryoku/meta.json']) JSON.parse(fs.readFileSync(file,'utf8'));"
       - name: Check versions
         run: |
           node --input-type=commonjs <<'EOF'

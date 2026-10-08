@@ -37,6 +37,7 @@ pwsh .\install.ps1 cursor t3
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
 - [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)
+- [Voltius](https://voltius.app)
 - [Starship](https://starship.rs) (Windows PowerShell)
 - [Windows Terminal](https://aka.ms/terminal)
 - [YASB](https://github.com/amnweb/yasb)
@@ -50,6 +51,10 @@ pwsh .\install.ps1 cursor t3
 - [Cursor](https://cursor.com)
 - [VSCodium](https://vscodium.com)
 - [Windsurf](https://windsurf.com)
+
+### Voltius
+
+Press `Ctrl+K`, choose **Import themes**, select the themes section, choose `voltius/stillwater.json`, and apply it. Importing the themes section replaces the current custom themes list.
 
 ## Credits
 

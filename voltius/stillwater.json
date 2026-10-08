@@ -1,0 +1,79 @@
+{
+  "type": "voltius-user-data",
+  "version": 2,
+  "exported_at": "2026-10-08T00:00:00.000Z",
+  "sections": {
+    "themes": {
+      "updated_at": "2026-10-08T00:00:00.000Z",
+      "data": {
+        "activeThemeId": "stillwater",
+        "customThemes": [
+          {
+            "id": "stillwater",
+            "name": "Stillwater",
+            "builtIn": false,
+            "uiFontFamily": "'Inter Variable', system-ui, sans-serif",
+            "uiFontSize": 14,
+            "terminalFontFamily": "'Source Code Pro', monospace",
+            "terminalFontSize": 14,
+            "ui": {
+              "bgTerminal": "#1d2021",
+              "bgStatusBar": "#1a1c1d",
+              "bgBase": "#1d2021",
+              "bgToolbar": "#222526",
+              "bgCard": "#222526",
+              "bgCardHover": "#1a1c1d",
+              "bgCardAvatar": "#3d7a88",
+              "bgInput": "#1a1c1d",
+              "bgInputHover": "#222526",
+              "bgElevated": "#222526",
+              "bgModal": "#1a1c1d",
+              "border": "#3c3836",
+              "borderHover": "#3d7a88",
+              "textDim": "#88846F",
+              "textMuted": "#8f8f99",
+              "textSecondary": "#c4a489",
+              "textPrimary": "#ebdbb2",
+              "textBright": "#F8F8F2",
+              "accent": "#5aa8b4",
+              "accentHover": "#6ebcc6",
+              "tabBg": "#1a1c1d",
+              "tabActiveBg": "#222526",
+              "tabActiveText": "#ebdbb2",
+              "tabActiveBorder": "#5aa8b4",
+              "vaultTabBg": "#1d2021",
+              "vaultTabActiveBg": "#222526",
+              "statusConnected": "#A6E22E",
+              "statusError": "#f44747",
+              "statusConnecting": "#d9c679",
+              "statusWarning": "#d9c679",
+              "textNotice": "#66D9EF"
+            },
+            "terminal": {
+              "background": "#1d2021",
+              "foreground": "#ebdbb2",
+              "cursor": "#5aa8b4",
+              "selectionBackground": "#3a4e64",
+              "black": "#1a1c1d",
+              "red": "#f44747",
+              "green": "#A6E22E",
+              "yellow": "#E6DB74",
+              "blue": "#66D9EF",
+              "magenta": "#F92672",
+              "cyan": "#66D9EF",
+              "white": "#ebdbb2",
+              "brightBlack": "#8f8f99",
+              "brightRed": "#f44747",
+              "brightGreen": "#A6E22E",
+              "brightYellow": "#d9c679",
+              "brightBlue": "#6ebcc6",
+              "brightMagenta": "#AE81FF",
+              "brightCyan": "#66D9EF",
+              "brightWhite": "#F8F8F2"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
