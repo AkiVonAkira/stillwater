@@ -11,6 +11,23 @@ shift || true
 ID="ryoku"
 LABEL="Ryoku"
 
+FISH_SRC="$ROOT/ryoku/stillwater.fish"
+
+# Ryoku's config.fish pins its own syntax colours and sources user.fish last.
+apply_fish() {
+  local dir="$XDG_CONFIG_HOME/fish"
+  local user="$dir/user.fish"
+  [[ -d "$dir" ]] || return 0
+  stillwater_copy_file "$FISH_SRC" "$dir/stillwater.fish"
+  if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
+    return 0
+  fi
+  if [[ ! -f "$user" ]] || ! grep -q 'stillwater.fish' "$user"; then
+    printf '%s
+' 'source $__fish_config_dir/stillwater.fish' >>"$user"
+  fi
+}
+
 found() {
   if stillwater_has_cmd ryoku-shell; then
     return 0
@@ -57,6 +74,7 @@ case "$ACTION" in
       sed 's/"followWallpaper"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"followWallpaper": false/' "$theme_json" >"$tmp"
       mv "$tmp" "$theme_json"
     fi
+    apply_fish
     if stillwater_has_cmd ryoku-shell; then
       stillwater_run ryoku-shell theme stillwater || true
     fi

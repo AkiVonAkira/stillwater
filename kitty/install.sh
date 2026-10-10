@@ -56,6 +56,14 @@ apply_kitty() {
   if [[ "${STILLWATER_DRY_RUN:-0}" == 1 ]]; then
     return 0
   fi
+  # Ryoku re-renders current-theme.conf on every theme change, but never ships user.conf.
+  if [[ -f "$conf" ]] && grep -q 'include user.conf' "$conf"; then
+    if [[ ! -f "$dir/user.conf" ]] || ! grep -q 'themes/Stillwater.conf' "$dir/user.conf"; then
+      printf '%s
+' 'include themes/Stillwater.conf' >>"$dir/user.conf"
+    fi
+    return 0
+  fi
   if [[ -f "$dir/current-theme.conf" ]] || { [[ -f "$conf" ]] && grep -q 'current-theme.conf' "$conf"; }; then
     stillwater_copy_file "$SRC" "$dir/current-theme.conf"
     return 0
@@ -75,7 +83,7 @@ case "$ACTION" in
     dir="$(config_dir)"
     pairs=("$SRC" "$dest")
     dests=("$dest")
-    if [[ -f "$dest" && -f "$dir/current-theme.conf" ]]; then
+    if [[ -f "$dest" && -f "$dir/current-theme.conf" ]] && ! grep -q 'include user.conf' "$dir/kitty.conf" 2>/dev/null; then
       pairs+=("$SRC" "$dir/current-theme.conf")
       dests+=("$dir/current-theme.conf")
     fi

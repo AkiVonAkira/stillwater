@@ -368,6 +368,26 @@ printf '%s\n' "$out" | grep -q 'Installed Kitty.' || fail "should install Kitty"
 grep -q 'themes/Stillwater.conf' "$TMP/.config/kitty/kitty.conf" || fail "Kitty config should include Stillwater"
 grep -q "#5aa8b4" "$TMP/.config/kitty/themes/Stillwater.conf" || fail "Kitty theme should map Stillwater accent"
 
+# Ryoku re-renders current-theme.conf, so Stillwater goes in user.conf.
+printf '%s
+' 'include current-theme.conf' 'globinclude user.conf' >"$TMP/.config/kitty/kitty.conf"
+printf '%s
+' 'background #000000' >"$TMP/.config/kitty/current-theme.conf"
+"$BASH_EXE" "$ROOT/install.sh" kitty >/dev/null
+"$BASH_EXE" "$ROOT/install.sh" kitty >/dev/null
+[[ "$(grep -c 'themes/Stillwater.conf' "$TMP/.config/kitty/user.conf")" == 1 ]] || fail "Ryoku kitty should include Stillwater once in user.conf"
+grep -q '#000000' "$TMP/.config/kitty/current-theme.conf" || fail "Ryoku kitty should leave current-theme.conf to matugen"
+if [[ "$(stillwater_platform)" == linux ]]; then
+  mkdir -p "$TMP/.config/fish" "$TMP/.local/share/ryoku"
+  printf '%s
+' 'set -g foo bar' >"$TMP/.config/fish/user.fish"
+  "$BASH_EXE" "$ROOT/install.sh" ryoku >/dev/null
+  "$BASH_EXE" "$ROOT/install.sh" ryoku >/dev/null
+  grep -q 'fish_color_command 5aa8b4' "$TMP/.config/fish/stillwater.fish" || fail "Ryoku fish palette missing"
+  [[ "$(grep -c 'stillwater.fish' "$TMP/.config/fish/user.fish")" == 1 ]] || fail "user.fish should source Stillwater once"
+  grep -q 'set -g foo bar' "$TMP/.config/fish/user.fish" || fail "user.fish should keep the user's lines"
+fi
+
 mkdir -p "$TMP/.config/ghostty"
 printf '%s\n' 'theme = something' >"$TMP/.config/ghostty/config"
 out="$("$BASH_EXE" "$ROOT/install.sh" ghostty)"
