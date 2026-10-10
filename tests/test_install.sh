@@ -369,18 +369,15 @@ grep -q 'themes/Stillwater.conf' "$TMP/.config/kitty/kitty.conf" || fail "Kitty 
 grep -q "#5aa8b4" "$TMP/.config/kitty/themes/Stillwater.conf" || fail "Kitty theme should map Stillwater accent"
 
 # Ryoku re-renders current-theme.conf, so Stillwater goes in user.conf.
-printf '%s
-' 'include current-theme.conf' 'globinclude user.conf' >"$TMP/.config/kitty/kitty.conf"
-printf '%s
-' 'background #000000' >"$TMP/.config/kitty/current-theme.conf"
+printf '%s\n' 'include current-theme.conf' 'globinclude user.conf' >"$TMP/.config/kitty/kitty.conf"
+printf '%s\n' 'background #000000' >"$TMP/.config/kitty/current-theme.conf"
 "$BASH_EXE" "$ROOT/install.sh" kitty >/dev/null
 "$BASH_EXE" "$ROOT/install.sh" kitty >/dev/null
 [[ "$(grep -c 'themes/Stillwater.conf' "$TMP/.config/kitty/user.conf")" == 1 ]] || fail "Ryoku kitty should include Stillwater once in user.conf"
 grep -q '#000000' "$TMP/.config/kitty/current-theme.conf" || fail "Ryoku kitty should leave current-theme.conf to matugen"
 if [[ "$(stillwater_platform)" == linux ]]; then
   mkdir -p "$TMP/.config/fish" "$TMP/.local/share/ryoku"
-  printf '%s
-' 'set -g foo bar' >"$TMP/.config/fish/user.fish"
+  printf '%s\n' 'set -g foo bar' >"$TMP/.config/fish/user.fish"
   "$BASH_EXE" "$ROOT/install.sh" ryoku >/dev/null
   "$BASH_EXE" "$ROOT/install.sh" ryoku >/dev/null
   grep -q 'fish_color_command 5aa8b4' "$TMP/.config/fish/stillwater.fish" || fail "Ryoku fish palette missing"
@@ -408,11 +405,9 @@ printf '%s\n' "$out" | grep -q 'Installed btop.' || fail "should install btop"
 grep -q 'color_theme = "stillwater"' "$TMP/.config/btop/btop.conf" || fail "btop.conf should set stillwater"
 grep -q "#5aa8b4" "$TMP/.config/btop/themes/stillwater.theme" || fail "btop theme should map Stillwater accent"
 mkdir -p "$TMP/.config/fastfetch"
-printf '%s
-' '{ "logo": { "type": "kitty-direct" } }' >"$TMP/.config/fastfetch/config.jsonc"
+printf '%s\n' '{ "logo": { "type": "kitty-direct" } }' >"$TMP/.config/fastfetch/config.jsonc"
 out="$("$BASH_EXE" "$ROOT/install.sh" fastfetch)"
-printf '%s
-' "$out" | grep -q 'Installed fastfetch.' || fail "should install fastfetch"
+printf '%s\n' "$out" | grep -q 'Installed fastfetch.' || fail "should install fastfetch"
 grep -q 'Stillwater fastfetch' "$TMP/.config/fastfetch/config.jsonc" || fail "fastfetch config missing"
 grep -q 'kitty-direct' "$TMP/.config/fastfetch/config.jsonc.bak" || fail "fastfetch should keep the replaced config"
 grep -q '38;2;90;168;180' "$TMP/.config/fastfetch/config.jsonc" || fail "fastfetch keys should use Stillwater accent"
