@@ -1,6 +1,7 @@
 # Stillwater. kayzel.
 # version 1.0.0
 # Warm gruvbox surfaces, muted cyan accent.
+# Icons stay in the BMP: Windows ConPTY counts supplementary-plane icons as two cells and shifts the cap.
 
 add_newline = false
 palette = "stillwater"
@@ -22,19 +23,19 @@ crimson = "#f44747"
 style = "fg:dir_fg bg:dir_bg bold"
 truncation_length = 3
 truncation_symbol = "…/"
-read_only = " 󰌾"
+read_only = " "
 read_only_style = "fg:crimson bg:dir_bg bold"
-format = "[](fg:dir_bg)[󰉋 $path ]($style)[$read_only]($read_only_style)[](fg:dir_bg) "
+format = "[](fg:dir_bg)[ $path ]($style)[$read_only]($read_only_style)[](fg:dir_bg) "
 
 [git_branch]
-symbol = "󰊢 "
+symbol = " "
 style = "fg:git_fg bg:git_bg bold"
 format = "[](fg:git_bg)[$symbol$branch ]($style)[](fg:git_bg) "
 
 [cmd_duration]
 min_time = 500
 style = "fg:time_fg bg:time_bg bold"
-format = "[](fg:time_bg)[󰔚 $duration ]($style)[](fg:time_bg) "
+format = "[](fg:time_bg)[ $duration ]($style)[](fg:time_bg) "
 
 [character]
 success_symbol = "[λ ](bold fg:dir_fg)"

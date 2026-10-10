@@ -31,7 +31,19 @@
       "type": "command",
       "key": " ",
       "keyWidth": 1,
-      "text": ". /etc/os-release 2>/dev/null; n=\"${NAME:-Linux}\"; seal=\"\"; if command -v ryoku >/dev/null 2>&1; then n=Ryoku; seal=\" · 力\"; fi; c=\"$(hostnamectl chassis 2>/dev/null)\"; up() { printf '%s' \"$1\" | tr '[:lower:]' '[:upper:]'; }; printf '\u001b[38;2;90;168;180m■\u001b[0m \u001b[38;2;143;143;153m%s%s%s\u001b[0m' \"$(up \"$n\")\" \"$seal\" \"${c:+ · $(up \"$c\")}\""
+      "text": ". /etc/os-release 2>/dev/null; n=\"${NAME:-Linux}\"; seal=\"\"; if command -v ryoku >/dev/null 2>&1; then n=Ryoku; seal=\" · 力\"; fi; c=\"$(hostnamectl chassis 2>/dev/null)\"; up() { printf '%s' \"$1\" | tr '[:lower:]' '[:upper:]'; }; printf '\u001b[38;2;90;168;180m■\u001b[0m \u001b[38;2;143;143;153m%s%s%s\u001b[0m' \"$(up \"$n\")\" \"$seal\" \"${c:+ · $(up \"$c\")}\"",
+      "condition": {
+        "!system": "Windows"
+      }
+    },
+    {
+      "type": "os",
+      "key": " ",
+      "keyWidth": 1,
+      "format": "\u001b[38;2;90;168;180m■\u001b[0m \u001b[38;2;143;143;153mWINDOWS {version}\u001b[0m",
+      "condition": {
+        "system": "Windows"
+      }
     },
     "break",
     {
@@ -64,12 +76,26 @@
     {
       "type": "command",
       "key": "OS",
-      "text": "if command -v ryoku >/dev/null 2>&1; then echo \"Ryoku $(ryoku version --pretty 2>/dev/null)\"; else . /etc/os-release && echo \"$PRETTY_NAME\"; fi"
+      "text": "if command -v ryoku >/dev/null 2>&1; then echo \"Ryoku $(ryoku version --pretty 2>/dev/null)\"; else . /etc/os-release && echo \"$PRETTY_NAME\"; fi",
+      "condition": {
+        "!system": "Windows"
+      }
+    },
+    {
+      "type": "os",
+      "key": "OS",
+      "format": "{pretty-name}",
+      "condition": {
+        "system": "Windows"
+      }
     },
     {
       "type": "command",
       "key": "BRANCH",
-      "text": "ryoku version --branch 2>/dev/null"
+      "text": "ryoku version --branch 2>/dev/null",
+      "condition": {
+        "!system": "Windows"
+      }
     },
     {
       "type": "kernel",
@@ -82,7 +108,17 @@
     {
       "type": "command",
       "key": "SHELL",
-      "text": "basename \"${SHELL:-unknown}\""
+      "text": "basename \"${SHELL:-unknown}\"",
+      "condition": {
+        "!system": "Windows"
+      }
+    },
+    {
+      "type": "shell",
+      "key": "SHELL",
+      "condition": {
+        "system": "Windows"
+      }
     },
     {
       "type": "packages",
@@ -100,7 +136,10 @@
     {
       "type": "command",
       "key": "AGE",
-      "text": "echo $(( ($(date +%s) - $(stat -c %W /)) / 86400 )) days"
+      "text": "echo $(( ($(date +%s) - $(stat -c %W /)) / 86400 )) days",
+      "condition": {
+        "!system": "Windows"
+      }
     },
     {
       "type": "terminal",

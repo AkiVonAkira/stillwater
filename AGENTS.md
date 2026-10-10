@@ -32,4 +32,4 @@ Theme CSS for Electron apps (Vencord, Equicord, Spicetify) has to stay cheap. Br
 
 ## Shell profile
 
-The fetch banner shows once per Windows Terminal tab. It never shows in agent shells or in `-File` or `-Command` launches.
+The fetch banner shows once per interactive terminal tab, Windows Terminal or Voltius alike. It never shows in agent shells or in `-File` or `-Command` launches. Starship icons stay in the BMP, because ConPTY counts supplementary-plane icons as two cells and shifts the pill's right cap.
