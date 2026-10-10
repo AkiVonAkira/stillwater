@@ -28,8 +28,10 @@
       "format": "\u001b[1;38;2;235;219;178m{user-name}\u001b[0m\u001b[38;2;143;143;153m @ \u001b[0m\u001b[1;38;2;235;219;178m{host-name}\u001b[0m"
     },
     {
-      "type": "custom",
-      "format": "\u001b[38;2;90;168;180m■\u001b[0m \u001b[38;2;143;143;153mSTILLWATER · 静水\u001b[0m"
+      "type": "command",
+      "key": " ",
+      "keyWidth": 1,
+      "text": ". /etc/os-release 2>/dev/null; n=\"${NAME:-Linux}\"; seal=\"\"; if command -v ryoku >/dev/null 2>&1; then n=Ryoku; seal=\" · 力\"; fi; c=\"$(hostnamectl chassis 2>/dev/null)\"; up() { printf '%s' \"$1\" | tr '[:lower:]' '[:upper:]'; }; printf '\u001b[38;2;90;168;180m■\u001b[0m \u001b[38;2;143;143;153m%s%s%s\u001b[0m' \"$(up \"$n\")\" \"$seal\" \"${c:+ · $(up \"$c\")}\""
     },
     "break",
     {
