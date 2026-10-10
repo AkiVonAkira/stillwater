@@ -14,7 +14,7 @@
             "builtIn": false,
             "uiFontFamily": "'Inter Variable', system-ui, sans-serif",
             "uiFontSize": 14,
-            "terminalFontFamily": "'Source Code Pro', monospace",
+            "terminalFontFamily": "'CaskaydiaCove Nerd Font', 'CaskaydiaCove NF', monospace",
             "terminalFontSize": 14,
             "ui": {
               "bgTerminal": "#1d2021",
