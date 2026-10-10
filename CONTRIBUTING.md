@@ -1,6 +1,6 @@
 # Contributing
 
-Work lands on `main` through pull requests. Do not push to `main`. Do not open empty or placeholder PRs.
+Small fixes push straight to `main`. A new adapter, a new feature, or a large change lands through a pull request. Do not open empty or placeholder PRs.
 
 ## Rules
 
