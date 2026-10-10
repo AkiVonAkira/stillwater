@@ -24,6 +24,7 @@ pwsh .\install.ps1 cursor t3
 
 - [btop](https://github.com/aristocratos/btop)
 - [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop)
+- [fastfetch](https://github.com/fastfetch-cli/fastfetch)
 - [Ghostty](https://ghostty.org)
 - [Harbor](https://github.com/harborstremio/harbor)
 - [Helix](https://helix-editor.com)

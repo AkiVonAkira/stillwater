@@ -35,6 +35,8 @@ jobs:
           if (!spice.includes("version " + spec.version)) throw new Error("spicetify version mismatch");
           const harbor = fs.readFileSync("harbor/Stillwater.harborstyle", "utf8");
           if (!harbor.includes("# version " + spec.version)) throw new Error("harbor version mismatch");
+          const ff = fs.readFileSync("fastfetch/config.jsonc", "utf8");
+          if (!ff.includes("@version " + spec.version)) throw new Error("fastfetch version mismatch");
           EOF
       - name: Rebuild CSS
         run: |

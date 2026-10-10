@@ -293,6 +293,7 @@ function Get-StillwaterNextStep([string]$Id) {
     "ghostty" { return "Set theme = Stillwater in Ghostty config." }
     "harbor" { return "Import Stillwater.harborstyle under Settings, Theme & appearance." }
     "btop" { return "Set color_theme to stillwater in btop.conf." }
+    "fastfetch" { return "Open a new shell." }
     "windows-terminal" { return "Set the color scheme to Stillwater." }
     "starship" { return "Open a new PowerShell tab." }
     default { return "" }

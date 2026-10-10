@@ -389,6 +389,9 @@ stillwater_next_step() {
     btop)
       printf 'Set color_theme to stillwater in btop.conf.'
       ;;
+    fastfetch)
+      printf 'Open a new shell.'
+      ;;
     windows-terminal)
       printf 'Set the color scheme to Stillwater.'
       ;;

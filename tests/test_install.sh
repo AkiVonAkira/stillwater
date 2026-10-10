@@ -387,6 +387,16 @@ printf '%s\n' "$out" | grep -q 'Installed btop.' || fail "should install btop"
 [[ -f "$TMP/.config/btop/themes/stillwater.theme" ]] || fail "btop theme missing"
 grep -q 'color_theme = "stillwater"' "$TMP/.config/btop/btop.conf" || fail "btop.conf should set stillwater"
 grep -q "#5aa8b4" "$TMP/.config/btop/themes/stillwater.theme" || fail "btop theme should map Stillwater accent"
+mkdir -p "$TMP/.config/fastfetch"
+printf '%s
+' '{ "logo": { "type": "kitty-direct" } }' >"$TMP/.config/fastfetch/config.jsonc"
+out="$("$BASH_EXE" "$ROOT/install.sh" fastfetch)"
+printf '%s
+' "$out" | grep -q 'Installed fastfetch.' || fail "should install fastfetch"
+grep -q 'Stillwater fastfetch' "$TMP/.config/fastfetch/config.jsonc" || fail "fastfetch config missing"
+grep -q 'kitty-direct' "$TMP/.config/fastfetch/config.jsonc.bak" || fail "fastfetch should keep the replaced config"
+grep -q '38;2;90;168;180' "$TMP/.config/fastfetch/config.jsonc" || fail "fastfetch keys should use Stillwater accent"
+[[ "$(stillwater_peek_version "$ROOT/fastfetch/config.jsonc")" == 1.0.0 ]] || fail "peek fastfetch version"
 
 mkdir -p "$TMP/AppData/Local/Microsoft/Windows Terminal"
 out="$("$BASH_EXE" "$ROOT/install.sh" windows-terminal)"
