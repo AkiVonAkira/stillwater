@@ -369,6 +369,9 @@ body {
  * and Discord's 12px banner frame no longer leaves corners inside the 16px clip. */
 .sidebarList__5e434 {
     border-radius: var(--radius-lg);
+    /* The desktop client composites the banner and its blurred glass apart from
+     * the list, and a rounded overflow clip does not reach them there; clip-path does. */
+    clip-path: inset(0 round var(--radius-lg));
 }
 .header_f37cb1,
 .bannerVisible_f37cb1 .header_f37cb1,
