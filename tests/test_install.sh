@@ -82,6 +82,11 @@ stillwater_picker_theme_into t 0
 [[ "$t" == switch ]] || fail "a new base on an installed app is a switch"
 [[ "$(stillwater_picker_action found switch)" == Switch ]] || fail "switch label"
 [[ "$(stillwater_job_verb switch ok)" == switched ]] || fail "switch done is switched"
+SW_STRIP_MODE=full
+SW_W_STRIP=0
+SW_ACCENT="<accent>" SW_ACCENT_DEEP="<deep>" SW_MUTED="<muted>" stillwater_picker_strip_into strip 0 1
+[[ "$strip" == *"<deep>Midnight"* ]] || fail "on a switch the installed base should keep the Up to date color"
+[[ "$strip" == *"<accent>Comfy (Outdated)"* ]] || fail "on a switch the chosen base should be the accent"
 stillwater_picker_cycle_base 0 1
 [[ "$(stillwater_picker_base_key 0)" == base ]] || fail "right from the last base wraps to the first"
 stillwater_picker_cycle_base 0 1
