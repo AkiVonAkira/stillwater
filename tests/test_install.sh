@@ -139,6 +139,8 @@ unset COLUMNS LINES
 stillwater_base_valid "base=Base,comfy=Comfy (Outdated)" comfy || fail "comfy is a valid base"
 if stillwater_base_valid "base=Base" comfy; then fail "comfy is not in that spec"; fi
 [[ "$(stillwater_peek_version "$ROOT/spicetify/color.ini")" == 1.0.0 ]] || fail "peek spicetify ini version"
+[[ "$(stillwater_peek_base "$ROOT/spicetify/dribbblish/user.css")" == dribbblish ]] || fail "spicetify dribbblish should stamp its base"
+[[ "$(stillwater_peek_base "$ROOT/spicetify/base/user.css")" == base ]] || fail "spicetify base should stamp its base"
 [[ "$(stillwater_peek_version "$ROOT/obsidian/manifest.json")" == 1.0.0 ]] || fail "peek obsidian manifest version"
 [[ "$(stillwater_peek_version "$ROOT/prism/theme.json")" == 1.0.0 ]] || fail "peek prism theme version"
 [[ "$(stillwater_peek_version "$ROOT/yasb/root.css")" == 1.0.0 ]] || fail "peek yasb @version"
@@ -312,6 +314,22 @@ dest="$TMP/.config/spicetify/Themes/stillwater"
 grep -q "spicetify-themes@master/Dribbblish" "$dest/user.css" || fail "Spicetify CSS should import Dribbblish"
 grep -q "Dribbblish/theme.js" "$dest/theme.js" || fail "Spicetify JS should load Dribbblish"
 grep -q "5aa8b4" "$dest/color.ini" || fail "Spicetify colors should map Stillwater accent"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Spicetify[[:space:]]+found[[:space:]]+current[[:space:]]+dribbblish' || fail "Spicetify should default to Dribbblish"
+out="$("$BASH_EXE" "$ROOT/install.sh" spicetify:base)"
+printf '%s\n' "$out" | grep -q 'Installed Spicetify on Base.' || fail "should install Spicetify on Base"
+[[ ! -f "$dest/theme.js" ]] || fail "Base should drop Dribbblish's theme.js"
+grep -q '@base base' "$dest/user.css" || fail "Base user.css should be installed"
+if grep -q 'Dribbblish/user.css' "$dest/user.css"; then fail "Base should not import Dribbblish"; fi
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Spicetify[[:space:]]+found[[:space:]]+current[[:space:]]+base' || fail "installed Base should be current"
+"$BASH_EXE" "$ROOT/install.sh" spicetify:dribbblish >/dev/null
+[[ -f "$dest/theme.js" ]] || fail "Dribbblish should bring theme.js back"
+printf '%s\n' '/* Stillwater Spicetify adapter. Chrome from Dribbblish */' >"$dest/user.css"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Spicetify[[:space:]]+found[[:space:]]+update[[:space:]]+[^[:space:]]*.*dribbblish' || fail "an unstamped install is the old Dribbblish theme"
+"$BASH_EXE" "$ROOT/install.sh" spicetify >/dev/null
+grep -q '@base dribbblish' "$dest/user.css" || fail "updating an unstamped install should stamp Dribbblish"
 
 mkdir -p "$TMP/.t3"
 out="$("$BASH_EXE" "$ROOT/install.sh" t3)"

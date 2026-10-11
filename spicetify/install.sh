@@ -10,6 +10,34 @@ ACTION="${1:-install}"
 shift || true
 ID="spicetify"
 LABEL="Spicetify"
+BASES="base=Base,dribbblish=Dribbblish"
+DEFAULT_BASE=dribbblish
+
+# Installs from before base themes carry no stamp, and they were Dribbblish.
+installed_base() {
+  local css="$1/user.css" base
+  if [[ ! -f "$css" ]]; then
+    printf '%s\n' "$DEFAULT_BASE"
+    return 0
+  fi
+  base="$(stillwater_peek_base "$css")"
+  printf '%s\n' "${base:-dribbblish}"
+}
+
+# Base is color.ini and a stub user.css; Dribbblish adds its theme.js.
+payload_state() {
+  local dest="$1" base="$2"
+  if [[ "$base" == dribbblish ]]; then
+    stillwater_payload_state \
+      "$ROOT/spicetify/color.ini" "$dest/color.ini" \
+      "$ROOT/spicetify/dribbblish/user.css" "$dest/user.css" \
+      "$ROOT/spicetify/dribbblish/theme.js" "$dest/theme.js"
+  else
+    stillwater_payload_state \
+      "$ROOT/spicetify/color.ini" "$dest/color.ini" \
+      "$ROOT/spicetify/$base/user.css" "$dest/user.css"
+  fi
+}
 
 detect_dirs() {
   printf '%s\n' "$XDG_CONFIG_HOME/spicetify" "$APPDATA/spicetify"
@@ -58,25 +86,37 @@ case "$ACTION" in
       app="found"
     fi
     dest="$(dest_dir)"
-    stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(stillwater_payload_state \
-      "$ROOT/spicetify/color.ini" "$dest/color.ini" \
-      "$ROOT/spicetify/user.css" "$dest/user.css" \
-      "$ROOT/spicetify/theme.js" "$dest/theme.js")" \
-      "$dest"
+    base="$(installed_base "$dest")"
+    SW_STATUS_BASES="$BASES" SW_STATUS_BASE="$base" \
+      stillwater_print_copy_status "$ID" "$LABEL" "$app" "$(payload_state "$dest" "$base")" "$dest"
     ;;
   owns)
     [[ "${1:-}" == "$ID" ]]
     ;;
   install)
     [[ "${1:-}" == "$ID" ]]
+    base="${2:-$DEFAULT_BASE}"
+    if ! stillwater_base_valid "$BASES" "$base"; then
+      echo "Unknown base: $base" >&2
+      exit 1
+    fi
+    js=0
+    if [[ "$base" == dribbblish ]]; then
+      js=1
+    fi
     dest="$(dest_dir)"
     if [[ "${STILLWATER_DRY_RUN:-0}" != 1 ]]; then
       mkdir -p "$dest"
-      cp -a "$ROOT/spicetify/color.ini" "$ROOT/spicetify/user.css" "$ROOT/spicetify/theme.js" "$dest/"
+      cp -a "$ROOT/spicetify/color.ini" "$ROOT/spicetify/$base/user.css" "$dest/"
+      if [[ "$js" == 1 ]]; then
+        cp -a "$ROOT/spicetify/$base/theme.js" "$dest/"
+      else
+        rm -f "$dest/theme.js"
+      fi
     fi
     if stillwater_has_cmd spicetify; then
       stillwater_run spicetify config current_theme stillwater color_scheme stillwater || true
-      stillwater_run spicetify config inject_css 1 replace_colors 1 overwrite_assets 1 inject_theme_js 1 || true
+      stillwater_run spicetify config inject_css 1 replace_colors 1 overwrite_assets 1 inject_theme_js "$js" || true
       stillwater_run spicetify apply || true
     fi
     printf '%s\n' "$dest"

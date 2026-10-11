@@ -1,5 +1,6 @@
 /* Stillwater Spicetify adapter. Chrome from Dribbblish:
  * https://github.com/spicetify/spicetify-themes (MIT)
+ * @base dribbblish
  */
 @import url("https://cdn.jsdelivr.net/gh/spicetify/spicetify-themes@master/Dribbblish/user.css");
 
