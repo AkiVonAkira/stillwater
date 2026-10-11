@@ -27,13 +27,40 @@ function Get-AdapterScripts {
   }
 }
 
-function Get-StillwaterStatus {
-  $rows = @(
-    foreach ($script in Get-AdapterScripts) {
-      & $script -Action status
+# Runs every adapter's status at once and keeps the result, with the adapter
+# that printed each id, so nothing asks the adapters twice. -Skeleton draws the
+# picker frame while the adapters answer.
+$script:StatusRows = $null
+$script:StatusOwners = @{}
+function Import-StillwaterStatus([switch]$Skeleton) {
+  if ($null -ne $script:StatusRows) { return }
+  $scripts = @(Get-AdapterScripts)
+  if ($Skeleton) {
+    Show-StillwaterLoading $null $scripts
+  }
+  $job = $scripts | ForEach-Object -AsJob -ThrottleLimit ([Math]::Max(2, [Environment]::ProcessorCount)) -Parallel {
+    [pscustomobject]@{ Script = $_; Rows = @(& $_ -Action status 2>$null) }
+  }
+  if ($Skeleton) {
+    Show-StillwaterLoading $job $scripts
+  }
+  $null = Wait-Job $job
+  $results = @(Receive-Job $job -ErrorAction SilentlyContinue)
+  Remove-Job $job
+  $rows = @()
+  foreach ($result in $results) {
+    foreach ($row in $result.Rows) {
+      if (-not $row) { continue }
+      $rows += [string]$row
+      $script:StatusOwners[([string]$row).Split("|")[0]] = $result.Script
     }
-  )
-  Sort-StillwaterStatus $rows
+  }
+  $script:StatusRows = @(Sort-StillwaterStatus $rows)
+}
+
+function Get-StillwaterStatus {
+  Import-StillwaterStatus
+  $script:StatusRows
 }
 
 function Split-StillwaterStatusRow([string]$Row) {
@@ -75,12 +102,12 @@ if ($List) {
 }
 
 # Adapter ids may carry a base theme, as vencord:comfy.
-$known = @{}
-foreach ($row in Get-StillwaterStatus) {
-  $item = Split-StillwaterStatusRow $row
-  $known[$item.Id] = $item
-}
 if ($Only) {
+  $known = @{}
+  foreach ($row in Get-StillwaterStatus) {
+    $item = Split-StillwaterStatusRow $row
+    $known[$item.Id] = $item
+  }
   foreach ($want in $Only) {
     $id, $base = $want.Split(":", 2)
     if (-not $known.ContainsKey($id)) {
@@ -109,11 +136,8 @@ function Get-StillwaterWantedBase([string]$Id) {
 }
 
 function Get-StillwaterAdapterScript([string]$Id) {
-  foreach ($candidate in Get-AdapterScripts) {
-    $owns = & $candidate -Action owns -Only @($Id)
-    if ($owns -eq "yes") { return $candidate }
-  }
-  return $null
+  Import-StillwaterStatus
+  return $script:StatusOwners[$Id]
 }
 
 function Test-StillwaterClack {
@@ -126,6 +150,7 @@ function Invoke-StillwaterInteractive {
     exit 1
   }
   try {
+    Import-StillwaterStatus -Skeleton
     return @(Invoke-StillwaterPicker -Rows @(Get-StillwaterStatus))
   } catch {
     if ($_.Exception.Message -eq "cancelled") { exit 0 }

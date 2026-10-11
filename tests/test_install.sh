@@ -113,6 +113,16 @@ done
 COLUMNS=80 LINES=8 stillwater_picker_layout
 [[ $((SW_HEAD_LINES + SW_LIST_H + SW_FOOTER_LINES)) -le 8 ]] || fail "picker frame must fit the terminal height"
 unset COLUMNS LINES
+skel="$TMP/skel"
+mkdir -p "$skel"
+printf '%s\n' 'cursor|Cursor|found|none||/tmp/c||' >"$skel/0.rows"
+: >"$skel/0.done"
+: >"$skel/1.done"
+: >"$skel/1.rows"
+frame="$(SW_ALT=1 COLUMNS=80 LINES=20 stillwater_loading "$skel" "$ROOT/vscode/install.sh" "$ROOT/zed/install.sh" 2>&1 </dev/null)"
+trap 'rm -rf "$TMP"' EXIT
+printf '%s' "$frame" | grep -q 'checking apps 2/2' || fail "loading frame should count finished adapters"
+printf '%s' "$frame" | grep -q 'Cursor' || fail "loading frame should show an adapter's apps once it answers"
 [[ "$(stillwater_display_path "$HOME/foo/bar")" == "~/foo/bar" ]] || fail "display path should use ~"
 [[ "$(stillwater_display_path "$HOME/.t3/userdata/themes/stillwater.json")" == "~/.t3/userdata/themes" ]] || fail "display path should drop the file name"
 [[ "$(stillwater_display_path "$HOME/.cursor/extensions/kayzel.stillwater-theme-1.0.0")" == "~/.cursor/extensions" ]] || fail "display path should drop the extension folder name"

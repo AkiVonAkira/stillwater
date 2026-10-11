@@ -4,6 +4,8 @@
 # the normal screen.
 
 function Enable-StillwaterVirtualTerminal {
+  # PowerShell 7 turns VT on itself; Add-Type compiles C# and costs ~0.5 s.
+  try { if ($Host.UI.SupportsVirtualTerminal) { return } } catch { }
   try {
     if (-not ("StillwaterConsole" -as [type])) {
       Add-Type -TypeDefinition @"
@@ -731,4 +733,54 @@ function Write-StillwaterJobsFinal($Style, $Jobs, [string]$Summary) {
     Write-Host (Get-StillwaterJobRow $Style $job 0)
   }
   Write-Host ((Get-StillwaterJobFooter $Style $Jobs $counts $Summary) + $Style.Reset)
+}
+
+# Shows the picker frame at once while the adapters answer: one placeholder row
+# per adapter, filled in with its apps as each finishes. Returns when the job is
+# done. With no job yet it draws the empty frame once, so it shows before the
+# adapters start competing for the CPU.
+function Show-StillwaterLoading($Job, [string[]]$Scripts) {
+  if (-not $script:StillwaterLoadingStyle) {
+    Enable-StillwaterVirtualTerminal
+    try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new() } catch { }
+    $script:StillwaterLoadingStyle = Get-StillwaterPickerStyle
+    New-StillwaterUi
+    Enter-StillwaterScreen $script:StillwaterLoadingStyle
+  }
+  $style = $script:StillwaterLoadingStyle
+  $spin = 0
+  while ($true) {
+    $done = @{}
+    foreach ($child in @(if ($Job) { $Job.ChildJobs })) {
+      if ($child.State -ne "Completed" -and $child.State -ne "Failed") { continue }
+      foreach ($result in $child.Output) {
+        if ($result.Script) { $done[$result.Script] = $result.Rows }
+      }
+    }
+    $size = Get-StillwaterTermSize
+    $script:StillwaterUi.Lines = $size.Lines
+    Set-StillwaterListHeight $script:StillwaterUi 1
+    $mark = Get-StillwaterSpinFrame $style $spin
+    $lines = @(Get-StillwaterHeadLines $style "select" ($style.Accent + $style.Diamond))
+    $rows = @()
+    foreach ($s in $Scripts) {
+      if (-not $done.ContainsKey($s)) {
+        $rows += "{0}{1}  {2}{3}{0}  {4}" -f $style.Muted, $style.Pipe, $style.AccentHover, $mark, (Split-Path -Leaf (Split-Path -Parent $s))
+        continue
+      }
+      foreach ($row in $done[$s]) {
+        $parts = ([string]$row).Split("|")
+        if ($parts.Count -lt 3) { continue }
+        $theme = if ($parts.Count -gt 3) { $parts[3] } else { "none" }
+        $rows += "{0}{1}     {2}  {3}{4}" -f $style.Muted, $style.Pipe, (Get-StillwaterPad $parts[1] 22),
+          (Get-StillwaterPickerActionColor $style $parts[2] $theme), (Get-StillwaterPickerAction $parts[2] $theme)
+      }
+    }
+    $lines += @($rows | Select-Object -First ([Math]::Max(1, $size.Lines - 3)))
+    $lines += "{0}{1}  checking apps {2}/{3}" -f $style.Muted, $style.Corner, $done.Count, $Scripts.Count
+    Write-StillwaterFrame $style $lines
+    if (-not $Job -or $done.Count -ge $Scripts.Count -or $Job.State -ne "Running") { break }
+    $spin++
+    Start-Sleep -Milliseconds 50
+  }
 }

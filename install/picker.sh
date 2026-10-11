@@ -876,7 +876,7 @@ stillwater_picker() {
   SW_TOP=0
   SW_FOLLOW=1
   SW_RESIZED=0
-  SW_STTY="$(stty -g 2>/dev/null || true)"
+  SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
   trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
   trap 'stillwater_picker_restore' EXIT
   trap 'SW_RESIZED=1' WINCH
@@ -1093,6 +1093,57 @@ stillwater_jobs_print() {
   stillwater_jobs_footer_into line "$summary"
   printf '%s%s\n' "$line" "$SW_RESET" >&2
   SW_RESIZED=0
+}
+
+# Shows the picker frame at once while the adapters answer: one placeholder row
+# per adapter, filled in with its apps as each finishes. Takes the folder the
+# adapters write to and their scripts; returns when every adapter is done.
+stillwater_loading() {
+  local dir="$1"
+  shift
+  local scripts=("$@")
+  local n="${#scripts[@]}" i done line name label app theme action color spin rows head
+  SW_OS_LABEL="${SW_OS_LABEL:-$(stillwater_os_label)}"
+  SW_VERSION="${SW_VERSION:-$(stillwater_version)}"
+  SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
+  stty -echo 2>/dev/null || true
+  trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
+  trap 'stillwater_picker_restore' EXIT
+  stillwater_screen_enter
+  while true; do
+    stillwater_term_size
+    SW_HEAD_LINES=2
+    SW_SPIN_I=$((SW_SPIN_I + 1))
+    stillwater_spin_frame_into spin
+    done=0
+    rows=()
+    for ((i = 0; i < n; i++)); do
+      if [[ ! -e "$dir/$i.done" ]]; then
+        name="${scripts[$i]%/*}"
+        name="${name##*/}"
+        rows+=("${SW_MUTED}${SW_PIPE}  ${SW_ACCENT_HOVER}${spin}${SW_MUTED}  ${name}")
+        continue
+      fi
+      done=$((done + 1))
+      while IFS='|' read -r _ label app theme _; do
+        [[ -n "$label" ]] || continue
+        stillwater_picker_action_into action "$app" "$theme"
+        stillwater_picker_action_color_into color "$app" "$theme"
+        stillwater_pad_into label "$label" 22
+        rows+=("${SW_MUTED}${SW_PIPE}     ${label}  ${color}${action}")
+      done <"$dir/$i.rows"
+    done
+    stillwater_frame_reset
+    stillwater_frame_head select "${SW_ACCENT}${SW_DIAMOND}"
+    head=$((SW_LINES - 3))
+    for ((i = 0; i < ${#rows[@]} && i < head; i++)); do
+      stillwater_frame_add "${rows[$i]}"
+    done
+    stillwater_frame_add "${SW_MUTED}${SW_CORNER}  checking apps ${done}/${n}"
+    stillwater_frame_flush
+    [[ "$done" -lt "$n" ]] || break
+    sleep 0.05
+  done
 }
 
 stillwater_clack() {

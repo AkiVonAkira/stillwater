@@ -84,13 +84,47 @@ adapter_scripts() {
   done | sort
 }
 
+# Runs every adapter's status at once and keeps the result, with the adapter
+# that printed each id, so nothing asks the adapters twice. Call it in the main
+# shell; `skeleton` draws the picker frame while the adapters answer.
+STATUS_LOADED=0
+STATUS_ROWS=""
+STATUS_OWNERS=""
+load_status() {
+  local dir i line rows="" owners="" scripts=()
+  [[ "$STATUS_LOADED" == 1 ]] && return 0
+  dir="$(mktemp -d)"
+  while IFS= read -r line; do
+    scripts+=("$line")
+  done < <(adapter_scripts)
+  for i in "${!scripts[@]}"; do
+    {
+      "$BASH_EXE" "${scripts[$i]}" status >"$dir/$i.rows" 2>"$dir/$i.err" || true
+      : >"$dir/$i.done"
+    } &
+  done
+  if [[ "${1:-}" == skeleton ]]; then
+    stillwater_loading "$dir" "${scripts[@]}"
+  fi
+  wait
+  for i in "${!scripts[@]}"; do
+    if [[ "${1:-}" != skeleton && -s "$dir/$i.err" ]]; then
+      cat "$dir/$i.err" >&2
+    fi
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      rows+="$line"$'\n'
+      owners+="${line%%|*}"$'\t'"${scripts[$i]}"$'\n'
+    done <"$dir/$i.rows"
+  done
+  rm -rf "$dir"
+  STATUS_ROWS="$(printf '%s' "$rows" | stillwater_sort_status)"
+  STATUS_OWNERS="$owners"
+  STATUS_LOADED=1
+}
+
 collect_status() {
-  local script
-  {
-    while IFS= read -r script; do
-      "$BASH_EXE" "$script" status
-    done < <(adapter_scripts)
-  } | stillwater_sort_status
+  printf '%s\n' "$STATUS_ROWS"
 }
 
 print_list() {
@@ -123,13 +157,13 @@ print_list() {
 }
 
 adapter_for_id() {
-  local id="$1" candidate
-  while IFS= read -r candidate; do
-    if "$BASH_EXE" "$candidate" owns "$id"; then
-      printf '%s\n' "$candidate"
+  local id="$1" owner script
+  while IFS=$'\t' read -r owner script; do
+    if [[ "$owner" == "$id" ]]; then
+      printf '%s\n' "$script"
       return 0
     fi
-  done < <(adapter_scripts)
+  done <<<"$STATUS_OWNERS"
   return 1
 }
 
@@ -186,6 +220,8 @@ prompt_interactive() {
     echo "install.sh needs a terminal, or pass --all or adapter ids." >&2
     exit 1
   fi
+  stillwater_picker_init_style
+  load_status skeleton
   if ! stillwater_picker "$(collect_status)"; then
     exit 0
   fi
@@ -193,10 +229,14 @@ prompt_interactive() {
 }
 
 if [[ "$LIST" == 1 ]]; then
+  load_status
   print_list
   exit 0
 fi
 
+if [[ "$ALL" == 1 || ${#ONLY[@]} -gt 0 ]]; then
+  load_status
+fi
 unknown_ids || exit 1
 
 FILTER=0
