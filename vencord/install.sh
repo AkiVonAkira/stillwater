@@ -8,7 +8,25 @@ stillwater_init_paths
 
 ACTION="${1:-install}"
 shift || true
-SRC="$ROOT/vencord/Stillwater.theme.css"
+BASES="base=Base,midnight=Midnight"
+DEFAULT_BASE=midnight
+
+src_for() {
+  printf '%s\n' "$ROOT/vencord/$1/Stillwater.theme.css"
+}
+
+# Installs from before base themes carry no stamp, and they were Midnight.
+installed_base() {
+  local dest base
+  for dest in "$@"; do
+    if [[ -f "$dest" ]]; then
+      base="$(stillwater_peek_base "$dest")"
+      printf '%s\n' "${base:-midnight}"
+      return 0
+    fi
+  done
+  printf '%s\n' "$DEFAULT_BASE"
+}
 
 bases() {
   case "$(stillwater_platform)" in
@@ -121,30 +139,43 @@ dest_file() {
 
 print_product_status() {
   local id="$1" app="skip" theme="none"
-  local pairs=() dests=() dest local_dir
+  local pairs=() dests=() lives=() dest local_dir base src
   if product_found "$id"; then
     app="found"
   fi
   dests+=("$(dest_file "$id")")
   while IFS= read -r local_dir; do
     if client_live "$local_dir"; then
-      dest="$local_dir/themes/Stillwater.theme.css"
-      pairs+=("$SRC" "$dest")
-      dests+=("$dest")
+      lives+=("$local_dir/themes/Stillwater.theme.css")
     fi
   done < <(target_roots "$id")
+  base="$(installed_base "${lives[@]+"${lives[@]}"}")"
+  src="$(src_for "$base")"
+  for dest in "${lives[@]+"${lives[@]}"}"; do
+    pairs+=("$src" "$dest")
+    dests+=("$dest")
+  done
   if [[ ${#pairs[@]} -gt 0 ]]; then
     theme="$(stillwater_payload_state "${pairs[@]}")"
   fi
-  stillwater_print_copy_status "$id" "$(label_of "$id")" "$app" "$theme" "${dests[@]}"
+  SW_STATUS_BASES="$BASES" SW_STATUS_BASE="$base" \
+    stillwater_print_copy_status "$id" "$(label_of "$id")" "$app" "$theme" "${dests[@]}"
 }
 
 install_product() {
-  local id="$1" dests="" local_dir dest
+  local id="$1" base="${2:-}" dests="" local_dir dest src
+  if [[ -z "$base" ]]; then
+    base="$DEFAULT_BASE"
+  fi
+  if ! stillwater_base_valid "$BASES" "$base"; then
+    echo "Unknown base: $base" >&2
+    return 1
+  fi
+  src="$(src_for "$base")"
   while IFS= read -r local_dir; do
     if client_live "$local_dir"; then
       dest="$local_dir/themes/Stillwater.theme.css"
-      stillwater_copy_file "$SRC" "$dest"
+      stillwater_copy_file "$src" "$dest"
       if [[ -n "$dests" ]]; then
         dests="$dests, $dest"
       else
@@ -173,7 +204,7 @@ case "$ACTION" in
     ;;
   install)
     owns "${1:-}"
-    install_product "${1:-}"
+    install_product "${1:-}" "${2:-}"
     ;;
   *)
     echo "Unknown action: $ACTION" >&2

@@ -134,7 +134,10 @@ unset COLUMNS LINES
 [[ "$(stillwater_next_step spotifast)" == "Select Stillwater under Settings, Appearance, Theme." ]] || fail "spotifast next step"
 [[ "$(stillwater_peek_version "$ROOT/vscode/package.json")" == 1.0.0 ]] || fail "peek vscode package version"
 [[ "$(stillwater_peek_version "$ROOT/zed/extension.toml")" == 1.0.0 ]] || fail "peek zed toml version"
-[[ "$(stillwater_peek_version "$ROOT/vencord/Stillwater.theme.css")" == 1.0.0 ]] || fail "peek vencord @version"
+for base in base midnight; do
+  [[ "$(stillwater_peek_version "$ROOT/vencord/$base/Stillwater.theme.css")" == 1.0.0 ]] || fail "peek vencord $base @version"
+  [[ "$(stillwater_peek_base "$ROOT/vencord/$base/Stillwater.theme.css")" == "$base" ]] || fail "vencord $base file should stamp its base"
+done
 [[ "$(stillwater_base_label "base=Base,comfy=Comfy (Outdated)" comfy)" == "Comfy (Outdated)" ]] || fail "base label lookup"
 stillwater_base_valid "base=Base,comfy=Comfy (Outdated)" comfy || fail "comfy is a valid base"
 if stillwater_base_valid "base=Base" comfy; then fail "comfy is not in that spec"; fi
@@ -301,6 +304,28 @@ fi
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to 1\.0\.0' || fail "old Vencord stamp should show version update"
 "$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+midnight' || fail "Vencord should default to the Midnight base"
+out="$("$BASH_EXE" "$ROOT/install.sh" vencord:base)"
+printf '%s\n' "$out" | grep -q 'Installed Vencord / Vesktop on Base.' || fail "should install Vencord on Base: $out"
+grep -q '@base base' "$vencord_theme" || fail "Base should be installed"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+base' || fail "installed Base should be current on base"
+"$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
+grep -q '@base base' "$vencord_theme" || fail "a bare reinstall should keep the installed base"
+if grep -q '@import' "$vencord_theme"; then fail "Base should not load anything at runtime"; fi
+if grep -q '@container' "$vencord_theme"; then fail "Base colors should not hide behind a container query"; fi
+grep -Fq -- '--background-base-low: var(--bg-4)' "$vencord_theme" || fail "Base should map Discord's surfaces"
+grep -Fq '.theme-midnight:not(.custom-user-profile-theme)' "$vencord_theme" || fail "Base should cover Discord's Onyx theme"
+if grep -E -q ':\s*(lime|magenta)\s*;' "$vencord_theme"; then fail "Base should drop midnight's placeholder colors"; fi
+if err="$("$BASH_EXE" "$ROOT/install.sh" vencord:bogus 2>&1)"; then fail "unknown base should fail"; fi
+printf '%s\n' "$err" | grep -q 'Unknown base for vencord: bogus' || fail "unknown base should name the base"
+printf '%s\n' "$err" | grep -q 'midnight' || fail "unknown base should list the bases"
+grep -v '@base' "$ROOT/vencord/midnight/Stillwater.theme.css" >"$vencord_theme"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+update[[:space:]]+Modified[[:space:]]+midnight' || fail "an unstamped install is the old Midnight theme"
+"$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
+grep -q '@base midnight' "$vencord_theme" || fail "updating an unstamped install should stamp Midnight"
 if err="$("$BASH_EXE" "$ROOT/install.sh" cursor:dark 2>&1)"; then fail "a base on an app without bases should fail"; fi
 printf '%s\n' "$err" | grep -q 'cursor has no base themes' || fail "should say cursor has no bases"
 

@@ -27,7 +27,7 @@ In the picker, ← and → pick the base theme for apps that have more than one.
 ## Supported Apps
 
 - [btop](https://github.com/aristocratos/btop)
-- [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop)
+- [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop) (Base, Midnight)
 - [fastfetch](https://github.com/fastfetch-cli/fastfetch)
 - [Ghostty](https://ghostty.org)
 - [Harbor](https://github.com/harborstremio/harbor)
@@ -41,7 +41,7 @@ In the picker, ← and → pick the base theme for apps that have more than one.
 - [Spotifast](https://spotifast.rocks)
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
-- [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)
+- [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop) (Base, Midnight)
 - [Voltius](https://voltius.app)
 - [Starship](https://starship.rs) (Windows PowerShell)
 - [Windows Terminal](https://aka.ms/terminal)

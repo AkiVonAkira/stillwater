@@ -2,7 +2,8 @@ param(
   [Parameter(Mandatory = $true)]
   [ValidateSet("status", "owns", "install")]
   [string]$Action,
-  [string[]]$Only = @()
+  [string[]]$Only = @(),
+  [string]$Base = ""
 )
 
 $Root = $env:STILLWATER_ROOT
@@ -10,7 +11,24 @@ if (-not $Root) { $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.M
 . (Join-Path $Root "install\lib.ps1")
 Initialize-StillwaterPaths
 
-$Src = Join-Path $Root "vencord\Stillwater.theme.css"
+$Bases = "base=Base,midnight=Midnight"
+$DefaultBase = "midnight"
+
+function Get-VencordSrc([string]$Key) {
+  return (Join-Path $Root "vencord\$Key\Stillwater.theme.css")
+}
+
+# Installs from before base themes carry no stamp, and they were Midnight.
+function Get-VencordInstalledBase([string[]]$Dests) {
+  foreach ($dest in $Dests) {
+    if (Test-Path -LiteralPath $dest -PathType Leaf) {
+      $stamp = Get-StillwaterPeekBase $dest
+      if ($stamp) { return $stamp }
+      return "midnight"
+    }
+  }
+  return $DefaultBase
+}
 
 $Products = @(
   @{
@@ -95,19 +113,24 @@ switch ($Action) {
     foreach ($product in $Products) {
       $roots = @(Get-ProductRoots $product)
       $app = "skip"
-      $pairs = @()
-      $dests = @((Get-ProductDest $product))
+      $lives = @()
       foreach ($dir in $roots) {
         if (Test-ClientLive $dir) {
           $app = "found"
-          $dest = Join-Path $dir "themes\Stillwater.theme.css"
-          $pairs += $Src
-          $pairs += $dest
-          $dests += $dest
+          $lives += (Join-Path $dir "themes\Stillwater.theme.css")
         }
       }
+      $base = Get-VencordInstalledBase $lives
+      $src = Get-VencordSrc $base
+      $pairs = @()
+      $dests = @((Get-ProductDest $product))
+      foreach ($dest in $lives) {
+        $pairs += $src
+        $pairs += $dest
+        $dests += $dest
+      }
       $theme = Get-StillwaterPayloadState $pairs
-      Write-StillwaterCopyStatus $product.Id (Get-ProductLabel $product) $app $theme $dests
+      Write-StillwaterCopyStatus $product.Id (Get-ProductLabel $product) $app $theme $dests -Bases $Bases -Base $base
     }
   }
   "owns" {
@@ -116,11 +139,14 @@ switch ($Action) {
   "install" {
     $id = $Only[0]
     $product = $Products | Where-Object { $_.Id -eq $id } | Select-Object -First 1
+    if (-not $Base) { $Base = $DefaultBase }
+    if (-not (Test-StillwaterBaseValid $Bases $Base)) { throw "Unknown base: $Base" }
+    $src = Get-VencordSrc $Base
     $written = @()
     foreach ($dir in Get-ProductRoots $product) {
       if (Test-ClientLive $dir) {
         $dest = Join-Path $dir "themes\Stillwater.theme.css"
-        Copy-StillwaterFile $Src $dest
+        Copy-StillwaterFile $src $dest
         $written += $dest
       }
     }
