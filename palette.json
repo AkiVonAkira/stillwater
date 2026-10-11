@@ -10,6 +10,7 @@
     "border": "#3c3836",
     "text": "#ebdbb2",
     "textMuted": "#8f8f99",
+    "textFaint": "#6d6d75",
     "warm": "#c4a489",
     "accent": "#5aa8b4",
     "accentHover": "#6ebcc6",

@@ -25,7 +25,7 @@
   --background-primary-alt: #1a1c1d;
   --background-secondary: #222526;
   --background-secondary-alt: #1a1c1d;
-  --background-modifier-hover: #3a4e64;
+  --background-modifier-hover: color-mix(in srgb, #3a4e64 55%, transparent);
   --background-modifier-active-hover: color-mix(in srgb, #3a4e64 70%, transparent);
   --background-modifier-border: #3c3836;
   --background-modifier-border-hover: #5aa8b4;
@@ -43,7 +43,7 @@
 
   --text-normal: #ebdbb2;
   --text-muted: #8f8f99;
-  --text-faint: #3c3836;
+  --text-faint: #6d6d75;
   --text-on-accent: #1d2021;
   --text-on-accent-inverted: #ebdbb2;
   --text-success: #a6e22e;

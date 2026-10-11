@@ -411,6 +411,8 @@ function Get-StillwaterPickerStrip($Style, $Item, [bool]$Live) {
   $plain = 0
   if ($Item.Bases.Count -gt 0) {
     $pick = if ($Live) { $Style.Accent } else { $Style.Muted }
+    # On a switch, the installed base keeps the Up to date color.
+    $installed = if ($Live -and $Item.BaseSel -ne $Item.BaseInit -and $Item.Theme -ne "none") { $Item.BaseInit } else { -1 }
     if ($ui.StripMode -eq "full") {
       $out = "{0}[ " -f $Style.Muted
       $plain = 2
@@ -420,7 +422,7 @@ function Get-StillwaterPickerStrip($Style, $Item, [bool]$Live) {
           $out += "{0} / " -f $Style.Muted
           $plain += 3
         }
-        $paint = if ($j -eq $Item.BaseSel) { $pick } else { $Style.Muted }
+        $paint = if ($j -eq $Item.BaseSel) { $pick } elseif ($j -eq $installed) { $Style.AccentDeep } else { $Style.Muted }
         $out += $paint + $lab
         $plain += $lab.Length
       }
