@@ -134,7 +134,7 @@ unset COLUMNS LINES
 [[ "$(stillwater_next_step spotifast)" == "Select Stillwater under Settings, Appearance, Theme." ]] || fail "spotifast next step"
 [[ "$(stillwater_peek_version "$ROOT/vscode/package.json")" == 1.0.0 ]] || fail "peek vscode package version"
 [[ "$(stillwater_peek_version "$ROOT/zed/extension.toml")" == 1.0.0 ]] || fail "peek zed toml version"
-for base in base midnight comfy; do
+for base in base midnight; do
   [[ "$(stillwater_peek_version "$ROOT/vencord/$base/Stillwater.theme.css")" == 1.0.0 ]] || fail "peek vencord $base @version"
   [[ "$(stillwater_peek_base "$ROOT/vencord/$base/Stillwater.theme.css")" == "$base" ]] || fail "vencord $base file should stamp its base"
 done
@@ -306,20 +306,13 @@ printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]
 "$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+midnight' || fail "Vencord should default to the Midnight base"
-out="$("$BASH_EXE" "$ROOT/install.sh" vencord:comfy)"
-printf '%s\n' "$out" | grep -q 'Installed Vencord / Vesktop on Comfy.' || fail "should install Vencord on Comfy: $out"
-grep -q '@base comfy' "$vencord_theme" || fail "Comfy base should be installed"
-if grep -q '@import' "$vencord_theme"; then fail "Comfy should not load the archived Comfy theme"; fi
-grep -Fq '.panels__5e434 .avatar__37e49' "$vencord_theme" || fail "Comfy should move your avatar beside the chat box"
-base_layer="$(sed -n '/^\/\* color options \*\//,$p' "$ROOT/vencord/base/Stillwater.theme.css")"
-grep -Fq -- "$(printf '%s\n' "$base_layer" | tail -n 5)" "$vencord_theme" || fail "Comfy should carry the Base color layer"
-[[ "$(sed -n '/^\/\* color options \*\//,/^\/\* Comfy look/p' "$vencord_theme" | sed '$d')" == "$base_layer" ]] || fail "Comfy's color layer should match Base exactly"
-list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
-printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+comfy' || fail "installed Comfy should be current on comfy"
-"$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
-grep -q '@base comfy' "$vencord_theme" || fail "a bare reinstall should keep the installed base"
-"$BASH_EXE" "$ROOT/install.sh" vencord:base >/dev/null
+out="$("$BASH_EXE" "$ROOT/install.sh" vencord:base)"
+printf '%s\n' "$out" | grep -q 'Installed Vencord / Vesktop on Base.' || fail "should install Vencord on Base: $out"
 grep -q '@base base' "$vencord_theme" || fail "Base should be installed"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+base' || fail "installed Base should be current on base"
+"$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
+grep -q '@base base' "$vencord_theme" || fail "a bare reinstall should keep the installed base"
 if grep -q '@import' "$vencord_theme"; then fail "Base should not load anything at runtime"; fi
 if grep -q '@container' "$vencord_theme"; then fail "Base colors should not hide behind a container query"; fi
 grep -Fq -- '--background-base-low: var(--bg-4)' "$vencord_theme" || fail "Base should map Discord's surfaces"

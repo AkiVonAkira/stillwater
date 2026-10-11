@@ -11,7 +11,7 @@ if (-not $Root) { $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.M
 . (Join-Path $Root "install\lib.ps1")
 Initialize-StillwaterPaths
 
-$Bases = "base=Base,midnight=Midnight,comfy=Comfy"
+$Bases = "base=Base,midnight=Midnight"
 $DefaultBase = "midnight"
 
 function Get-VencordSrc([string]$Key) {
