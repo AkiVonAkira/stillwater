@@ -31,7 +31,7 @@ jobs:
           if (vs.version !== spec.version) throw new Error("vscode version mismatch");
           const zed = fs.readFileSync("zed/extension.toml", "utf8");
           if (!zed.includes("version = \"" + spec.version + "\"")) throw new Error("zed version mismatch");
-          for (const base of ["base", "midnight"]) {
+          for (const base of ["base", "midnight", "system24", "oldcord", "surcord"]) {
             const ven = fs.readFileSync("vencord/" + base + "/Stillwater.theme.css", "utf8");
             if (!ven.includes("@version " + spec.version)) throw new Error("vencord " + base + " version mismatch");
           }

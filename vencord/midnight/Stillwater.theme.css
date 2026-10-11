@@ -10,6 +10,8 @@
  *
  * Fork of midnight by refact0r (MIT): https://github.com/refact0r/midnight-discord
  * Copyright (c) 2025 refact0r
+ * Rounded corners from RoundedDiscord by MarkChan0225 (MIT):
+ * https://github.com/MarkChan0225/RoundedDiscord
  *
  * Panel/Spotify snippets from Akira's Theme. Owned overrides use the live
  * hashed class names (cheaper than [class*=] + :has() on the whole tree).
@@ -17,6 +19,7 @@
 
 /* import theme modules */
 @import url('https://refact0r.github.io/midnight-discord/build/midnight.css');
+@import url('https://MarkChan0225.github.io/RoundedDiscord/src/roundeddiscord.css');
 @import url('https://raw.githubusercontent.com/abbie/discord-css/refs/heads/main/import.css');
 @import url('https://raw.githubusercontent.com/davart154/Themes/refs/heads/main/Snippets/Simplified%20Panel%20Area/SimplifiedPanelArea.css');
 @import url('https://raw.githubusercontent.com/ISOUL22/rice/refs/heads/main/Vencord/improvedSpotifyControls.css');
@@ -26,6 +29,9 @@
 @import url('https://raw.githubusercontent.com/Just-Me-22/Compact-Server-Shortcut-Buttons/main/compact-server-shortcuts.css');
 
 body {
+    /* RoundedDiscord corner radius */
+    --radius: 16px;
+
     /* font options */
     --font: 'figtree'; /* change to '' for default discord font */
     --code-font: ''; /* change to '' for default discord font */

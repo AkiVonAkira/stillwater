@@ -1,0 +1,110 @@
+/**
+ * @name Stillwater
+ * @author kayzel
+ * @version 1.0.0
+ * @description Warm gruvbox surfaces, muted cyan accent, in OldCord's 2020 layout. Local Vencord theme.
+ * @website https://github.com/AkiVonAkira/stillwater
+ * @source https://github.com/AkiVonAkira/stillwater/blob/main/vencord/oldcord/Stillwater.theme.css
+ * @authorId kayzel
+ * @base oldcord
+ *
+ * OldCord by milbit and kinggamingyt (MIT): https://github.com/milbits/oldcord
+ */
+
+/* import theme modules */
+@import url("https://milbits.github.io/oldcord/src/main.css");
+
+:root {
+    --oldcord-tint: 188; /* light mode tint, Stillwater's accent hue */
+    --oldcord-tint-intensity: 11.11;
+    --reaction-animation: 0; /* animation when someone reacts. 0 off 1 on. buggy. */
+}
+
+/* Stillwater colors. OldCord derives its surfaces from the primary scale and its
+ * accents from brand, green and red, so only those roots change. :not(#stillwater)
+ * outranks OldCord's per-theme blocks on Dark, Ash and Onyx alike. */
+:root:not(#stillwater),
+:root:not(#stillwater) .theme-dark,
+:root:not(#stillwater) .theme-darker,
+:root:not(#stillwater) .theme-midnight,
+:root:not(#stillwater) .theme-light {
+    /* surfaces: chat, then channels, then servers, as in 2020 */
+    --primary-500: #3c3836;
+    --primary-600: #222526;
+    --primary-630: #1d2021;
+    --primary-660: #1a1c1d;
+    --primary-700: #1a1c1d;
+    --primary-800: #1a1c1d;
+    --background-primary: var(--primary-600);
+    --background-secondary: var(--primary-630);
+    --background-secondary-alt: var(--primary-660);
+    --background-tertiary: var(--primary-700);
+    --background-floating: var(--primary-800);
+    --background-accent: var(--primary-500);
+    --background-modifier-accent: color-mix(in srgb, #ebdbb2 8%, transparent);
+    --background-mod-subtle: color-mix(in srgb, #3a4e64 40%, transparent);
+    --background-mod-muted: color-mix(in srgb, #3a4e64 55%, transparent);
+    --background-mod-strong: color-mix(in srgb, #3a4e64 70%, transparent);
+    --background-message-hover: color-mix(in srgb, #000000 10%, transparent);
+    --background-mentioned: color-mix(in srgb, #5aa8b4 10%, transparent);
+    --background-mentioned-hover: color-mix(in srgb, #5aa8b4 14%, transparent);
+    --chat-background-default: var(--primary-660);
+
+    /* text */
+    --white-500: #f8f8f2;
+    --header-primary: #f8f8f2;
+    --header-secondary: #8f8f99;
+    --text-default: #ebdbb2;
+    --text-normal: #ebdbb2;
+    --text-muted: #6d6d75;
+    --channels-default: #8f8f99;
+    --interactive-text-default: #8f8f99;
+    --interactive-text-hover: #ebdbb2;
+    --interactive-text-active: #f8f8f2;
+    --interactive-muted: #6d6d75;
+    --text-link: #6ebcc6;
+
+    /* accents */
+    --brand-experiment: #5aa8b4;
+    --brand-experiment-360: #6ebcc6;
+    --brand-experiment-400: #6ebcc6;
+    --brand-experiment-460: #5aa8b4;
+    --brand-experiment-500: #5aa8b4;
+    --brand-experiment-530: #4c95a2;
+    --brand-experiment-560: #3d7a88;
+    --brand-experiment-600: #3d7a88;
+    --brand-experiment-10a: color-mix(in srgb, #5aa8b4 10%, transparent);
+    --brand-500: #5aa8b4;
+    --brand-560: #3d7a88;
+    --blurple: var(--brand-experiment);
+    --blurple-hover: #6ebcc6;
+    --blurple-active: #3d7a88;
+    --green: #a6e22e;
+    --green-hover: color-mix(in srgb, #a6e22e 85%, black);
+    --green-active: color-mix(in srgb, #a6e22e 70%, black);
+    --green-360: #a6e22e;
+    --red: #f44747;
+    --red-hover: color-mix(in srgb, #f44747 85%, black);
+    --red-active: color-mix(in srgb, #f44747 70%, black);
+    --red-400: #f44747;
+    --red-500: #f44747;
+    --yellow-300: #d9c679;
+
+    /* dark ink on filled accent and green buttons, as in Base and Midnight */
+    --control-primary-text-default: #1d2021;
+    --control-primary-text-hover: #1d2021;
+    --control-primary-text-active: #1d2021;
+    --control-primary-icon-default: #1d2021;
+    --control-primary-icon-hover: #1d2021;
+    --control-primary-icon-active: #1d2021;
+    --control-connected-text-default: #1d2021;
+    --control-connected-text-hover: #1d2021;
+    --control-connected-text-active: #1d2021;
+    --control-text-active-default: #1d2021;
+}
+
+.lookFilled__201d5.colorGreen__201d5,
+.lookFilled__201d5.colorBrand__201d5,
+.button_a22cb0.active_a22cb0 {
+    color: #1d2021;
+}

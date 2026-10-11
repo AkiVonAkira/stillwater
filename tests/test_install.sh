@@ -134,7 +134,7 @@ unset COLUMNS LINES
 [[ "$(stillwater_next_step spotifast)" == "Select Stillwater under Settings, Appearance, Theme." ]] || fail "spotifast next step"
 [[ "$(stillwater_peek_version "$ROOT/vscode/package.json")" == 1.0.0 ]] || fail "peek vscode package version"
 [[ "$(stillwater_peek_version "$ROOT/zed/extension.toml")" == 1.0.0 ]] || fail "peek zed toml version"
-for base in base midnight; do
+for base in base midnight system24 oldcord surcord; do
   [[ "$(stillwater_peek_version "$ROOT/vencord/$base/Stillwater.theme.css")" == 1.0.0 ]] || fail "peek vencord $base @version"
   [[ "$(stillwater_peek_base "$ROOT/vencord/$base/Stillwater.theme.css")" == "$base" ]] || fail "vencord $base file should stamp its base"
 done
@@ -318,6 +318,19 @@ if grep -q '@container' "$vencord_theme"; then fail "Base colors should not hide
 grep -Fq -- '--background-base-low: var(--bg-4)' "$vencord_theme" || fail "Base should map Discord's surfaces"
 grep -Fq '.theme-midnight:not(.custom-user-profile-theme)' "$vencord_theme" || fail "Base should cover Discord's Onyx theme"
 if grep -E -q ':\s*(lime|magenta)\s*;' "$vencord_theme"; then fail "Base should drop midnight's placeholder colors"; fi
+"$BASH_EXE" "$ROOT/install.sh" vencord:midnight >/dev/null
+grep -q 'RoundedDiscord/src/roundeddiscord.css' "$vencord_theme" || fail "Midnight should round its corners with RoundedDiscord"
+grep -Fq -- '--radius: 16px' "$vencord_theme" || fail "Midnight should set RoundedDiscord's radius"
+for pair in "system24|system24/build/system24.css" "oldcord|milbits.github.io/oldcord/src/main.css" "surcord|surCord/src/source.css"; do
+  key="${pair%%|*}"
+  "$BASH_EXE" "$ROOT/install.sh" "vencord:$key" >/dev/null
+  grep -q "@base $key" "$vencord_theme" || fail "$key should be installed"
+  grep -q "${pair#*|}" "$vencord_theme" || fail "$key should load its theme"
+  grep -qi '#5aa8b4' "$vencord_theme" || fail "$key should use the Stillwater accent"
+done
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+surcord' || fail "installed surCord should be current"
+"$BASH_EXE" "$ROOT/install.sh" vencord:base >/dev/null
 if err="$("$BASH_EXE" "$ROOT/install.sh" vencord:bogus 2>&1)"; then fail "unknown base should fail"; fi
 printf '%s\n' "$err" | grep -q 'Unknown base for vencord: bogus' || fail "unknown base should name the base"
 printf '%s\n' "$err" | grep -q 'midnight' || fail "unknown base should list the bases"
