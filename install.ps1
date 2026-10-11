@@ -101,6 +101,23 @@ if ($List) {
   exit 0
 }
 
+# Named installs and -All draw inline on the normal screen, so the progress you
+# watch is the output that stays.
+$inlineStyle = $null
+if (($All -or ($Only -and -not $Interactive)) -and -not [Console]::IsOutputRedirected) {
+  Enable-StillwaterVirtualTerminal
+  try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new() } catch { }
+  $inlineStyle = Get-StillwaterPickerStyle
+  Start-StillwaterInline $inlineStyle
+  Import-StillwaterStatus -Skeleton
+}
+
+function Stop-StillwaterIdCheck([string]$Message) {
+  if ($inlineStyle) { Stop-StillwaterInline $inlineStyle -Erase }
+  [Console]::Error.WriteLine($Message)
+  exit 1
+}
+
 # Adapter ids may carry a base theme, as vencord:comfy.
 if ($Only) {
   $known = @{}
@@ -111,17 +128,15 @@ if ($Only) {
   foreach ($want in $Only) {
     $id, $base = $want.Split(":", 2)
     if (-not $known.ContainsKey($id)) {
-      Write-Error "Unknown adapter: $id"
-      exit 1
+      Stop-StillwaterIdCheck "Unknown adapter: $id"
     }
     if ($want.Contains(":") -and -not (Test-StillwaterBaseValid $known[$id].Bases $base)) {
       $keys = @(Get-StillwaterBaseList $known[$id].Bases | ForEach-Object { $_.Key }) -join " "
       if ($keys) {
-        Write-Error "Unknown base for ${id}: $base. Bases: $keys"
+        Stop-StillwaterIdCheck "Unknown base for ${id}: $base. Bases: $keys"
       } else {
-        Write-Error "$id has no base themes."
+        Stop-StillwaterIdCheck "$id has no base themes."
       }
-      exit 1
     }
   }
 }
@@ -270,10 +285,11 @@ function Invoke-StillwaterInstallJob($Script, [string]$Id, [string]$Base) {
 
 if ($clack) {
   Enable-StillwaterVirtualTerminal
-  Enter-StillwaterScreen $style
+  if (-not $script:StillwaterInline) { Enter-StillwaterScreen $style }
   Write-StillwaterJobFrame
 }
 
+$finished = $false
 try {
 foreach ($job in $jobs) {
   if ($job.Kind -ne "install") {
@@ -314,13 +330,27 @@ foreach ($job in $jobs) {
     Write-StillwaterJobFrame
   }
 }
+$finished = $true
 } finally {
-  if ($clack) { Exit-StillwaterScreen $style }
+  if ($script:StillwaterInline) {
+    if (-not $finished) { Stop-StillwaterInline $style }
+  } elseif ($clack) {
+    Exit-StillwaterScreen $style
+  }
 }
 
 $nextJobs = @($jobs | Where-Object { $_.State -eq "ok" -and $_.Next })
 $summary = Get-StillwaterJobSummary
-if ($clack) {
+if ($script:StillwaterInline) {
+  # The last frame is the output, unless the list did not fit and was cut short.
+  Write-StillwaterJobFrame
+  if ($script:StillwaterInlineCompact) {
+    Stop-StillwaterInline $style -Erase
+    Write-StillwaterJobsFinal $style $jobs $summary
+  } else {
+    Stop-StillwaterInline $style
+  }
+} elseif ($clack) {
   Write-StillwaterJobsFinal $style $jobs $summary
 } else {
   if ($nextJobs.Count -gt 0) {

@@ -622,9 +622,45 @@ stillwater_frame_add() {
 }
 
 # One write per frame, from the top, with no newline after the last line so the
-# alternate screen never scrolls.
+# alternate screen never scrolls. Inline frames (named installs) redraw in place
+# on the normal screen, from the first line of the last frame.
 stillwater_frame_flush() {
+  local up=""
+  if [[ "${SW_INLINE:-0}" == 1 ]]; then
+    if [[ "${SW_INLINE_N:-0}" -gt 1 ]]; then
+      printf -v up '\033[%dA' $((SW_INLINE_N - 1))
+    fi
+    printf '\r%s%s%s' "$up" "$SW_FRAME" "$SW_EOS" >&2
+    SW_INLINE_N="$SW_FRAME_N"
+    return
+  fi
   printf '%s%s%s' "$SW_HOME" "$SW_FRAME" "$SW_EOS" >&2
+}
+
+# Starts drawing frames inline on the normal screen.
+stillwater_inline_begin() {
+  SW_INLINE=1
+  SW_INLINE_N=0
+  SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
+  stty -echo 2>/dev/null || true
+  printf '%s' "$SW_HIDE" >&2
+}
+
+# Ends inline drawing. "erase" removes the last frame, otherwise it stays as output.
+stillwater_inline_end() {
+  local up=""
+  [[ "${SW_INLINE:-0}" == 1 ]] || return 0
+  if [[ "${1:-}" == erase && "${SW_INLINE_N:-0}" -gt 0 ]]; then
+    if [[ "$SW_INLINE_N" -gt 1 ]]; then
+      printf -v up '\033[%dA' $((SW_INLINE_N - 1))
+    fi
+    printf '\r%s%s' "$up" "$SW_EOS" >&2
+  elif [[ "${SW_INLINE_N:-0}" -gt 0 ]]; then
+    printf '\n' >&2
+  fi
+  SW_INLINE=0
+  SW_INLINE_N=0
+  stillwater_picker_restore
 }
 
 stillwater_frame_head() {
@@ -647,6 +683,7 @@ stillwater_view_window() {
   local n="$1"
   local focus="$2"
   local h="$SW_LIST_H"
+  SW_TOP="${SW_TOP:-0}"
   SW_VIEW_MORE=0
   if [[ "$n" -le "$h" ]]; then
     SW_TOP=0
@@ -1048,13 +1085,27 @@ stillwater_jobs_draw() {
   if [[ "${SW_JW_LABEL:-}" == "" || "${SW_RESIZED:-0}" == 1 ]]; then
     SW_RESIZED=0
     stillwater_jobs_layout
-    printf '%s' "$SW_WIPE" >&2
+    [[ "${SW_INLINE:-0}" == 1 ]] || printf '%s' "$SW_WIPE" >&2
   fi
   stillwater_jobs_count
   mark="${SW_ACCENT}${SW_DIAMOND}"
   [[ "$SW_J_RUNNING" == 1 ]] || mark="${SW_ACCENT_HOVER}${SW_DONE}"
   stillwater_frame_reset
   stillwater_frame_head install "$mark"
+  # Inline, a list taller than the terminal shows only its progress line; the
+  # full list prints once at the end. Clearing a full-screen frame would push it
+  # into the scrollback.
+  SW_INLINE_COMPACT=0
+  if [[ "${SW_INLINE:-0}" == 1 && $((n + 3)) -ge "$SW_LINES" ]]; then
+    SW_INLINE_COMPACT=1
+    stillwater_jobs_footer_into line "$summary"
+    if [[ "$SW_J_FOCUS" -ge 0 ]]; then
+      line+="  ${SW_MUTED}${SW_JOB_LABELS[$SW_J_FOCUS]}"
+    fi
+    stillwater_frame_add "$line"
+    stillwater_frame_flush
+    return 0
+  fi
   SW_FOLLOW=1
   stillwater_view_window "$n" "$SW_J_FOCUS"
   if [[ "$SW_VIEW_MORE" == 1 ]]; then
@@ -1109,7 +1160,7 @@ stillwater_loading() {
   stty -echo 2>/dev/null || true
   trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
   trap 'stillwater_picker_restore' EXIT
-  stillwater_screen_enter
+  [[ "${SW_INLINE:-0}" == 1 ]] || stillwater_screen_enter
   while true; do
     stillwater_term_size
     SW_HEAD_LINES=2
@@ -1117,6 +1168,19 @@ stillwater_loading() {
     stillwater_spin_frame_into spin
     done=0
     rows=()
+    # Inline (named installs) shows only the count; the rows come with the progress.
+    if [[ "${SW_INLINE:-0}" == 1 ]]; then
+      for ((i = 0; i < n; i++)); do
+        [[ -e "$dir/$i.done" ]] && done=$((done + 1))
+      done
+      stillwater_frame_reset
+      stillwater_frame_head install "${SW_ACCENT}${SW_DIAMOND}"
+      stillwater_frame_add "${SW_MUTED}${SW_CORNER}  ${SW_ACCENT_HOVER}${spin}${SW_MUTED} checking apps ${done}/${n}"
+      stillwater_frame_flush
+      [[ "$done" -lt "$n" ]] || break
+      sleep 0.05
+      continue
+    fi
     for ((i = 0; i < n; i++)); do
       if [[ ! -e "$dir/$i.done" ]]; then
         name="${scripts[$i]%/*}"

@@ -507,9 +507,17 @@ function Get-StillwaterHeadLines($Style, [string]$Step, [string]$Mark) {
 
 # One write per frame, from the top, with no newline after the last line so the
 # alternate screen never scrolls.
+# Inline frames (named installs) redraw in place on the normal screen, from the
+# first line of the last frame.
 function Write-StillwaterFrame($Style, [string[]]$Lines) {
   $sb = [System.Text.StringBuilder]::new()
-  [void]$sb.Append($Style.Home)
+  if ($script:StillwaterInline) {
+    [void]$sb.Append("`r")
+    if ($script:StillwaterInlineN -gt 1) { [void]$sb.Append(("`e[{0}A" -f ($script:StillwaterInlineN - 1))) }
+    $script:StillwaterInlineN = $Lines.Count
+  } else {
+    [void]$sb.Append($Style.Home)
+  }
   for ($i = 0; $i -lt $Lines.Count; $i++) {
     if ($i -gt 0) { [void]$sb.Append("`n") }
     [void]$sb.Append($Style.Clear).Append($Lines[$i]).Append($Style.Reset)
@@ -705,13 +713,25 @@ function Write-StillwaterJobs($Style, $Jobs, [int]$SpinI, [string]$Summary = "")
   $key = "{0}x{1}" -f $size.Cols, $size.Lines
   if ($script:StillwaterJobsSize -ne $key) {
     Update-StillwaterJobsLayout $Jobs
-    [Console]::Write($Style.Wipe)
+    if (-not $script:StillwaterInline) { [Console]::Write($Style.Wipe) }
     $script:StillwaterJobsSize = $key
   }
   $ui = $script:StillwaterUi
   $counts = Get-StillwaterJobCounts $Jobs
   $mark = if ($counts.Running) { $Style.Accent + $Style.Diamond } else { $Style.AccentHover + $Style.Done }
   $lines = @(Get-StillwaterHeadLines $Style "install" $mark)
+  # Inline, a list taller than the terminal shows only its progress line; the full
+  # list prints once at the end. Clearing a full-screen frame would push it into
+  # the scrollback.
+  $script:StillwaterInlineCompact = $false
+  if ($script:StillwaterInline -and ($Jobs.Count + 3) -ge $size.Lines) {
+    $script:StillwaterInlineCompact = $true
+    $line = Get-StillwaterJobFooter $Style $Jobs $counts $Summary
+    if ($counts.Focus -ge 0) { $line += "  " + $Style.Muted + $Jobs[$counts.Focus].Label }
+    $lines += $line
+    Write-StillwaterFrame $Style $lines
+    return
+  }
   $ui.Follow = $true
   Update-StillwaterView $Jobs.Count $counts.Focus
   if ($ui.More) { $lines += Get-StillwaterMoreLine $Style $ui.ViewFirst "↑" }
@@ -745,7 +765,7 @@ function Show-StillwaterLoading($Job, [string[]]$Scripts) {
     try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new() } catch { }
     $script:StillwaterLoadingStyle = Get-StillwaterPickerStyle
     New-StillwaterUi
-    Enter-StillwaterScreen $script:StillwaterLoadingStyle
+    if (-not $script:StillwaterInline) { Enter-StillwaterScreen $script:StillwaterLoadingStyle }
   }
   $style = $script:StillwaterLoadingStyle
   $spin = 0
@@ -761,6 +781,16 @@ function Show-StillwaterLoading($Job, [string[]]$Scripts) {
     $script:StillwaterUi.Lines = $size.Lines
     Set-StillwaterListHeight $script:StillwaterUi 1
     $mark = Get-StillwaterSpinFrame $style $spin
+    # Inline (named installs) shows only the count; the rows come with the progress.
+    if ($script:StillwaterInline) {
+      $lines = @(Get-StillwaterHeadLines $style "install" ($style.Accent + $style.Diamond))
+      $lines += "{0}{1}  {2}{3}{0} checking apps {4}/{5}" -f $style.Muted, $style.Corner, $style.AccentHover, $mark, $done.Count, $Scripts.Count
+      Write-StillwaterFrame $style $lines
+      if (-not $Job -or $done.Count -ge $Scripts.Count -or $Job.State -ne "Running") { break }
+      $spin++
+      Start-Sleep -Milliseconds 50
+      continue
+    }
     $lines = @(Get-StillwaterHeadLines $style "select" ($style.Accent + $style.Diamond))
     $rows = @()
     foreach ($s in $Scripts) {
@@ -783,4 +813,27 @@ function Show-StillwaterLoading($Job, [string[]]$Scripts) {
     $spin++
     Start-Sleep -Milliseconds 50
   }
+}
+
+# Starts drawing frames inline on the normal screen.
+function Start-StillwaterInline($Style) {
+  $script:StillwaterInline = $true
+  $script:StillwaterInlineN = 0
+  [Console]::Write($Style.Hide)
+  try { [Console]::CursorVisible = $false } catch { }
+}
+
+# Ends inline drawing. -Erase removes the last frame, otherwise it stays as output.
+function Stop-StillwaterInline($Style, [switch]$Erase) {
+  if (-not $script:StillwaterInline) { return }
+  if ($Erase -and $script:StillwaterInlineN -gt 0) {
+    $up = if ($script:StillwaterInlineN -gt 1) { "`e[{0}A" -f ($script:StillwaterInlineN - 1) } else { "" }
+    [Console]::Write("`r" + $up + $Style.Eos)
+  } elseif ($script:StillwaterInlineN -gt 0) {
+    [Console]::Write("`n")
+  }
+  $script:StillwaterInline = $false
+  $script:StillwaterInlineN = 0
+  [Console]::Write($Style.Show)
+  try { [Console]::CursorVisible = $true } catch { }
 }

@@ -200,6 +200,15 @@ unknown_ids() {
   return 0
 }
 
+check_ids() {
+  local errs
+  if ! errs="$(unknown_ids 2>&1)"; then
+    stillwater_inline_end erase
+    printf '%s\n' "$errs" >&2
+    exit 1
+  fi
+}
+
 # Prints the base asked for with id, and fails when id was not asked for.
 wanted_base() {
   local id="$1" item
@@ -234,10 +243,18 @@ if [[ "$LIST" == 1 ]]; then
   exit 0
 fi
 
+# Named installs and --all draw inline on the normal screen, so the progress you
+# watch is the output that stays.
 if [[ "$ALL" == 1 || ${#ONLY[@]} -gt 0 ]]; then
-  load_status
+  if [[ ( "$ALL" == 1 || "$INTERACTIVE" != 1 ) && -t 1 && -t 2 ]]; then
+    stillwater_picker_init_style
+    stillwater_inline_begin
+    load_status skeleton
+  else
+    load_status
+  fi
 fi
-unknown_ids || exit 1
+check_ids
 
 FILTER=0
 if [[ "$ALL" == 1 ]]; then
@@ -250,7 +267,7 @@ else
   FILTER=1
 fi
 
-unknown_ids || exit 1
+check_ids
 
 installed=0
 skipped=0
@@ -368,7 +385,7 @@ run_install() {
 
 if [[ "$CLACK" == 1 ]]; then
   SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
-  stillwater_screen_enter
+  [[ "${SW_INLINE:-0}" == 1 ]] || stillwater_screen_enter
   trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
   trap 'stillwater_picker_restore' EXIT
   trap 'SW_RESIZED=1' WINCH
@@ -433,7 +450,17 @@ summary="Installed ${installed}, skipped ${skipped}."
 if [[ "$failed" -gt 0 ]]; then
   summary="Installed ${installed}, skipped ${skipped}, failed ${failed}."
 fi
-if [[ "$CLACK" == 1 ]]; then
+if [[ "$CLACK" == 1 && "${SW_INLINE:-0}" == 1 ]]; then
+  # The last frame is the output, unless the list did not fit and was cut short.
+  repaint_jobs
+  if [[ "${SW_INLINE_COMPACT:-0}" == 1 ]]; then
+    stillwater_inline_end erase
+    stillwater_jobs_print "$(job_summary)"
+  else
+    stillwater_inline_end
+  fi
+  trap - EXIT INT TERM
+elif [[ "$CLACK" == 1 ]]; then
   stillwater_picker_restore
   trap - EXIT INT TERM
   load_jobs
