@@ -8,7 +8,7 @@ stillwater_init_paths
 
 ACTION="${1:-install}"
 shift || true
-BASES="base=Base,midnight=Midnight,comfy=Comfy (Outdated)"
+BASES="base=Base,midnight=Midnight,comfy=Comfy"
 DEFAULT_BASE=midnight
 
 src_for() {

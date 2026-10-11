@@ -307,9 +307,13 @@ printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+midnight' || fail "Vencord should default to the Midnight base"
 out="$("$BASH_EXE" "$ROOT/install.sh" vencord:comfy)"
-printf '%s\n' "$out" | grep -q 'Installed Vencord / Vesktop on Comfy (Outdated).' || fail "should install Vencord on Comfy: $out"
+printf '%s\n' "$out" | grep -q 'Installed Vencord / Vesktop on Comfy.' || fail "should install Vencord on Comfy: $out"
 grep -q '@base comfy' "$vencord_theme" || fail "Comfy base should be installed"
-grep -q 'comfy-themes.github.io' "$vencord_theme" || fail "Comfy base should import Comfy"
+if grep -q '@import' "$vencord_theme"; then fail "Comfy should not load the archived Comfy theme"; fi
+grep -Fq '.panels__5e434 .avatar__37e49' "$vencord_theme" || fail "Comfy should move your avatar beside the chat box"
+base_layer="$(sed -n '/^\/\* color options \*\//,$p' "$ROOT/vencord/base/Stillwater.theme.css")"
+grep -Fq -- "$(printf '%s\n' "$base_layer" | tail -n 5)" "$vencord_theme" || fail "Comfy should carry the Base color layer"
+[[ "$(sed -n '/^\/\* color options \*\//,/^\/\* Comfy look/p' "$vencord_theme" | sed '$d')" == "$base_layer" ]] || fail "Comfy's color layer should match Base exactly"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+comfy' || fail "installed Comfy should be current on comfy"
 "$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
