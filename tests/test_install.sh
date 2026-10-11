@@ -333,6 +333,9 @@ grep -q 'RoundedDiscord, radius rules only' "$vencord_theme" || fail "Midnight s
 if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '^[[:space:]]*(margin|padding|width|height)'; then fail "RoundedDiscord on Midnight should only round corners, not move panels"; fi
 if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '\.(chat_f75fb0|sidebar__5e434|page__5e434)'; then fail "RoundedDiscord should leave Midnight's panels alone"; fi
 grep -Fq -- '--radius: 16px' "$vencord_theme" || fail "Midnight should set RoundedDiscord's radius"
+if grep -q 'form_f75fb0 > .base_b88801' "$vencord_theme"; then fail "the typing row must stay absolute so it does not push the chat up"; fi
+if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '^\.(header_f37cb1|sidebarListRounded__5e434),'; then fail "RoundedDiscord should leave the server header and channel list to Midnight"; fi
+grep -Fq '.bannerVisible_f37cb1 .header_f37cb1' "$vencord_theme" || fail "Midnight should match the banner header corners to the channel list"
 for pair in "system24|system24/build/system24.css" "oldcord|milbits.github.io/oldcord/src/main.css" "surcord|surCord/src/source.css"; do
   key="${pair%%|*}"
   "$BASH_EXE" "$ROOT/install.sh" "vencord:$key" >/dev/null
