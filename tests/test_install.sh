@@ -311,8 +311,11 @@ printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]
 grep -q '@base comfy' "$vencord_theme" || fail "a bare reinstall should keep the installed base"
 "$BASH_EXE" "$ROOT/install.sh" vencord:base >/dev/null
 grep -q '@base base' "$vencord_theme" || fail "Base should be installed"
-grep -q 'midnight-discord/src/colors.css' "$vencord_theme" || fail "Base should load only midnight's color map"
-if grep -q 'build/midnight.css' "$vencord_theme"; then fail "Base should not load the midnight layout"; fi
+if grep -q '@import' "$vencord_theme"; then fail "Base should not load anything at runtime"; fi
+if grep -q '@container' "$vencord_theme"; then fail "Base colors should not hide behind a container query"; fi
+grep -Fq -- '--background-base-low: var(--bg-4)' "$vencord_theme" || fail "Base should map Discord's surfaces"
+grep -Fq '.theme-midnight:not(.custom-user-profile-theme)' "$vencord_theme" || fail "Base should cover Discord's Onyx theme"
+if grep -E -q ':\s*(lime|magenta)\s*;' "$vencord_theme"; then fail "Base should drop midnight's placeholder colors"; fi
 if err="$("$BASH_EXE" "$ROOT/install.sh" vencord:bogus 2>&1)"; then fail "unknown base should fail"; fi
 printf '%s\n' "$err" | grep -q 'Unknown base for vencord: bogus' || fail "unknown base should name the base"
 printf '%s\n' "$err" | grep -q 'midnight' || fail "unknown base should list the bases"
