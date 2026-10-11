@@ -319,7 +319,9 @@ grep -Fq -- '--background-base-low: var(--bg-4)' "$vencord_theme" || fail "Base 
 grep -Fq '.theme-midnight:not(.custom-user-profile-theme)' "$vencord_theme" || fail "Base should cover Discord's Onyx theme"
 if grep -E -q ':\s*(lime|magenta)\s*;' "$vencord_theme"; then fail "Base should drop midnight's placeholder colors"; fi
 "$BASH_EXE" "$ROOT/install.sh" vencord:midnight >/dev/null
-grep -q 'RoundedDiscord/src/roundeddiscord.css' "$vencord_theme" || fail "Midnight should round its corners with RoundedDiscord"
+grep -q 'RoundedDiscord, radius rules only' "$vencord_theme" || fail "Midnight should round its corners with RoundedDiscord"
+if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '^[[:space:]]*(margin|padding|width|height)'; then fail "RoundedDiscord on Midnight should only round corners, not move panels"; fi
+if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '\.(chat_f75fb0|sidebar__5e434|page__5e434)'; then fail "RoundedDiscord should leave Midnight's panels alone"; fi
 grep -Fq -- '--radius: 16px' "$vencord_theme" || fail "Midnight should set RoundedDiscord's radius"
 for pair in "system24|system24/build/system24.css" "oldcord|milbits.github.io/oldcord/src/main.css" "surcord|surCord/src/source.css"; do
   key="${pair%%|*}"
