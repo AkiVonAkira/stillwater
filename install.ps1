@@ -45,6 +45,8 @@ function Split-StillwaterStatusRow([string]$Row) {
     Theme = if ($parts.Count -gt 3) { $parts[3] } else { "none" }
     Note = if ($parts.Count -gt 4) { $parts[4] } else { "" }
     Dest = if ($parts.Count -gt 5) { $parts[5] } else { "" }
+    Bases = if ($parts.Count -gt 6) { $parts[6] } else { "" }
+    Base = if ($parts.Count -gt 7) { $parts[7] } else { "" }
   }
 }
 
@@ -62,8 +64,8 @@ function Write-StillwaterList {
       }
     }
     $path = Get-StillwaterDisplayPath $item.Dest
-    Write-Host ("  {0}{1,-22}{2}  {3,-8}  {0}{4,-10}{2}  {5,-16}  {6}{7,-16}{2}  {6}{8}{2}" -f `
-      $paint, $item.Label, $style.Reset, $item.App, $item.Theme, $item.Note, $style.Muted, $item.Id, $path)
+    Write-Host ("  {0}{1,-22}{2}  {3,-8}  {0}{4,-10}{2}  {5,-16}  {9,-10}  {6}{7,-16}{2}  {6}{8}{2}" -f `
+      $paint, $item.Label, $style.Reset, $item.App, $item.Theme, $item.Note, $style.Muted, $item.Id, $path, $item.Base)
   }
 }
 
@@ -72,18 +74,38 @@ if ($List) {
   exit 0
 }
 
+# Adapter ids may carry a base theme, as vencord:comfy.
 $known = @{}
 foreach ($row in Get-StillwaterStatus) {
-  $id = $row.Split("|")[0]
-  $known[$id] = $true
+  $item = Split-StillwaterStatusRow $row
+  $known[$item.Id] = $item
 }
 if ($Only) {
-  foreach ($id in $Only) {
+  foreach ($want in $Only) {
+    $id, $base = $want.Split(":", 2)
     if (-not $known.ContainsKey($id)) {
       Write-Error "Unknown adapter: $id"
       exit 1
     }
+    if ($want.Contains(":") -and -not (Test-StillwaterBaseValid $known[$id].Bases $base)) {
+      $keys = @(Get-StillwaterBaseList $known[$id].Bases | ForEach-Object { $_.Key }) -join " "
+      if ($keys) {
+        Write-Error "Unknown base for ${id}: $base. Bases: $keys"
+      } else {
+        Write-Error "$id has no base themes."
+      }
+      exit 1
+    }
   }
+}
+
+# Returns $null when id was not asked for, else the base asked for or "".
+function Get-StillwaterWantedBase([string]$Id) {
+  foreach ($want in $Only) {
+    if ($want -eq $Id) { return "" }
+    if ($want.StartsWith("${Id}:")) { return $want.Substring($Id.Length + 1) }
+  }
+  return $null
 }
 
 function Get-StillwaterAdapterScript([string]$Id) {
@@ -96,11 +118,6 @@ function Get-StillwaterAdapterScript([string]$Id) {
 
 function Test-StillwaterClack {
   try { return -not [Console]::IsOutputRedirected } catch { return $true }
-}
-
-function Restore-StillwaterUi($Style) {
-  try { [Console]::CursorVisible = $true } catch { }
-  if ($Style.Show) { Write-Host $Style.Show -NoNewline }
 }
 
 function Invoke-StillwaterInteractive {
@@ -117,7 +134,6 @@ function Invoke-StillwaterInteractive {
 }
 
 $Filter = $false
-$UsedPicker = $false
 if ($All) {
   $Only = @()
   $Filter = $false
@@ -126,7 +142,6 @@ if ($All) {
 } else {
   $Only = @(Invoke-StillwaterInteractive)
   $Filter = $true
-  $UsedPicker = $true
 }
 
 $installed = 0
@@ -135,21 +150,31 @@ $failed = 0
 $jobs = @()
 foreach ($row in Get-StillwaterStatus) {
   $item = Split-StillwaterStatusRow $row
+  $pick = ""
   if ($Filter) {
-    if (-not $Only -or -not ($Only -contains $item.Id)) { continue }
+    if (-not $Only) { continue }
+    $pick = Get-StillwaterWantedBase $item.Id
+    if ($null -eq $pick) { continue }
   }
+  $theme = $item.Theme
+  $base = $item.Base
+  if ($pick -and $pick -ne $base) {
+    if ($theme -ne "none") { $theme = "switch" }
+    $base = $pick
+  }
+  $baseLabel = if ($base) { Get-StillwaterBaseLabel $item.Bases $base } else { "" }
   if ($item.App -ne "found") {
     $skipped++
     if ($Filter) {
       $jobs += [pscustomobject]@{
-        Id = $item.Id; Label = $item.Label; Theme = $item.Theme
+        Id = $item.Id; Label = $item.Label; Theme = $theme; Base = $base; BaseLabel = $baseLabel
         Kind = "skip"; State = "skip"; Next = ""
       }
     }
     continue
   }
   $jobs += [pscustomobject]@{
-    Id = $item.Id; Label = $item.Label; Theme = $item.Theme
+    Id = $item.Id; Label = $item.Label; Theme = $theme; Base = $base; BaseLabel = $baseLabel
     Kind = "install"; State = "pending"; Next = (Get-StillwaterNextStep $item.Id)
   }
 }
@@ -184,9 +209,12 @@ function Get-StillwaterFailureMessage($ErrorRecord) {
   return [string]$ErrorRecord
 }
 
-function Invoke-StillwaterInstallJob($Script, [string]$Id) {
+# Only adapters with base themes take -Base, so it is passed only when set.
+function Invoke-StillwaterInstallJob($Script, [string]$Id, [string]$Base) {
+  $extra = @{}
+  if ($Base) { $extra.Base = $Base }
   if (-not $clack) {
-    $null = & $Script -Action install -Only @($Id)
+    $null = & $Script -Action install -Only @($Id) @extra
     return
   }
   $ps = [powershell]::Create()
@@ -194,16 +222,15 @@ function Invoke-StillwaterInstallJob($Script, [string]$Id) {
     # Do not name the home argument $home. $HOME is a read-only automatic
     # variable, and binding it in a nested runspace fails every adapter.
     [void]$ps.AddScript({
-      param($path, $ident, $root, $stillwaterHome, $dry)
+      param($path, $ident, $root, $stillwaterHome, $dry, $extra)
       $env:STILLWATER_ROOT = $root
       if ($stillwaterHome) { $env:STILLWATER_HOME = $stillwaterHome }
       $env:STILLWATER_DRY_RUN = $dry
-      & $path -Action install -Only @($ident)
-    }).AddArgument($Script).AddArgument($Id).AddArgument($Root).AddArgument($env:STILLWATER_HOME).AddArgument($env:STILLWATER_DRY_RUN)
+      & $path -Action install -Only @($ident) @extra
+    }).AddArgument($Script).AddArgument($Id).AddArgument($Root).AddArgument($env:STILLWATER_HOME).AddArgument($env:STILLWATER_DRY_RUN).AddArgument($extra)
     $handle = $ps.BeginInvoke()
     while (-not $handle.IsCompleted) {
       $script:spinI++
-      Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
       Write-StillwaterJobFrame
       Start-Sleep -Milliseconds 70
     }
@@ -217,14 +244,12 @@ function Invoke-StillwaterInstallJob($Script, [string]$Id) {
 }
 
 if ($clack) {
-  try { [Console]::CursorVisible = $false } catch { }
-  Write-Host $style.Hide -NoNewline
-  if ($UsedPicker -and $script:StillwaterPickerRows) {
-    Write-Host ("`e[{0}A" -f $script:StillwaterPickerRows) -NoNewline
-  }
+  Enable-StillwaterVirtualTerminal
+  Enter-StillwaterScreen $style
   Write-StillwaterJobFrame
 }
 
+try {
 foreach ($job in $jobs) {
   if ($job.Kind -ne "install") {
     if (-not $clack) { Write-Host ("Skipped {0}. Not found." -f $job.Label) }
@@ -232,7 +257,6 @@ foreach ($job in $jobs) {
   }
   if ($clack) {
     $job.State = "busy"
-    Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
     Write-StillwaterJobFrame
   }
   $script = Get-StillwaterAdapterScript $job.Id
@@ -243,14 +267,15 @@ foreach ($job in $jobs) {
     if (-not $clack) { Write-Host ("Skipped {0}. No installer." -f $job.Label) }
   } else {
     try {
-      Invoke-StillwaterInstallJob $script $job.Id
+      Invoke-StillwaterInstallJob $script $job.Id $job.Base
       $job.State = "ok"
       $installed++
       if (-not $clack) {
+        $name = if ($job.BaseLabel) { "{0} on {1}" -f $job.Label, $job.BaseLabel } else { $job.Label }
         if ($env:STILLWATER_DRY_RUN -eq "1") {
-          Write-Host ("Would install {0}." -f $job.Label)
+          Write-Host ("Would install {0}." -f $name)
         } else {
-          Write-Host ("Installed {0}." -f $job.Label)
+          Write-Host ("Installed {0}." -f $name)
         }
       }
     } catch {
@@ -261,17 +286,17 @@ foreach ($job in $jobs) {
     }
   }
   if ($clack) {
-    Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
     Write-StillwaterJobFrame
   }
+}
+} finally {
+  if ($clack) { Exit-StillwaterScreen $style }
 }
 
 $nextJobs = @($jobs | Where-Object { $_.State -eq "ok" -and $_.Next })
 $summary = Get-StillwaterJobSummary
 if ($clack) {
-  Write-Host ("`e[{0}A" -f ($jobs.Count + 3)) -NoNewline
-  Write-StillwaterJobFrame
-  Restore-StillwaterUi $style
+  Write-StillwaterJobsFinal $style $jobs $summary
 } else {
   if ($nextJobs.Count -gt 0) {
     Write-Host "Do this next."

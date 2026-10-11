@@ -264,6 +264,9 @@ stillwater_id_wanted() {
   return 1
 }
 
+# Status rows are id|label|app|theme|note|dest|bases|base. An adapter with base
+# themes sets SW_STATUS_BASES ("key=Label,key=Label") and SW_STATUS_BASE (the
+# installed or default key) before it prints; theme is the state of that base.
 stillwater_print_status() {
   local id="$1"
   local label="$2"
@@ -271,7 +274,40 @@ stillwater_print_status() {
   local theme="$4"
   local note="${5:-}"
   local dest="${6:-}"
-  printf '%s|%s|%s|%s|%s|%s\n' "$id" "$label" "$app" "$theme" "$note" "$dest"
+  printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$id" "$label" "$app" "$theme" "$note" "$dest" \
+    "${SW_STATUS_BASES:-}" "${SW_STATUS_BASE:-}"
+}
+
+# Prints the key of each base in a "key=Label,key=Label" spec, one per line.
+stillwater_base_keys() {
+  local spec="$1" part
+  local IFS=','
+  for part in $spec; do
+    [[ -n "$part" ]] && printf '%s\n' "${part%%=*}"
+  done
+}
+
+stillwater_base_label() {
+  local spec="$1" key="$2" part
+  local IFS=','
+  for part in $spec; do
+    if [[ "${part%%=*}" == "$key" ]]; then
+      printf '%s' "${part#*=}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+stillwater_base_valid() {
+  [[ -n "$2" ]] && stillwater_base_label "$1" "$2" >/dev/null
+}
+
+# Reads the "@base key" stamp an adapter writes into its installed file.
+stillwater_peek_base() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  sed -n 's/.*@base[[:space:]]\{1,\}\([a-z0-9-]\{1,\}\).*/\1/p' "$file" | head -n 1
 }
 
 stillwater_display_path() {
@@ -304,15 +340,36 @@ stillwater_display_path() {
   printf '%s' "$path"
 }
 
+# Sets SW_COLS and SW_LINES from the controlling terminal. stty reads the live
+# size; COLUMNS is often stale or missing in a script.
+stillwater_term_size() {
+  local size="" rows="" cols=""
+  size="$({ stty size </dev/tty; } 2>/dev/null || true)"
+  if [[ "$size" =~ ^([0-9]+)\ ([0-9]+)$ ]]; then
+    rows="${BASH_REMATCH[1]}"
+    cols="${BASH_REMATCH[2]}"
+  fi
+  if [[ -z "$cols" || "$cols" -eq 0 ]]; then
+    cols="${COLUMNS:-}"
+    if [[ -z "$cols" ]] && stillwater_has_cmd tput; then
+      cols="$(tput cols 2>/dev/null || true)"
+    fi
+  fi
+  if [[ -z "$rows" || "$rows" -eq 0 ]]; then
+    rows="${LINES:-}"
+    if [[ -z "$rows" ]] && stillwater_has_cmd tput; then
+      rows="$(tput lines 2>/dev/null || true)"
+    fi
+  fi
+  [[ "$cols" =~ ^[0-9]+$ && "$cols" -ge 20 ]] || cols=80
+  [[ "$rows" =~ ^[0-9]+$ && "$rows" -ge 6 ]] || rows=24
+  SW_COLS="$cols"
+  SW_LINES="$rows"
+}
+
 stillwater_term_cols() {
-  local n="${COLUMNS:-}"
-  if [[ -z "$n" ]] && stillwater_has_cmd tput; then
-    n="$(tput cols 2>/dev/null || true)"
-  fi
-  if [[ -z "$n" || "$n" -lt 40 ]]; then
-    n=80
-  fi
-  printf '%s' "$n"
+  stillwater_term_size
+  printf '%s' "$SW_COLS"
 }
 
 stillwater_fit_left() {
@@ -476,8 +533,8 @@ stillwater_print_copy_status() {
 }
 
 stillwater_sort_status() {
-  local id label app theme note dest group action key
-  while IFS='|' read -r id label app theme note dest; do
+  local id label app theme note dest bases base group action key
+  while IFS='|' read -r id label app theme note dest bases base; do
     [[ -n "$id" ]] || continue
     case "$app" in
       found) group=0 ;;
@@ -491,7 +548,7 @@ stillwater_sort_status() {
       *) action=3 ;;
     esac
     key="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
-    printf '%s\t%s|%s|%s|%s|%s|%s\n' "${group}${action}${key}" "$id" "$label" "$app" "$theme" "$note" "$dest"
+    printf '%s\t%s|%s|%s|%s|%s|%s|%s|%s\n' "${group}${action}${key}" "$id" "$label" "$app" "$theme" "$note" "$dest" "$bases" "$base"
   done | LC_ALL=C sort | cut -f2-
 }
 

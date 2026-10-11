@@ -234,8 +234,42 @@ function Test-StillwaterIdWanted([string]$Id, [string[]]$Only) {
   return $Only -contains $Id
 }
 
-function Write-StillwaterStatus([string]$Id, [string]$Label, [string]$App, [string]$Theme, [string]$Note = "", [string]$Dest = "") {
-  Write-Output ("{0}|{1}|{2}|{3}|{4}|{5}" -f $Id, $Label, $App, $Theme, $Note, $Dest)
+# Status rows are id|label|app|theme|note|dest|bases|base. Bases is
+# "key=Label,key=Label" and base is the installed or default key; theme is the
+# state of that base.
+function Write-StillwaterStatus([string]$Id, [string]$Label, [string]$App, [string]$Theme, [string]$Note = "", [string]$Dest = "", [string]$Bases = "", [string]$Base = "") {
+  Write-Output ("{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}" -f $Id, $Label, $App, $Theme, $Note, $Dest, $Bases, $Base)
+}
+
+function Get-StillwaterBaseList([string]$Spec) {
+  $list = @()
+  if (-not $Spec) { return $list }
+  foreach ($part in $Spec.Split(",")) {
+    if (-not $part) { continue }
+    $eq = $part.IndexOf("=")
+    if ($eq -lt 0) { $list += [pscustomobject]@{ Key = $part; Label = $part }; continue }
+    $list += [pscustomobject]@{ Key = $part.Substring(0, $eq); Label = $part.Substring($eq + 1) }
+  }
+  return $list
+}
+
+function Test-StillwaterBaseValid([string]$Spec, [string]$Key) {
+  if (-not $Key) { return $false }
+  return @(Get-StillwaterBaseList $Spec | Where-Object { $_.Key -eq $Key }).Count -gt 0
+}
+
+function Get-StillwaterBaseLabel([string]$Spec, [string]$Key) {
+  $hit = @(Get-StillwaterBaseList $Spec | Where-Object { $_.Key -eq $Key })
+  if ($hit.Count -gt 0) { return $hit[0].Label }
+  return ""
+}
+
+# Reads the "@base key" stamp an adapter writes into its installed file.
+function Get-StillwaterPeekBase([string]$File) {
+  if (-not $File -or -not (Test-Path -LiteralPath $File -PathType Leaf)) { return "" }
+  $m = [regex]::Match((Get-Content -Raw -LiteralPath $File), '@base\s+([a-z0-9-]+)')
+  if ($m.Success) { return $m.Groups[1].Value }
+  return ""
 }
 
 function Get-StillwaterDisplayPath([string]$Path) {
@@ -256,12 +290,20 @@ function Get-StillwaterDisplayPath([string]$Path) {
   return $normalized.Replace("\", "/")
 }
 
-function Get-StillwaterTermCols {
+function Get-StillwaterTermSize {
+  $cols = 80
+  $lines = 24
   try {
-    $n = [Console]::WindowWidth
-    if ($n -ge 40) { return $n }
+    $w = [Console]::WindowWidth
+    $h = [Console]::WindowHeight
+    if ($w -ge 20) { $cols = $w }
+    if ($h -ge 6) { $lines = $h }
   } catch { }
-  return 80
+  return [pscustomobject]@{ Cols = $cols; Lines = $lines }
+}
+
+function Get-StillwaterTermCols {
+  return (Get-StillwaterTermSize).Cols
 }
 
 function Get-StillwaterFitLeft([string]$Text, [int]$Max) {
@@ -337,7 +379,7 @@ function Get-StillwaterStatusNote([string]$State, [string]$Installed = "") {
   return "Modified"
 }
 
-function Write-StillwaterCopyStatus([string]$Id, [string]$Label, [string]$App, [string]$State, [string[]]$Dests = @()) {
+function Write-StillwaterCopyStatus([string]$Id, [string]$Label, [string]$App, [string]$State, [string[]]$Dests = @(), [string]$Bases = "", [string]$Base = "") {
   $installed = ""
   $destShow = ""
   foreach ($path in @($Dests)) {
@@ -346,7 +388,7 @@ function Write-StillwaterCopyStatus([string]$Id, [string]$Label, [string]$App, [
     $installed = Get-StillwaterPeekVersion $path
     if ($installed) { break }
   }
-  Write-StillwaterStatus $Id $Label $App $State (Get-StillwaterStatusNote $State $installed) $destShow
+  Write-StillwaterStatus $Id $Label $App $State (Get-StillwaterStatusNote $State $installed) $destShow $Bases $Base
 }
 
 function Sort-StillwaterStatus([string[]]$Rows) {
