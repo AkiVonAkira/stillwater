@@ -16,6 +16,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Typecheck theme generator
+        run: npm run typecheck
       - name: Validate JSON
         run: |
           node --input-type=commonjs -e "const fs=require('fs'); for (const file of ['palette.json','vscode/package.json','t3/stillwater.json','voltius/stillwater.json','ryoku/scheme.json','ryoku/meta.json']) JSON.parse(fs.readFileSync(file,'utf8'));"

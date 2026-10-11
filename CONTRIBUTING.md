@@ -14,6 +14,7 @@ Small fixes push straight to `main`. A new adapter, a new feature, or a large ch
 ## Checks
 
 ```bash
+npm run typecheck
 npm run build
 bash tests/test_install.sh
 bash install.sh --list
