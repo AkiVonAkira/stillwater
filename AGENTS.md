@@ -7,6 +7,7 @@ A personal color theme. `palette.json` holds the colors, each app folder is an a
 - Requests are short: an app, a symptom, sometimes a guess ("discord is so slow, update the theme classes maybe?"). Treat the guess as a lead. Find the cause before you change anything. Toggling animations did not fix that lag.
 - Small fixes, such as a color, a font, a selector, or a doc line, commit and push straight to `main`. A new adapter, a new feature, or a large change goes through a PR: branch, push, open the PR, wait for CI, then merge. `main` has no ruleset.
 - Two adapters means two PRs.
+- In a stack, retarget the next PR to `main` before you merge the bottom one with `--delete-branch`. Deleting its base branch closes the next PR instead of retargeting it.
 - "Install it" means run the real installer on this machine, such as `pwsh ./install.ps1 t3` or `bash install.sh t3`. Do not hand-edit the app's live config in place of the adapter.
 - When the owner gives a value ("it should be 8px"), use that value, not the nearest one you found elsewhere.
 

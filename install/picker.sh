@@ -524,9 +524,14 @@ stillwater_picker_strip_into() {
   local _start="${SW_B_START[$2]}"
   local _count="${SW_B_COUNT[$2]}"
   local _sel="${SW_B_SEL[$2]}"
+  local _init=-1
   local _o="" _plain=0 _j _lab _pad _pick="$SW_MUTED"
   if [[ "$3" == 1 ]]; then
     _pick="$SW_ACCENT"
+    # On a switch, the installed base keeps the Up to date color.
+    if [[ "$_sel" != "${SW_B_INIT[$2]}" && "${SW_THEMES[$2]}" != none ]]; then
+      _init="${SW_B_INIT[$2]}"
+    fi
   fi
   if [[ "$_count" -gt 0 ]]; then
     if [[ "$SW_STRIP_MODE" == full ]]; then
@@ -540,6 +545,8 @@ stillwater_picker_strip_into() {
         fi
         if [[ "$_j" -eq "$_sel" ]]; then
           _o+="${_pick}${_lab}"
+        elif [[ "$_j" -eq "$_init" ]]; then
+          _o+="${SW_ACCENT_DEEP}${_lab}"
         else
           _o+="${SW_MUTED}${_lab}"
         fi
