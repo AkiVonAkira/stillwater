@@ -10,10 +10,13 @@
  *
  * system24 by refact0r (MIT): https://github.com/refact0r/system24
  * Copyright (c) 2025 refact0r
+ * Simplified Panel Area by davart154: https://github.com/davart154/Themes
  */
 
 /* import theme modules */
 @import url('https://refact0r.github.io/system24/build/system24.css');
+/* panel buttons stay hidden until hover, as in the Midnight base */
+@import url('https://raw.githubusercontent.com/davart154/Themes/refs/heads/main/Snippets/Simplified%20Panel%20Area/SimplifiedPanelArea.css');
 
 body {
     /* font, change to '' for default discord font */

@@ -327,6 +327,9 @@ for pair in "system24|system24/build/system24.css" "oldcord|milbits.github.io/ol
   grep -q "@base $key" "$vencord_theme" || fail "$key should be installed"
   grep -q "${pair#*|}" "$vencord_theme" || fail "$key should load its theme"
   grep -qi '#5aa8b4' "$vencord_theme" || fail "$key should use the Stillwater accent"
+  if [[ "$key" == system24 ]]; then
+    grep -q SimplifiedPanelArea "$vencord_theme" || fail "system24 should hide panel buttons until hover"
+  fi
 done
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+surcord' || fail "installed surCord should be current"
