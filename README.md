@@ -27,7 +27,7 @@ In the picker, ← and → pick the base theme for apps that have more than one.
 ## Supported Apps
 
 - [btop](https://github.com/aristocratos/btop)
-- [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop)
+- [Equicord](https://equicord.org) / [Equibop](https://github.com/Equicord/Equibop) (Base, Midnight, Comfy)
 - [fastfetch](https://github.com/fastfetch-cli/fastfetch)
 - [Ghostty](https://ghostty.org)
 - [Harbor](https://github.com/harborstremio/harbor)
@@ -41,7 +41,7 @@ In the picker, ← and → pick the base theme for apps that have more than one.
 - [Spotifast](https://spotifast.rocks)
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
-- [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop)
+- [Vencord](https://vencord.dev) / [Vesktop](https://github.com/Vencord/Vesktop) (Base, Midnight, Comfy)
 - [Voltius](https://voltius.app)
 - [Starship](https://starship.rs) (Windows PowerShell)
 - [Windows Terminal](https://aka.ms/terminal)
@@ -63,6 +63,7 @@ Press `Ctrl+K`, choose **Import themes**, select the themes section, choose `vol
 
 ## Credits
 
+- [Comfy](https://github.com/Comfy-Themes/Discord)
 - [Dribbblish](https://github.com/spicetify/spicetify-themes/tree/master/Dribbblish)
 - [feppz!](https://github.com/foxnne/feppz)
 - [midnight](https://github.com/refact0r/midnight-discord)

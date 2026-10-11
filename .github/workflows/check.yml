@@ -31,8 +31,10 @@ jobs:
           if (vs.version !== spec.version) throw new Error("vscode version mismatch");
           const zed = fs.readFileSync("zed/extension.toml", "utf8");
           if (!zed.includes("version = \"" + spec.version + "\"")) throw new Error("zed version mismatch");
-          const ven = fs.readFileSync("vencord/Stillwater.theme.css", "utf8");
-          if (!ven.includes("@version " + spec.version)) throw new Error("vencord version mismatch");
+          for (const base of ["base", "midnight", "comfy"]) {
+            const ven = fs.readFileSync("vencord/" + base + "/Stillwater.theme.css", "utf8");
+            if (!ven.includes("@version " + spec.version)) throw new Error("vencord " + base + " version mismatch");
+          }
           const spice = fs.readFileSync("spicetify/color.ini", "utf8");
           if (!spice.includes("version " + spec.version)) throw new Error("spicetify version mismatch");
           const harbor = fs.readFileSync("harbor/Stillwater.harborstyle", "utf8");
