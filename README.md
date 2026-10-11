@@ -10,6 +10,7 @@ bash install.sh --all
 bash install.sh --list
 bash install.sh --dry-run --all
 bash install.sh cursor t3
+bash install.sh spicetify:base
 ```
 
 ```powershell
@@ -18,7 +19,10 @@ pwsh .\install.ps1 -All
 pwsh .\install.ps1 -List
 pwsh .\install.ps1 -DryRun -All
 pwsh .\install.ps1 cursor t3
+pwsh .\install.ps1 spicetify:base
 ```
+
+In the picker, ← and → pick the base theme for apps that have more than one.
 
 ## Supported Apps
 
@@ -33,7 +37,7 @@ pwsh .\install.ps1 cursor t3
 - [Obsidian](https://obsidian.md)
 - [Prism Launcher](https://prismlauncher.org)
 - [Ryoku](https://ryoku.dev) (Linux)
-- [Spicetify](https://spicetify.app)
+- [Spicetify](https://spicetify.app) (Base, Dribbblish)
 - [Spotifast](https://spotifast.rocks)
 - [Sublime Text](https://www.sublimetext.com)
 - [T3 Code](https://t3.codes)
