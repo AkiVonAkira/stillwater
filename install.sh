@@ -18,6 +18,7 @@ Install Stillwater into apps found on this OS. Missing apps are dimmed.
   bash install.sh --list
   bash install.sh --dry-run --all
   bash install.sh cursor t3
+  bash install.sh vencord:comfy   pick a base theme
 EOF
 }
 
@@ -26,7 +27,6 @@ INTERACTIVE=0
 ALL=0
 ONLY=()
 STILLWATER_DRY_RUN=0
-USED_PICKER=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -94,7 +94,7 @@ collect_status() {
 }
 
 print_list() {
-  local paint id label app theme note dest path
+  local paint id label app theme note dest bases base path
   stillwater_load_theme_ansi
   if [[ ! -t 1 ]]; then
     SW_RESET=""
@@ -106,7 +106,7 @@ print_list() {
     SW_WARM=""
   fi
   printf '%sStillwater%s  %s%s  %s%s\n' "$SW_ACCENT" "$SW_RESET" "$SW_WARM" "$(stillwater_os_label)" "$(stillwater_version)" "$SW_RESET"
-  while IFS='|' read -r id label app theme note dest; do
+  while IFS='|' read -r id label app theme note dest bases base; do
     paint="$SW_MUTED"
     if [[ "$app" == found ]]; then
       case "$theme" in
@@ -116,8 +116,8 @@ print_list() {
       esac
     fi
     path="$(stillwater_display_path "$dest")"
-    printf '  %s%-22s%s  %-8s  %s%-10s%s  %-16s  %s%-16s%s  %s%s%s\n' \
-      "$paint" "$label" "$SW_RESET" "$app" "$paint" "$theme" "$SW_RESET" "${note:-}" \
+    printf '  %s%-22s%s  %-8s  %s%-10s%s  %-16s  %-10s  %s%-16s%s  %s%s%s\n' \
+      "$paint" "$label" "$SW_RESET" "$app" "$paint" "$theme" "$SW_RESET" "${note:-}" "${base:-}" \
       "$SW_MUTED" "$id" "$SW_RESET" "$SW_MUTED" "$path" "$SW_RESET"
   done < <(collect_status)
 }
@@ -133,20 +133,52 @@ adapter_for_id() {
   return 1
 }
 
+# Adapter ids may carry a base theme, as vencord:comfy.
 unknown_ids() {
-  local id known
+  local item id base status known row bases
   if [[ ${#ONLY[@]} -eq 0 ]]; then
     return 0
   fi
-  known="$(collect_status | cut -d'|' -f1)"
-  for id in "${ONLY[@]}"; do
+  status="$(collect_status)"
+  known="$(printf '%s\n' "$status" | cut -d'|' -f1)"
+  for item in "${ONLY[@]}"; do
+    id="${item%%:*}"
     if ! printf '%s\n' "$known" | grep -qx "$id"; then
       echo "Unknown adapter: $id" >&2
       echo "Known: $(printf '%s' "$known" | tr '\n' ' ')" >&2
       return 1
     fi
+    if [[ "$item" == *:* ]]; then
+      base="${item#*:}"
+      row="$(printf '%s\n' "$status" | grep "^$id|" | head -n 1)"
+      bases="$(printf '%s' "$row" | cut -d'|' -f7)"
+      if ! stillwater_base_valid "$bases" "$base"; then
+        echo "Unknown base for $id: $base" >&2
+        if [[ -n "$bases" ]]; then
+          echo "Bases: $(stillwater_base_keys "$bases" | tr '\n' ' ')" >&2
+        else
+          echo "$id has no base themes." >&2
+        fi
+        return 1
+      fi
+    fi
   done
   return 0
+}
+
+# Prints the base asked for with id, and fails when id was not asked for.
+wanted_base() {
+  local id="$1" item
+  for item in "${ONLY[@]}"; do
+    if [[ "$item" == "$id" ]]; then
+      return 0
+    fi
+    if [[ "$item" == "$id":* ]]; then
+      printf '%s' "${item#*:}"
+      return 0
+    fi
+  done
+  return 1
 }
 
 prompt_interactive() {
@@ -157,7 +189,6 @@ prompt_interactive() {
   if ! stillwater_picker "$(collect_status)"; then
     exit 0
   fi
-  USED_PICKER=1
   ONLY=("${STILLWATER_PICKED[@]+"${STILLWATER_PICKED[@]}"}")
 }
 
@@ -190,15 +221,28 @@ jobs_theme=()
 jobs_kind=()
 jobs_state=()
 jobs_next=()
+jobs_base=()
+jobs_base_label=()
 
-while IFS='|' read -r id label app theme _note _dest; do
+while IFS='|' read -r id label app theme _note _dest bases base; do
+  pick=""
   if [[ "$FILTER" == 1 ]]; then
     if [[ ${#ONLY[@]} -eq 0 ]]; then
       continue
     fi
-    if ! stillwater_id_wanted "$id" "${ONLY[@]}"; then
+    if ! pick="$(wanted_base "$id")"; then
       continue
     fi
+  fi
+  if [[ -n "$pick" && "$pick" != "$base" ]]; then
+    if [[ "$theme" != none ]]; then
+      theme=switch
+    fi
+    base="$pick"
+  fi
+  base_label=""
+  if [[ -n "$base" ]]; then
+    base_label="$(stillwater_base_label "$bases" "$base" || true)"
   fi
   if [[ "$app" != found ]]; then
     skipped=$((skipped + 1))
@@ -209,6 +253,8 @@ while IFS='|' read -r id label app theme _note _dest; do
       jobs_kind+=("skip")
       jobs_state+=("skip")
       jobs_next+=("")
+      jobs_base+=("$base")
+      jobs_base_label+=("$base_label")
     fi
     continue
   fi
@@ -218,6 +264,8 @@ while IFS='|' read -r id label app theme _note _dest; do
   jobs_kind+=("install")
   jobs_state+=("pending")
   jobs_next+=("$(stillwater_next_step "$id")")
+  jobs_base+=("$base")
+  jobs_base_label+=("$base_label")
 done < <(collect_status)
 
 stillwater_picker_init_style
@@ -239,6 +287,7 @@ load_jobs() {
   SW_JOB_THEMES=("${jobs_theme[@]+"${jobs_theme[@]}"}")
   SW_JOB_STATES=("${jobs_state[@]+"${jobs_state[@]}"}")
   SW_JOB_NEXTS=("${jobs_next[@]+"${jobs_next[@]}"}")
+  SW_JOB_BASES=("${jobs_base_label[@]+"${jobs_base_label[@]}"}")
 }
 
 paint_jobs() {
@@ -254,15 +303,16 @@ repaint_jobs() {
 run_install() {
   local script="$1"
   local id="$2"
+  local base="$3"
   local out err pid rc
   if [[ "$CLACK" != 1 ]]; then
-    "$BASH_EXE" "$script" install "$id" >/dev/null
+    "$BASH_EXE" "$script" install "$id" "$base" >/dev/null
     return
   fi
   out="$(mktemp)"
   err="$(mktemp)"
   set +e
-  "$BASH_EXE" "$script" install "$id" >"$out" 2>"$err" &
+  "$BASH_EXE" "$script" install "$id" "$base" >"$out" 2>"$err" &
   pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     SW_SPIN_I=$((SW_SPIN_I + 1))
@@ -277,12 +327,11 @@ run_install() {
 }
 
 if [[ "$CLACK" == 1 ]]; then
-  printf '%s' "$SW_HIDE" >&2
-  if [[ "$USED_PICKER" == 1 ]]; then
-    stillwater_picker_erase "${SW_PICKER_ROWS:-0}"
-  fi
+  SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
+  stillwater_screen_enter
   trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
   trap 'stillwater_picker_restore' EXIT
+  trap 'SW_RESIZED=1' WINCH
   paint_jobs
 fi
 
@@ -305,14 +354,18 @@ for i in "${!jobs_id[@]}"; do
     if [[ "$CLACK" != 1 ]]; then
       echo "Skipped ${jobs_label[$i]}. No installer."
     fi
-  elif run_install "$script" "${jobs_id[$i]}"; then
+  elif run_install "$script" "${jobs_id[$i]}" "${jobs_base[$i]}"; then
     jobs_state[$i]="ok"
     installed=$((installed + 1))
     if [[ "$CLACK" != 1 ]]; then
+      name="${jobs_label[$i]}"
+      if [[ -n "${jobs_base_label[$i]}" ]]; then
+        name="$name on ${jobs_base_label[$i]}"
+      fi
       if [[ "$STILLWATER_DRY_RUN" == 1 ]]; then
-        echo "Would install ${jobs_label[$i]}."
+        echo "Would install $name."
       else
-        echo "Installed ${jobs_label[$i]}."
+        echo "Installed $name."
       fi
     fi
   else
@@ -341,9 +394,10 @@ if [[ "$failed" -gt 0 ]]; then
   summary="Installed ${installed}, skipped ${skipped}, failed ${failed}."
 fi
 if [[ "$CLACK" == 1 ]]; then
-  repaint_jobs
   stillwater_picker_restore
   trap - EXIT INT TERM
+  load_jobs
+  stillwater_jobs_print "$(job_summary)"
 else
   if [[ "$next_any" == 1 ]]; then
     echo "Do this next."

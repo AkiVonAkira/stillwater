@@ -8,6 +8,8 @@ BASH_EXE="${BASH:-bash}"
 
 NODE_BIN="$(command -v node || true)"
 export STILLWATER_HOME="$TMP"
+# T3 agent shells set T3CODE_HOME, which would point the T3 adapter at the real install.
+unset T3CODE_HOME
 export PATH="$TMP/bin:/usr/bin:/bin"
 if [[ -n "$NODE_BIN" ]]; then
   export PATH="$(dirname "$NODE_BIN"):$PATH"
@@ -68,6 +70,44 @@ SW_COLS=120
 SW_FOOTER_LINES=1
 [[ "$(stillwater_keymap_select | wc -l)" -eq 1 ]] || fail "wide terminals should keep the keymap on one line"
 unset SW_COLS SW_FOOTER_LINES
+stillwater_picker_parse $'vencord|Vencord|found|current||/tmp/v|base=Base,midnight=Midnight,comfy=Comfy (Outdated)|midnight\nspicetify|Spicetify|skip|none||/tmp/s|base=Base,dribbblish=Dribbblish|dribbblish\ncursor|Cursor|found|none||/tmp/c'
+[[ "$SW_HAS_BASES" == 1 ]] || fail "picker should notice base themes"
+[[ "${SW_B_COUNT[0]}" == 3 && "${SW_B_SEL[0]}" == 1 ]] || fail "picker should start on the installed base"
+[[ "${SW_B_COUNT[2]}" == 0 ]] || fail "apps without bases should have none"
+[[ "${SW_SELECTED[0]}" == 0 ]] || fail "up to date row with bases should start off"
+stillwater_picker_cycle_base 0 1 || fail "right should move the base"
+[[ "$(stillwater_picker_base_key 0)" == comfy ]] || fail "right from Midnight is Comfy"
+[[ "${SW_SELECTED[0]}" == 1 ]] || fail "changing the base should select the row"
+stillwater_picker_theme_into t 0
+[[ "$t" == switch ]] || fail "a new base on an installed app is a switch"
+[[ "$(stillwater_picker_action found switch)" == Switch ]] || fail "switch label"
+[[ "$(stillwater_job_verb switch ok)" == switched ]] || fail "switch done is switched"
+stillwater_picker_cycle_base 0 1
+[[ "$(stillwater_picker_base_key 0)" == base ]] || fail "right from the last base wraps to the first"
+stillwater_picker_cycle_base 0 1
+[[ "${SW_SELECTED[0]}" == 0 ]] || fail "back on the installed base should restore the row's default"
+if stillwater_picker_cycle_base 2 1; then fail "apps without bases should not cycle"; fi
+SW_CURSOR=0
+COLUMNS=200 LINES=40 stillwater_picker_layout
+[[ "$SW_STRIP_MODE" == full ]] || fail "wide terminals should show every base"
+stillwater_picker_strip_into strip 0 1
+plain="$(printf '%s' "$strip" | sed 's/\x1b\[[0-9;]*m//g')"
+[[ "$plain" == "[ Base / Midnight / Comfy (Outdated) ]" ]] || fail "base strip should list every base: $plain"
+stillwater_picker_keymap_text="$(stillwater_keymap_select)"
+printf '%s' "$stillwater_picker_keymap_text" | grep -q 'base' || fail "keymap should name the base keys when an app has bases"
+COLUMNS=60 LINES=40 stillwater_picker_layout
+[[ "$SW_STRIP_MODE" == tag ]] || fail "narrow terminals should show only the chosen base"
+for cols in 30 60 90 200; do
+  COLUMNS=$cols LINES=12 stillwater_picker_layout
+  for i in 0 1 2; do
+    stillwater_picker_row_into row "$i"
+    plain="$(printf '%s' "$row" | sed 's/\x1b\[[0-9;]*m//g')"
+    [[ ${#plain} -lt "$cols" ]] || fail "picker rows must not reach the last column at $cols cols"
+  done
+done
+COLUMNS=80 LINES=8 stillwater_picker_layout
+[[ $((SW_HEAD_LINES + SW_LIST_H + SW_FOOTER_LINES)) -le 8 ]] || fail "picker frame must fit the terminal height"
+unset COLUMNS LINES
 [[ "$(stillwater_display_path "$HOME/foo/bar")" == "~/foo/bar" ]] || fail "display path should use ~"
 [[ "$(stillwater_display_path "$HOME/.t3/userdata/themes/stillwater.json")" == "~/.t3/userdata/themes" ]] || fail "display path should drop the file name"
 [[ "$(stillwater_display_path "$HOME/.cursor/extensions/kayzel.stillwater-theme-1.0.0")" == "~/.cursor/extensions" ]] || fail "display path should drop the extension folder name"
@@ -90,6 +130,9 @@ unset SW_COLS SW_FOOTER_LINES
 [[ "$(stillwater_peek_version "$ROOT/vscode/package.json")" == 1.0.0 ]] || fail "peek vscode package version"
 [[ "$(stillwater_peek_version "$ROOT/zed/extension.toml")" == 1.0.0 ]] || fail "peek zed toml version"
 [[ "$(stillwater_peek_version "$ROOT/vencord/Stillwater.theme.css")" == 1.0.0 ]] || fail "peek vencord @version"
+[[ "$(stillwater_base_label "base=Base,comfy=Comfy (Outdated)" comfy)" == "Comfy (Outdated)" ]] || fail "base label lookup"
+stillwater_base_valid "base=Base,comfy=Comfy (Outdated)" comfy || fail "comfy is a valid base"
+if stillwater_base_valid "base=Base" comfy; then fail "comfy is not in that spec"; fi
 [[ "$(stillwater_peek_version "$ROOT/spicetify/color.ini")" == 1.0.0 ]] || fail "peek spicetify ini version"
 [[ "$(stillwater_peek_version "$ROOT/obsidian/manifest.json")" == 1.0.0 ]] || fail "peek obsidian manifest version"
 [[ "$(stillwater_peek_version "$ROOT/prism/theme.json")" == 1.0.0 ]] || fail "peek prism theme version"
@@ -251,6 +294,8 @@ fi
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to 1\.0\.0' || fail "old Vencord stamp should show version update"
 "$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
+if err="$("$BASH_EXE" "$ROOT/install.sh" cursor:dark 2>&1)"; then fail "a base on an app without bases should fail"; fi
+printf '%s\n' "$err" | grep -q 'cursor has no base themes' || fail "should say cursor has no bases"
 
 mkdir -p "$TMP/.config/spicetify"
 out="$("$BASH_EXE" "$ROOT/install.sh" spicetify)"
