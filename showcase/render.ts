@@ -49,7 +49,8 @@ html,body{margin:0;background:transparent}
 ${CSS}
 .mark{position:absolute;left:64px;top:44px;display:flex;align-items:center;gap:14px;font-weight:600;font-size:34px;letter-spacing:.01em}
 .mark i{width:16px;height:16px;border-radius:50%}
-.strip{position:absolute;left:64px;right:64px;bottom:40px;display:flex;border-radius:8px;overflow:hidden}
+.strip{position:absolute;left:64px;right:64px;bottom:36px;display:flex;gap:4px;padding:5px;border-radius:10px;background:${P.canvas};border:1px solid ${P.textFaint};box-shadow:0 12px 30px -8px rgba(0,0,0,.5)}
+.strip span:first-child{border-radius:5px 0 0 5px}.strip span:last-child{border-radius:0 5px 5px 0}
 </style></head><body>
 <div class="stage" style="width:${W}px;height:${H}px;background:${backdrop};border-radius:24px">
   <div class="mark" style="color:${P.text}"><i style="background:${P.accent}"></i>Stillwater</div>
