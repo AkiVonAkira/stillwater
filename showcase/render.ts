@@ -34,7 +34,7 @@ function swatches(): string {
   };
   walk(P);
   return colors
-    .map((c) => `<span style="flex:1;height:22px;background:${c};box-shadow:inset 0 0 0 1px ${P.border}"></span>`)
+    .map((c) => `<span style="background:${c}"></span>`)
     .join("");
 }
 
@@ -49,8 +49,8 @@ html,body{margin:0;background:transparent}
 ${CSS}
 .mark{position:absolute;left:64px;top:44px;display:flex;align-items:center;gap:14px;font-weight:600;font-size:34px;letter-spacing:.01em}
 .mark i{width:16px;height:16px;border-radius:50%}
-.strip{position:absolute;left:64px;right:64px;bottom:36px;display:flex;gap:4px;padding:5px;border-radius:10px;background:${P.canvas};border:1px solid ${P.textFaint};box-shadow:0 12px 30px -8px rgba(0,0,0,.5)}
-.strip span:first-child{border-radius:5px 0 0 5px}.strip span:last-child{border-radius:0 5px 5px 0}
+.strip{position:absolute;left:64px;right:64px;bottom:34px;display:flex;gap:8px}
+.strip span{flex:1;height:28px;border-radius:6px;box-shadow:inset 0 0 0 1px ${P.text}4d}
 </style></head><body>
 <div class="stage" style="width:${W}px;height:${H}px;background:${backdrop};border-radius:24px">
   <div class="mark" style="color:${P.text}"><i style="background:${P.accent}"></i>Stillwater</div>
