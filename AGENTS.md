@@ -13,10 +13,20 @@ A personal color theme. `palette.json` holds the colors, each app folder is an a
 
 ## Done means
 
-1. `npm run build`, `bash tests/test_install.sh`, and `bash install.sh --list` pass, and the PR's CI is green. CI runs on Ubuntu. Git Bash on Windows differs (fork limits, path assertions, no `python3`), so a Windows-only pass is not done.
+1. `npm run build`, `npm run version:check`, `bash tests/test_install.sh`, and `pwsh tests/test_install.ps1` pass, and the PR's CI is green. CI runs the bash tests on Ubuntu with `LANG=C.UTF-8`. Git Bash on Windows differs (fork limits, path assertions, no `python3`, byte-counted keymap widths), so a Git Bash pass is not done. Docker `node:22` with `-e LANG=C.UTF-8` matches CI.
 2. You looked at the themed app yourself. Take the screenshot and check the change and the elements around it. A fix that breaks its neighbor is the common failure: re-adding a Spotify panel broke the full-height album art. The owner should not be the one sending the screenshot.
 3. No text is clipped.
-4. An adapter that can carry a version takes it from `palette.json`, shows it in `--list`, and has a line in the version check in `.github/workflows/check.yml`.
+4. An adapter that can carry a version takes it from `palette.json`, shows it in `--list`, and has a line in `STAMPS` in `version.ts`.
+
+## Tests
+
+- The installer tests run the real `install.sh` and `install.ps1` against an empty home. Add a case there for a new adapter or an installer bug, written to fail on `main` first.
+- Do not add tests that restate picker labels, next-step text, or a hard-coded version. Read the version from `palette.json`.
+- Run an install that is not `--dry-run` only with `STILLWATER_HOME` set to a temp folder. Adapters such as Spicetify call the app's own CLI.
+
+## Installer speed
+
+Adapter `status` runs every time the picker opens. Keep it to file checks: no fork per line in bash and no `Get-Command` in a loop in pwsh. YASB status once took 14 s on Git Bash from a `sed` per CSS line; it is one `awk` pass now.
 
 ## Contrast
 

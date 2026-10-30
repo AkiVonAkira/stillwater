@@ -225,6 +225,29 @@ function Step-StillwaterPickerBase($Item, [int]$Dir) {
   return $true
 }
 
+# Rebuilds the rows from a newer status list and keeps what the user changed,
+# matched by id, so rows can arrive while the picker is open. The cursor stays
+# on its app once the user has moved it, else on the first app found.
+function Update-StillwaterPickerItems($Old, [string[]]$Rows) {
+  $ui = $script:StillwaterUi
+  $prev = @{}
+  foreach ($item in $Old) { $prev[$item.Id] = $item }
+  $cursorId = $null
+  if ($ui.Moved -and $ui.Cursor -ge 0 -and $ui.Cursor -lt $Old.Count) { $cursorId = $Old[$ui.Cursor].Id }
+  $items = @(ConvertTo-StillwaterPickerItems $Rows)
+  $ui.Cursor = -1
+  for ($i = 0; $i -lt $items.Count; $i++) {
+    $was = $prev[$items[$i].Id]
+    if ($was) {
+      $items[$i].Selected = $was.Selected
+      $items[$i].BaseSel = $was.BaseSel
+    }
+    if ($cursorId -and $items[$i].Id -eq $cursorId) { $ui.Cursor = $i }
+  }
+  if ($ui.Cursor -lt 0) { $ui.Cursor = Get-StillwaterPickerCursor $items }
+  return $items
+}
+
 function Get-StillwaterPickerCursor($Items) {
   for ($i = 0; $i -lt $Items.Count; $i++) {
     if (Test-StillwaterPickerSelectable $Items[$i].App) { return $i }
@@ -239,6 +262,7 @@ function Move-StillwaterPickerCursor($Items, [int]$Dir) {
   $n = $Items.Count
   if ($n -le 0) { return }
   $ui.Follow = $true
+  $ui.Moved = $true
   $i = $ui.Cursor
   while ($true) {
     $i += $Dir
@@ -495,13 +519,13 @@ function Get-StillwaterMoreLine($Style, [int]$Count, [string]$Arrow) {
   return ("{0}{1}" -f $Style.Muted, $Style.Pipe)
 }
 
-function Get-StillwaterHeadLines($Style, [string]$Step, [string]$Mark) {
+function Get-StillwaterHeadLines($Style, [string]$Step, [string]$Mark, [string]$Tail = "") {
   $ui = $script:StillwaterUi
   $lines = @()
   if ($ui.HeadLines -ge 2) {
     $lines += ("{0}{1}{2}  {3}Stillwater{2}  {4}{5}  {6}" -f $Style.Muted, $Style.Start, $Style.Reset, $Style.Accent, $Style.Warm, (Get-StillwaterOsLabel), (Get-StillwaterVersion))
   }
-  if ($ui.HeadLines -ge 1) { $lines += ("{0}  {1}{2}" -f $Mark, $Style.Text, $Step) }
+  if ($ui.HeadLines -ge 1) { $lines += ("{0}  {1}{2}{3}" -f $Mark, $Style.Text, $Step, $Tail) }
   return $lines
 }
 
@@ -526,9 +550,16 @@ function Write-StillwaterFrame($Style, [string[]]$Lines) {
   [Console]::Write($sb.ToString())
 }
 
-function Write-StillwaterPicker($Style, $Items) {
+# While adapters still answer, the step line spins and counts them.
+function Write-StillwaterPicker($Style, $Items, $Load = $null) {
   $ui = $script:StillwaterUi
-  $lines = @(Get-StillwaterHeadLines $Style "select" ($Style.Accent + $Style.Diamond))
+  $mark = $Style.Accent + $Style.Diamond
+  $tail = ""
+  if ($Load -and $Load.Done -lt $Load.Total) {
+    $mark = $Style.AccentHover + (Get-StillwaterSpinFrame $Style $Load.Spin)
+    if ($Load.Done -ge 0) { $tail = "  {0}checking apps {1}/{2}" -f $Style.Muted, $Load.Done, $Load.Total }
+  }
+  $lines = @(Get-StillwaterHeadLines $Style "select" $mark $tail)
   Update-StillwaterView $Items.Count $ui.Cursor
   if ($ui.More) { $lines += Get-StillwaterMoreLine $Style $ui.ViewFirst "↑" }
   for ($i = $ui.ViewFirst; $i -le $ui.ViewLast; $i++) {
@@ -539,13 +570,15 @@ function Write-StillwaterPicker($Style, $Items) {
   Write-StillwaterFrame $Style $lines
 }
 
-# Waits for a key, or returns "resize" when the window size changes.
-function Read-StillwaterPickerKey {
+# Waits for a key, or returns "resize" when the window size changes. With
+# -Tick it returns "tick" after one wait, so the caller can take new rows.
+function Read-StillwaterPickerKey([switch]$Tick) {
   $size = Get-StillwaterTermSize
   while (-not [Console]::KeyAvailable) {
     Start-Sleep -Milliseconds 40
     $now = Get-StillwaterTermSize
     if ($now.Cols -ne $size.Cols -or $now.Lines -ne $size.Lines) { return "resize" }
+    if ($Tick) { return "tick" }
   }
   $key = [Console]::ReadKey($true)
   if ($key.Key -eq "UpArrow" -or $key.KeyChar -eq "k") { return "up" }
@@ -564,7 +597,7 @@ function Read-StillwaterPickerKey {
 
 function New-StillwaterUi {
   $script:StillwaterUi = [pscustomobject]@{
-    Cols = 80; Lines = 24; Cursor = 0; Top = 0; Follow = $true
+    Cols = 80; Lines = 24; Cursor = 0; Top = 0; Follow = $true; Moved = $false
     ViewFirst = 0; ViewLast = 0; More = $false; ListH = 1; HeadLines = 2
     WLabel = 22; WAction = 10; WNote = 0; WStrip = 0; StripMode = "none"; WPath = 0
     Keymap = @(); WBase = 0; WNext = 0
@@ -574,29 +607,43 @@ function New-StillwaterUi {
 # Returns the chosen adapter ids, as id or id:base. Throws "cancelled" on quit so
 # the caller can exit 0. Stays on the alternate screen on confirm so install.ps1
 # can draw progress there.
-function Invoke-StillwaterPicker([string[]]$Rows) {
+# $Poll returns the status read so far as { Rows; Done; Total }. The picker
+# opens at once, sorts rows in as adapters answer, and takes enter once the
+# last one has.
+function Invoke-StillwaterPicker([scriptblock]$Poll) {
   Enable-StillwaterVirtualTerminal
   try {
     [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
   } catch { }
   $style = Get-StillwaterPickerStyle
-  $items = @(ConvertTo-StillwaterPickerItems $Rows)
-  if ($items.Count -eq 0) {
-    Write-Error "No adapters found."
-    return @()
-  }
   New-StillwaterUi
   $ui = $script:StillwaterUi
-  $ui.Cursor = Get-StillwaterPickerCursor $items
+  $load = [pscustomobject]@{ Done = -1; Total = 1; Spin = 0 }
+  $items = @()
   $oldCtrlC = $false
   try { $oldCtrlC = [Console]::TreatControlCAsInput; [Console]::TreatControlCAsInput = $true } catch { }
   $keep = $false
   Enter-StillwaterScreen $style
   try {
     Update-StillwaterPickerLayout $style $items
-    Write-StillwaterPicker $style $items
+    Write-StillwaterPicker $style $items $load
     while ($true) {
-      $key = Read-StillwaterPickerKey
+      if ($load -and $load.Done -lt $load.Total) {
+        $state = & $Poll
+        $load.Total = $state.Total
+        if ($state.Done -ne $load.Done) {
+          $load.Done = $state.Done
+          $items = @(Update-StillwaterPickerItems $items @($state.Rows))
+          Update-StillwaterPickerLayout $style $items
+        }
+        if ($load.Done -ge $load.Total -and $items.Count -eq 0) {
+          throw "No adapters found."
+        }
+      }
+      Write-StillwaterPicker $style $items $load
+      $loading = $load -and $load.Done -lt $load.Total
+      $key = Read-StillwaterPickerKey -Tick:$loading
+      if ($loading) { $load.Spin++ }
       switch ($key) {
         "resize" {
           Update-StillwaterPickerLayout $style $items
@@ -606,16 +653,17 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
         "down" { Move-StillwaterPickerCursor $items 1 }
         "pgup" { Move-StillwaterPickerPage $items -1 }
         "pgdn" { Move-StillwaterPickerPage $items 1 }
-        "left" { [void](Step-StillwaterPickerBase $items[$ui.Cursor] -1) }
-        "right" { [void](Step-StillwaterPickerBase $items[$ui.Cursor] 1) }
+        "left" { if ($items.Count) { [void](Step-StillwaterPickerBase $items[$ui.Cursor] -1) } }
+        "right" { if ($items.Count) { [void](Step-StillwaterPickerBase $items[$ui.Cursor] 1) } }
         "space" {
-          if (Test-StillwaterPickerSelectable $items[$ui.Cursor].App) {
+          if ($items.Count -and (Test-StillwaterPickerSelectable $items[$ui.Cursor].App)) {
             $items[$ui.Cursor].Selected = -not $items[$ui.Cursor].Selected
           }
         }
         "all" { Set-StillwaterPickerAll $items }
         "none" { foreach ($item in $items) { $item.Selected = $false } }
         "enter" {
+          if ($loading) { continue }
           $keep = $true
           return @($items | Where-Object { $_.Selected } | ForEach-Object {
               $base = Get-StillwaterPickerBase $_
@@ -629,7 +677,6 @@ function Invoke-StillwaterPicker([string[]]$Rows) {
         }
         default { continue }
       }
-      Write-StillwaterPicker $style $items
     }
   } finally {
     try { [Console]::TreatControlCAsInput = $oldCtrlC } catch { }
@@ -755,61 +802,26 @@ function Write-StillwaterJobsFinal($Style, $Jobs, [string]$Summary) {
   Write-Host ((Get-StillwaterJobFooter $Style $Jobs $counts $Summary) + $Style.Reset)
 }
 
-# Shows the picker frame at once while the adapters answer: one placeholder row
-# per adapter, filled in with its apps as each finishes. Returns when the job is
-# done. With no job yet it draws the empty frame once, so it shows before the
-# adapters start competing for the CPU.
-function Show-StillwaterLoading($Job, [string[]]$Scripts) {
+# Named installs show a count while the adapters answer; the rows come with
+# the progress. Returns when the job is done.
+function Show-StillwaterLoading($Job, [int]$Total) {
   if (-not $script:StillwaterLoadingStyle) {
     Enable-StillwaterVirtualTerminal
     try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new() } catch { }
     $script:StillwaterLoadingStyle = Get-StillwaterPickerStyle
     New-StillwaterUi
-    if (-not $script:StillwaterInline) { Enter-StillwaterScreen $script:StillwaterLoadingStyle }
   }
   $style = $script:StillwaterLoadingStyle
   $spin = 0
   while ($true) {
-    $done = @{}
-    foreach ($child in @(if ($Job) { $Job.ChildJobs })) {
-      if ($child.State -ne "Completed" -and $child.State -ne "Failed") { continue }
-      foreach ($result in $child.Output) {
-        if ($result.Script) { $done[$result.Script] = $result.Rows }
-      }
-    }
-    $size = Get-StillwaterTermSize
-    $script:StillwaterUi.Lines = $size.Lines
+    $done = @($Job.ChildJobs | Where-Object { $_.State -eq "Completed" -or $_.State -eq "Failed" }).Count
+    $script:StillwaterUi.Lines = (Get-StillwaterTermSize).Lines
     Set-StillwaterListHeight $script:StillwaterUi 1
     $mark = Get-StillwaterSpinFrame $style $spin
-    # Inline (named installs) shows only the count; the rows come with the progress.
-    if ($script:StillwaterInline) {
-      $lines = @(Get-StillwaterHeadLines $style "install" ($style.Accent + $style.Diamond))
-      $lines += "{0}{1}  {2}{3}{0} checking apps {4}/{5}" -f $style.Muted, $style.Corner, $style.AccentHover, $mark, $done.Count, $Scripts.Count
-      Write-StillwaterFrame $style $lines
-      if (-not $Job -or $done.Count -ge $Scripts.Count -or $Job.State -ne "Running") { break }
-      $spin++
-      Start-Sleep -Milliseconds 50
-      continue
-    }
-    $lines = @(Get-StillwaterHeadLines $style "select" ($style.Accent + $style.Diamond))
-    $rows = @()
-    foreach ($s in $Scripts) {
-      if (-not $done.ContainsKey($s)) {
-        $rows += "{0}{1}  {2}{3}{0}  {4}" -f $style.Muted, $style.Pipe, $style.AccentHover, $mark, (Split-Path -Leaf (Split-Path -Parent $s))
-        continue
-      }
-      foreach ($row in $done[$s]) {
-        $parts = ([string]$row).Split("|")
-        if ($parts.Count -lt 3) { continue }
-        $theme = if ($parts.Count -gt 3) { $parts[3] } else { "none" }
-        $rows += "{0}{1}     {2}  {3}{4}" -f $style.Muted, $style.Pipe, (Get-StillwaterPad $parts[1] 22),
-          (Get-StillwaterPickerActionColor $style $parts[2] $theme), (Get-StillwaterPickerAction $parts[2] $theme)
-      }
-    }
-    $lines += @($rows | Select-Object -First ([Math]::Max(1, $size.Lines - 3)))
-    $lines += "{0}{1}  checking apps {2}/{3}" -f $style.Muted, $style.Corner, $done.Count, $Scripts.Count
+    $lines = @(Get-StillwaterHeadLines $style "install" ($style.Accent + $style.Diamond))
+    $lines += "{0}{1}  {2}{3}{0} checking apps {4}/{5}" -f $style.Muted, $style.Corner, $style.AccentHover, $mark, $done, $Total
     Write-StillwaterFrame $style $lines
-    if (-not $Job -or $done.Count -ge $Scripts.Count -or $Job.State -ne "Running") { break }
+    if ($done -ge $Total -or $Job.State -ne "Running") { break }
     $spin++
     Start-Sleep -Milliseconds 50
   }

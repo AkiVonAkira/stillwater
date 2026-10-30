@@ -6,6 +6,8 @@
   "scripts": {
     "build": "tsx build.ts",
     "typecheck": "tsc --noEmit",
+    "bump": "tsx version.ts",
+    "version:check": "tsx version.ts --check",
     "showcase": "playwright install chromium && tsx showcase/render.ts"
   },
   "devDependencies": {

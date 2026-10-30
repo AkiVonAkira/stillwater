@@ -89,12 +89,6 @@ stillwater_picker_action_into() {
   printf -v "$1" '%s' "$_o"
 }
 
-stillwater_picker_action() {
-  local _r
-  stillwater_picker_action_into _r "$1" "$2"
-  printf '%s' "$_r"
-}
-
 stillwater_picker_action_color_into() {
   local _o
   if ! stillwater_picker_selectable "$2"; then
@@ -108,12 +102,6 @@ stillwater_picker_action_color_into() {
     esac
   fi
   printf -v "$1" '%s' "$_o"
-}
-
-stillwater_picker_action_color() {
-  local _r
-  stillwater_picker_action_color_into _r "$1" "$2"
-  printf '%s' "$_r"
 }
 
 stillwater_job_verb_into() {
@@ -143,12 +131,6 @@ stillwater_job_verb_into() {
   printf -v "$1" '%s' "$_o"
 }
 
-stillwater_job_verb() {
-  local _r
-  stillwater_job_verb_into _r "$1" "$2"
-  printf '%s' "$_r"
-}
-
 stillwater_job_verb_color_into() {
   local _o
   case "$3" in
@@ -164,12 +146,6 @@ stillwater_job_verb_color_into() {
     *) _o="$SW_TEXT" ;;
   esac
   printf -v "$1" '%s' "$_o"
-}
-
-stillwater_job_verb_color() {
-  local _r
-  stillwater_job_verb_color_into _r "$1" "$2"
-  printf '%s' "$_r"
 }
 
 stillwater_spin_frame_into() {
@@ -256,6 +232,8 @@ stillwater_fit_left_into() {
 
 stillwater_picker_parse() {
   local blob="$1"
+  local prev_ids=("${SW_IDS[@]+"${SW_IDS[@]}"}")
+  local prev_paths=("${SW_PATHS[@]+"${SW_PATHS[@]}"}")
   SW_IDS=()
   SW_LABELS=()
   SW_APPS=()
@@ -272,7 +250,7 @@ stillwater_picker_parse() {
   SW_B_KEY=()
   SW_B_LABEL=()
   SW_HAS_BASES=0
-  local id label app theme note dest bases base part k idx on
+  local id label app theme note dest bases base part k idx on path
   local parts=()
   while IFS='|' read -r id label app theme note dest bases base; do
     [[ -n "$id" ]] || continue
@@ -282,7 +260,17 @@ stillwater_picker_parse() {
     SW_THEMES+=("$theme")
     SW_NOTES+=("$note")
     SW_DESTS+=("$dest")
-    SW_PATHS+=("$(stillwater_display_path "$dest")")
+    path=""
+    for k in "${!prev_ids[@]}"; do
+      if [[ "${prev_ids[$k]}" == "$id" ]]; then
+        path="${prev_paths[$k]}"
+        break
+      fi
+    done
+    if [[ -z "$path" ]]; then
+      path="$(stillwater_display_path "$dest")"
+    fi
+    SW_PATHS+=("$path")
     on=0
     if stillwater_picker_selectable "$app" && [[ "$theme" != current ]]; then
       on=1
@@ -311,6 +299,36 @@ stillwater_picker_parse() {
     SW_B_SEL+=("$idx")
     SW_B_INIT+=("$idx")
   done <<<"$blob"
+}
+
+# Re-reads the rows from a newer status list and keeps what the user changed,
+# matched by id, so rows can arrive while the picker is open. The cursor stays
+# on its app once the user has moved it, else on the first app found.
+stillwater_picker_merge() {
+  local blob="$1" i j cursor_id=""
+  local old_ids=("${SW_IDS[@]+"${SW_IDS[@]}"}")
+  local old_sel=("${SW_SELECTED[@]+"${SW_SELECTED[@]}"}")
+  local old_bsel=("${SW_B_SEL[@]+"${SW_B_SEL[@]}"}")
+  if [[ "${SW_MOVED:-0}" == 1 && ${#old_ids[@]} -gt 0 ]]; then
+    cursor_id="${old_ids[$SW_CURSOR]:-}"
+  fi
+  stillwater_picker_parse "$blob"
+  SW_CURSOR=-1
+  for i in "${!SW_IDS[@]}"; do
+    for j in "${!old_ids[@]}"; do
+      if [[ "${old_ids[$j]}" == "${SW_IDS[$i]}" ]]; then
+        SW_SELECTED[$i]="${old_sel[$j]}"
+        SW_B_SEL[$i]="${old_bsel[$j]}"
+        break
+      fi
+    done
+    if [[ -n "$cursor_id" && "${SW_IDS[$i]}" == "$cursor_id" ]]; then
+      SW_CURSOR="$i"
+    fi
+  done
+  if [[ "$SW_CURSOR" -lt 0 ]]; then
+    SW_CURSOR="$(stillwater_picker_first)"
+  fi
 }
 
 stillwater_picker_base_key() {
@@ -343,14 +361,6 @@ stillwater_picker_cycle_base() {
   return 0
 }
 
-stillwater_hint_pair() {
-  printf '%s%s%s %s%s%s' "$SW_ACCENT" "$1" "$SW_RESET" "$SW_MUTED" "$2" "$SW_RESET"
-}
-
-stillwater_hint_sep() {
-  printf '  %s·%s  ' "$SW_MUTED" "$SW_RESET"
-}
-
 stillwater_keymap_pairs() {
   SW_KM_KEYS=('↑↓ jk')
   SW_KM_VERBS=(nav)
@@ -360,18 +370,6 @@ stillwater_keymap_pairs() {
   fi
   SW_KM_KEYS+=(space a n enter q)
   SW_KM_VERBS+=(toggle all none apply abort)
-}
-
-stillwater_keymap_plain() {
-  local i out="└ "
-  stillwater_keymap_pairs
-  for i in "${!SW_KM_KEYS[@]}"; do
-    if [[ "$i" -gt 0 ]]; then
-      out+="  ·"
-    fi
-    out+="  ${SW_KM_KEYS[$i]} ${SW_KM_VERBS[$i]}"
-  done
-  printf '%s' "$out"
 }
 
 # Wraps the key hints into SW_KM_LINES so no line reaches the last column.
@@ -512,11 +510,6 @@ stillwater_picker_layout() {
   done
   [[ "$SW_LIST_H" -lt 1 ]] && SW_LIST_H=1
   return 0
-}
-
-# Kept for callers that only want the padded columns.
-stillwater_picker_cache() {
-  stillwater_picker_layout
 }
 
 stillwater_picker_strip_into() {
@@ -666,6 +659,7 @@ stillwater_inline_end() {
 stillwater_frame_head() {
   local step="$1"
   local mark="$2"
+  local tail="${3:-}"
   local line
   if [[ "${SW_HEAD_LINES:-2}" -ge 2 ]]; then
     printf -v line '%s%s%s  %sStillwater%s  %s%s  %s' \
@@ -673,7 +667,7 @@ stillwater_frame_head() {
     stillwater_frame_add "$line"
   fi
   if [[ "${SW_HEAD_LINES:-2}" -ge 1 ]]; then
-    stillwater_frame_add "${mark}  ${SW_TEXT}${step}"
+    stillwater_frame_add "${mark}  ${SW_TEXT}${step}${tail}"
   fi
 }
 
@@ -718,11 +712,20 @@ stillwater_frame_more() {
   fi
 }
 
+# While adapters still answer, the step line spins and counts them.
 stillwater_picker_draw() {
-  local i n line
+  local i n line spin
   n="${#SW_IDS[@]}"
   stillwater_frame_reset
-  stillwater_frame_head select "${SW_ACCENT}${SW_DIAMOND}"
+  if [[ "${SW_LOADING:-0}" == 1 ]]; then
+    SW_SPIN_I=$((SW_SPIN_I + 1))
+    stillwater_spin_frame_into spin
+    line=""
+    [[ "$SW_POLL_DONE" -ge 0 ]] && line="  ${SW_MUTED}checking apps ${SW_POLL_DONE}/${SW_POLL_TOTAL}"
+    stillwater_frame_head select "${SW_ACCENT_HOVER}${spin}" "$line"
+  else
+    stillwater_frame_head select "${SW_ACCENT}${SW_DIAMOND}"
+  fi
   stillwater_view_window "$n" "$SW_CURSOR"
   if [[ "$SW_VIEW_MORE" == 1 ]]; then
     stillwater_frame_more "$SW_VIEW_FIRST" '↑'
@@ -759,6 +762,7 @@ stillwater_picker_move() {
   local i="$SW_CURSOR"
   [[ "$n" -gt 0 ]] || return 0
   SW_FOLLOW=1
+  SW_MOVED=1
   while true; do
     i=$((i + dir))
     if [[ "$i" -lt 0 || "$i" -ge "$n" ]]; then
@@ -898,18 +902,25 @@ stillwater_picker_restore() {
 # Sets STILLWATER_PICKED to the chosen adapter ids, as id or id:base. Exit 0 on
 # confirm, 1 on cancel. Stays on the alternate screen on confirm so install.sh
 # can draw progress there.
+# Takes a function that sets SW_POLL_DONE and SW_POLL_TOTAL, and SW_POLL_ROWS
+# when more adapters have answered. The picker opens at once, sorts rows in as
+# adapters answer, and takes enter once the last one has.
 stillwater_picker() {
-  local blob="$1"
+  local poll="$1"
+  local read_t="${SW_READ_T:-1}"
   STILLWATER_PICKED=()
   stillwater_picker_init_style
-  stillwater_picker_parse "$blob"
-  if [[ ${#SW_IDS[@]} -eq 0 ]]; then
-    echo "No adapters found." >&2
-    return 1
-  fi
+  SW_IDS=()
+  SW_PATHS=()
+  stillwater_picker_parse ""
+  SW_POLL_DONE=-1
+  SW_POLL_TOTAL=1
+  SW_POLL_ROWS=""
+  SW_LOADING=1
   SW_OS_LABEL="$(stillwater_os_label)"
   SW_VERSION="$(stillwater_version)"
-  SW_CURSOR="$(stillwater_picker_first)"
+  SW_CURSOR=0
+  SW_MOVED=0
   SW_TOP=0
   SW_FOLLOW=1
   SW_RESIZED=0
@@ -920,32 +931,65 @@ stillwater_picker() {
   stillwater_screen_enter
   stillwater_picker_layout
   stillwater_picker_draw
-  local i base
+  local i base before dirty=1
   while true; do
+    if [[ "$SW_LOADING" == 1 ]]; then
+      dirty=1
+      before="$SW_POLL_DONE"
+      "$poll"
+      if [[ "$SW_POLL_DONE" != "$before" ]]; then
+        stillwater_picker_merge "$SW_POLL_ROWS"
+        stillwater_picker_layout
+      fi
+      if [[ "$SW_POLL_DONE" -ge "$SW_POLL_TOTAL" ]]; then
+        SW_LOADING=0
+        if [[ ${#SW_IDS[@]} -eq 0 ]]; then
+          stillwater_picker_restore
+          trap - EXIT INT TERM
+          echo "No adapters found." >&2
+          return 1
+        fi
+      fi
+    fi
+    if [[ "$dirty" == 1 ]]; then
+      stillwater_picker_draw
+    fi
+    SW_READ_T="$read_t"
+    if [[ "$SW_LOADING" == 1 && "${BASH_VERSINFO[0]:-3}" -ge 4 ]]; then
+      SW_READ_T=0.05
+    fi
     stillwater_picker_read_key
+    SW_READ_T="$read_t"
+    dirty=0
+    if [[ "$SW_KEY" != idle ]]; then
+      dirty=1
+    fi
     if [[ "$SW_RESIZED" == 1 ]]; then
       SW_RESIZED=0
+      dirty=1
       stillwater_picker_layout
       printf '%s' "$SW_WIPE" >&2
-      stillwater_picker_draw
     fi
     case "$SW_KEY" in
       up) stillwater_picker_move -1 ;;
       down) stillwater_picker_move 1 ;;
       pgup) stillwater_picker_page -1 ;;
       pgdn) stillwater_picker_page 1 ;;
-      left) stillwater_picker_cycle_base "$SW_CURSOR" -1 || continue ;;
-      right) stillwater_picker_cycle_base "$SW_CURSOR" 1 || continue ;;
+      left) [[ ${#SW_IDS[@]} -gt 0 ]] && stillwater_picker_cycle_base "$SW_CURSOR" -1 || true ;;
+      right) [[ ${#SW_IDS[@]} -gt 0 ]] && stillwater_picker_cycle_base "$SW_CURSOR" 1 || true ;;
       space)
-        if [[ "${SW_SELECTED[$SW_CURSOR]}" == 1 ]]; then
-          SW_SELECTED[$SW_CURSOR]=0
-        else
-          SW_SELECTED[$SW_CURSOR]=1
+        if [[ ${#SW_IDS[@]} -gt 0 ]] && stillwater_picker_selectable "${SW_APPS[$SW_CURSOR]}"; then
+          if [[ "${SW_SELECTED[$SW_CURSOR]}" == 1 ]]; then
+            SW_SELECTED[$SW_CURSOR]=0
+          else
+            SW_SELECTED[$SW_CURSOR]=1
+          fi
         fi
         ;;
       all) stillwater_picker_toggle_all ;;
       none) stillwater_picker_none ;;
       enter)
+        [[ "$SW_LOADING" == 1 ]] && continue
         for i in "${!SW_IDS[@]}"; do
           if [[ "${SW_SELECTED[$i]}" == 1 ]]; then
             base="$(stillwater_picker_base_key "$i")"
@@ -965,9 +1009,7 @@ stillwater_picker() {
         printf '%s%s  Cancelled.%s\n' "$SW_ERROR" "$SW_CANCEL" "$SW_RESET" >&2
         return 1
         ;;
-      *) continue ;;
     esac
-    stillwater_picker_draw
   done
 }
 
@@ -1146,64 +1188,28 @@ stillwater_jobs_print() {
   SW_RESIZED=0
 }
 
-# Shows the picker frame at once while the adapters answer: one placeholder row
-# per adapter, filled in with its apps as each finishes. Takes the folder the
-# adapters write to and their scripts; returns when every adapter is done.
+# Named installs show a count while the adapters answer; the rows come with
+# the progress. Takes the folder the adapters write to and how many there are;
+# returns when every adapter is done.
 stillwater_loading() {
-  local dir="$1"
-  shift
-  local scripts=("$@")
-  local n="${#scripts[@]}" i done line name label app theme action color spin rows head
+  local dir="$1" n="$2" i done spin
   SW_OS_LABEL="${SW_OS_LABEL:-$(stillwater_os_label)}"
   SW_VERSION="${SW_VERSION:-$(stillwater_version)}"
   SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
   stty -echo 2>/dev/null || true
   trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
   trap 'stillwater_picker_restore' EXIT
-  [[ "${SW_INLINE:-0}" == 1 ]] || stillwater_screen_enter
+  SW_HEAD_LINES=2
   while true; do
-    stillwater_term_size
-    SW_HEAD_LINES=2
     SW_SPIN_I=$((SW_SPIN_I + 1))
     stillwater_spin_frame_into spin
     done=0
-    rows=()
-    # Inline (named installs) shows only the count; the rows come with the progress.
-    if [[ "${SW_INLINE:-0}" == 1 ]]; then
-      for ((i = 0; i < n; i++)); do
-        [[ -e "$dir/$i.done" ]] && done=$((done + 1))
-      done
-      stillwater_frame_reset
-      stillwater_frame_head install "${SW_ACCENT}${SW_DIAMOND}"
-      stillwater_frame_add "${SW_MUTED}${SW_CORNER}  ${SW_ACCENT_HOVER}${spin}${SW_MUTED} checking apps ${done}/${n}"
-      stillwater_frame_flush
-      [[ "$done" -lt "$n" ]] || break
-      sleep 0.05
-      continue
-    fi
     for ((i = 0; i < n; i++)); do
-      if [[ ! -e "$dir/$i.done" ]]; then
-        name="${scripts[$i]%/*}"
-        name="${name##*/}"
-        rows+=("${SW_MUTED}${SW_PIPE}  ${SW_ACCENT_HOVER}${spin}${SW_MUTED}  ${name}")
-        continue
-      fi
-      done=$((done + 1))
-      while IFS='|' read -r _ label app theme _; do
-        [[ -n "$label" ]] || continue
-        stillwater_picker_action_into action "$app" "$theme"
-        stillwater_picker_action_color_into color "$app" "$theme"
-        stillwater_pad_into label "$label" 22
-        rows+=("${SW_MUTED}${SW_PIPE}     ${label}  ${color}${action}")
-      done <"$dir/$i.rows"
+      [[ -e "$dir/$i.done" ]] && done=$((done + 1))
     done
     stillwater_frame_reset
-    stillwater_frame_head select "${SW_ACCENT}${SW_DIAMOND}"
-    head=$((SW_LINES - 3))
-    for ((i = 0; i < ${#rows[@]} && i < head; i++)); do
-      stillwater_frame_add "${rows[$i]}"
-    done
-    stillwater_frame_add "${SW_MUTED}${SW_CORNER}  checking apps ${done}/${n}"
+    stillwater_frame_head install "${SW_ACCENT}${SW_DIAMOND}"
+    stillwater_frame_add "${SW_MUTED}${SW_CORNER}  ${SW_ACCENT_HOVER}${spin}${SW_MUTED} checking apps ${done}/${n}"
     stillwater_frame_flush
     [[ "$done" -lt "$n" ]] || break
     sleep 0.05

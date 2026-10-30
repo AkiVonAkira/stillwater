@@ -532,8 +532,10 @@ stillwater_print_copy_status() {
   stillwater_print_status "$id" "$label" "$app" "$state" "$(stillwater_status_note "$state" "$installed")" "$dest_show"
 }
 
+# Found apps first, then by action, then by name. sort -f folds case, so no row
+# forks tr to lowercase its label.
 stillwater_sort_status() {
-  local id label app theme note dest bases base group action key
+  local id label app theme note dest bases base group action
   while IFS='|' read -r id label app theme note dest bases base; do
     [[ -n "$id" ]] || continue
     case "$app" in
@@ -547,9 +549,8 @@ stillwater_sort_status() {
       current) action=2 ;;
       *) action=3 ;;
     esac
-    key="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
-    printf '%s\t%s|%s|%s|%s|%s|%s|%s|%s\n' "${group}${action}${key}" "$id" "$label" "$app" "$theme" "$note" "$dest" "$bases" "$base"
-  done | LC_ALL=C sort | cut -f2-
+    printf '%s\t%s|%s|%s|%s|%s|%s|%s|%s\n' "${group}${action}${label}" "$id" "$label" "$app" "$theme" "$note" "$dest" "$bases" "$base"
+  done | LC_ALL=C sort -f -t $'\t' -k1,1 | cut -f2-
 }
 
 stillwater_same_file() {

@@ -6,7 +6,9 @@ on:
     branches: [main]
 
 jobs:
-  check:
+  # Builds the themes and runs install.sh against an empty home, creating each
+  # app's folders so the installer finds it.
+  linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,37 +18,25 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
-      - name: Typecheck theme generator
+      - name: Typecheck
         run: npm run typecheck
       - name: Validate JSON
         run: |
           node --input-type=commonjs -e "const fs=require('fs'); for (const file of ['palette.json','vscode/package.json','t3/stillwater.json','voltius/stillwater.json','ryoku/scheme.json','ryoku/meta.json']) JSON.parse(fs.readFileSync(file,'utf8'));"
       - name: Check versions
-        run: |
-          node --input-type=commonjs <<'EOF'
-          const fs = require("fs");
-          const spec = JSON.parse(fs.readFileSync("palette.json", "utf8"));
-          if (!spec.version) throw new Error("palette.json missing version");
-          const vs = JSON.parse(fs.readFileSync("vscode/package.json", "utf8"));
-          if (vs.version !== spec.version) throw new Error("vscode version mismatch");
-          const zed = fs.readFileSync("zed/extension.toml", "utf8");
-          if (!zed.includes("version = \"" + spec.version + "\"")) throw new Error("zed version mismatch");
-          for (const base of ["base", "midnight", "system24", "oldcord", "surcord"]) {
-            const ven = fs.readFileSync("vencord/" + base + "/Stillwater.theme.css", "utf8");
-            if (!ven.includes("@version " + spec.version)) throw new Error("vencord " + base + " version mismatch");
-          }
-          const spice = fs.readFileSync("spicetify/color.ini", "utf8");
-          if (!spice.includes("version " + spec.version)) throw new Error("spicetify version mismatch");
-          const harbor = fs.readFileSync("harbor/Stillwater.harborstyle", "utf8");
-          if (!harbor.includes("# version " + spec.version)) throw new Error("harbor version mismatch");
-          const ff = fs.readFileSync("fastfetch/config.jsonc", "utf8");
-          if (!ff.includes("@version " + spec.version)) throw new Error("fastfetch version mismatch");
-          EOF
+        run: npm run version:check
       - name: Rebuild CSS
         run: |
           npm run build
           git diff --exit-code stillwater.css
       - name: Installer tests
         run: bash tests/test_install.sh
-      - name: Installer list
-        run: bash install.sh --list
+
+  # Runs install.ps1, the path Windows users take, against an empty home.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer tests
+        shell: pwsh
+        run: ./tests/test_install.ps1

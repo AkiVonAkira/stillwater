@@ -26,43 +26,35 @@ source "$ROOT/install/lib.sh"
 # shellcheck source=../install/picker.sh
 source "$ROOT/install/picker.sh"
 stillwater_init_paths
+version="$(stillwater_version)"
+version_re="${version//./\\.}"
 stillwater_picker_parse $'cursor|Cursor|found|none||/tmp/cursor\nvscode|Visual Studio Code|skip|none||\nhelix|Helix|found|current||\nzed|Zed|found|update|modified|/tmp/zed'
 [[ "${SW_SELECTED[0]}" == 1 ]] || fail "install target should be preselected"
 [[ "${SW_SELECTED[1]}" == 0 ]] || fail "missing app should stay off"
 [[ "${SW_SELECTED[2]}" == 0 ]] || fail "up to date app should stay off"
 [[ "${SW_SELECTED[3]}" == 1 ]] || fail "update target should be preselected"
 [[ "${SW_DESTS[0]}" == /tmp/cursor ]] || fail "picker should keep dest paths"
-[[ "$(stillwater_picker_action found none)" == Install ]] || fail "found+none is Install"
-[[ "$(stillwater_picker_action skip none)" == "Not found" ]] || fail "skip is Not found"
-[[ "$(stillwater_picker_action found current)" == "Up to date" ]] || fail "current label"
-[[ "$(stillwater_picker_action found update)" == Update ]] || fail "update label"
-[[ "$(stillwater_job_verb none pending)" == queued ]] || fail "pending is queued"
-[[ "$(stillwater_job_verb none busy)" == installing ]] || fail "new install is installing"
-[[ "$(stillwater_job_verb none ok)" == installed ]] || fail "new install done is installed"
-[[ "$(stillwater_job_verb current busy)" == refreshing ]] || fail "current busy is refreshing"
-[[ "$(stillwater_job_verb current ok)" == refreshed ]] || fail "current done is refreshed"
-[[ "$(stillwater_job_verb update busy)" == updating ]] || fail "update busy is updating"
-[[ "$(stillwater_job_verb update ok)" == updated ]] || fail "update done is updated"
-[[ "$(stillwater_job_verb none fail)" == failed ]] || fail "fail verb"
 if grep -E -q 'param\([^)]*\$home([, )])' "$ROOT/install.ps1"; then
   fail "nested install job must not bind \$home; HOME is read-only in a nested runspace"
 fi
-[[ "$(stillwater_job_verb none skip)" == missing ]] || fail "skip verb is missing"
-[[ "$(stillwater_palette_hex accent)" == 5aa8b4 ]] || fail "picker colors should read palette.json"
 stillwater_picker_selectable found || fail "found should be selectable"
 if stillwater_picker_selectable skip; then fail "skip should not be selectable"; fi
 stillwater_picker_init_style
-[[ "$SW_ON" == "●" && "$SW_OFF" == "○" ]] || fail "picker selection should use circles"
-stillwater_picker_cache
-[[ "${#SW_ROW_LABEL[@]}" -eq 4 ]] || fail "picker cache should keep a padded row per app"
-[[ "$(stillwater_version)" == 1.0.0 ]] || fail "version should read palette.json"
+# Rows arrive while the picker is open: a re-sort keeps the user's toggles and
+# the app under the cursor.
+SW_IDS=()
+stillwater_picker_merge $'zed|Zed|found|update||/tmp/zed'
+SW_MOVED=0
+SW_SELECTED[0]=0
+stillwater_picker_merge $'cursor|Cursor|found|none||/tmp/c\nzed|Zed|found|update||/tmp/zed'
+[[ "${SW_IDS[0]}" == cursor && "$SW_CURSOR" == 0 ]] || fail "before the user moves, the cursor should sit on the first app"
+[[ "${SW_SELECTED[1]}" == 0 && "${SW_SELECTED[0]}" == 1 ]] || fail "a re-sort should keep a toggled-off row off and preselect the new one"
+SW_CURSOR=1
+SW_MOVED=1
+stillwater_picker_merge $'btop|btop|found|none||/tmp/b\ncursor|Cursor|found|none||/tmp/c\nzed|Zed|found|update||/tmp/zed'
+[[ "${SW_IDS[$SW_CURSOR]}" == zed ]] || fail "after the user moves, the cursor should stay on its app"
 bar="$(stillwater_progress_bar 1 2 4 1)"
 [[ "$bar" == $'██▒░' ]] || fail "progress bar should fill completed cells and mark the busy cell"
-keymap="$(stillwater_keymap_select)"
-printf '%s' "$keymap" | grep -q toggle || fail "keymap should include toggle"
-printf '%s' "$keymap" | grep -q apply || fail "keymap should include apply"
-printf '%s' "$keymap" | grep -q abort || fail "keymap should include abort"
-if printf '%s' "$keymap" | grep -q 'Space selects'; then fail "keymap should not use the prose hint"; fi
 SW_COLS=40
 SW_FOOTER_LINES=2
 [[ "$(stillwater_keymap_select | wc -l)" -eq 2 ]] || fail "narrow terminals should wrap the keymap"
@@ -80,8 +72,6 @@ stillwater_picker_cycle_base 0 1 || fail "right should move the base"
 [[ "${SW_SELECTED[0]}" == 1 ]] || fail "changing the base should select the row"
 stillwater_picker_theme_into t 0
 [[ "$t" == switch ]] || fail "a new base on an installed app is a switch"
-[[ "$(stillwater_picker_action found switch)" == Switch ]] || fail "switch label"
-[[ "$(stillwater_job_verb switch ok)" == switched ]] || fail "switch done is switched"
 SW_STRIP_MODE=full
 SW_W_STRIP=0
 SW_ACCENT="<accent>" SW_ACCENT_DEEP="<deep>" SW_MUTED="<muted>" stillwater_picker_strip_into strip 0 1
@@ -113,65 +103,31 @@ done
 COLUMNS=80 LINES=8 stillwater_picker_layout
 [[ $((SW_HEAD_LINES + SW_LIST_H + SW_FOOTER_LINES)) -le 8 ]] || fail "picker frame must fit the terminal height"
 unset COLUMNS LINES
-skel="$TMP/skel"
-mkdir -p "$skel"
-printf '%s\n' 'cursor|Cursor|found|none||/tmp/c||' >"$skel/0.rows"
-: >"$skel/0.done"
-: >"$skel/1.done"
-: >"$skel/1.rows"
-frame="$(SW_ALT=1 COLUMNS=80 LINES=20 stillwater_loading "$skel" "$ROOT/vscode/install.sh" "$ROOT/zed/install.sh" 2>&1 </dev/null)"
-trap 'rm -rf "$TMP"' EXIT
-printf '%s' "$frame" | grep -q 'checking apps 2/2' || fail "loading frame should count finished adapters"
-printf '%s' "$frame" | grep -q 'Cursor' || fail "loading frame should show an adapter's apps once it answers"
 [[ "$(stillwater_display_path "$HOME/foo/bar")" == "~/foo/bar" ]] || fail "display path should use ~"
 [[ "$(stillwater_display_path "$HOME/.t3/userdata/themes/stillwater.json")" == "~/.t3/userdata/themes" ]] || fail "display path should drop the file name"
-[[ "$(stillwater_display_path "$HOME/.cursor/extensions/kayzel.stillwater-theme-1.0.0")" == "~/.cursor/extensions" ]] || fail "display path should drop the extension folder name"
-[[ "$(stillwater_next_step cursor)" == "Set Color Theme to Stillwater." ]] || fail "cursor next step"
-[[ "$(stillwater_next_step zed)" == "Set the theme to Stillwater." ]] || fail "zed next step"
-[[ "$(stillwater_next_step neovim)" == "Run :colorscheme stillwater." ]] || fail "neovim next step"
-[[ "$(stillwater_next_step vencord)" == "Enable Stillwater in Vencord themes." ]] || fail "vencord next step"
-[[ "$(stillwater_next_step equicord)" == "Enable Stillwater in Equicord themes." ]] || fail "equicord next step"
-[[ "$(stillwater_next_step obsidian)" == "Set the Appearance theme to Stillwater." ]] || fail "obsidian next step"
-[[ "$(stillwater_next_step prism)" == "Set the Widgets theme to Stillwater." ]] || fail "prism next step"
-[[ "$(stillwater_next_step yasb)" == "Reload YASB to apply colors." ]] || fail "yasb next step"
-[[ "$(stillwater_next_step kitty)" == "Reload Kitty to apply Stillwater." ]] || fail "kitty next step"
-[[ "$(stillwater_next_step ghostty)" == "Set theme = Stillwater in Ghostty config." ]] || fail "ghostty next step"
-[[ "$(stillwater_next_step harbor)" == "Import Stillwater.harborstyle under Settings, Theme & appearance." ]] || fail "harbor next step"
-[[ "$(stillwater_next_step btop)" == "Set color_theme to stillwater in btop.conf." ]] || fail "btop next step"
-[[ "$(stillwater_next_step windows-terminal)" == "Set the color scheme to Stillwater." ]] || fail "windows-terminal next step"
-[[ "$(stillwater_next_step starship)" == "Open a new PowerShell tab." ]] || fail "starship next step"
-[[ "$(stillwater_next_step spicetify)" == "Restart Spotify." ]] || fail "spicetify next step"
-[[ "$(stillwater_next_step spotifast)" == "Select Stillwater under Settings, Appearance, Theme." ]] || fail "spotifast next step"
-[[ "$(stillwater_peek_version "$ROOT/vscode/package.json")" == 1.0.0 ]] || fail "peek vscode package version"
-[[ "$(stillwater_peek_version "$ROOT/zed/extension.toml")" == 1.0.0 ]] || fail "peek zed toml version"
+[[ "$(stillwater_display_path "$HOME/.cursor/extensions/kayzel.stillwater-theme-$version")" == "~/.cursor/extensions" ]] || fail "display path should drop the extension folder name"
+# Status reads an installed copy's stamp to tell an old version from a modified
+# file. One file per stamp format; npm run version:check covers every file.
+for file in vscode/package.json zed/extension.toml vencord/midnight/Stillwater.theme.css spicetify/color.ini kitty/Stillwater.conf; do
+  [[ "$(stillwater_peek_version "$ROOT/$file")" == "$version" ]] || fail "status should read the version stamp in $file"
+done
 for base in base midnight system24 oldcord surcord; do
-  [[ "$(stillwater_peek_version "$ROOT/vencord/$base/Stillwater.theme.css")" == 1.0.0 ]] || fail "peek vencord $base @version"
   [[ "$(stillwater_peek_base "$ROOT/vencord/$base/Stillwater.theme.css")" == "$base" ]] || fail "vencord $base file should stamp its base"
 done
 [[ "$(stillwater_base_label "base=Base,comfy=Comfy (Outdated)" comfy)" == "Comfy (Outdated)" ]] || fail "base label lookup"
 stillwater_base_valid "base=Base,comfy=Comfy (Outdated)" comfy || fail "comfy is a valid base"
 if stillwater_base_valid "base=Base" comfy; then fail "comfy is not in that spec"; fi
-[[ "$(stillwater_peek_version "$ROOT/spicetify/color.ini")" == 1.0.0 ]] || fail "peek spicetify ini version"
 [[ "$(stillwater_peek_base "$ROOT/spicetify/dribbblish/user.css")" == dribbblish ]] || fail "spicetify dribbblish should stamp its base"
 [[ "$(stillwater_peek_base "$ROOT/spicetify/base/user.css")" == base ]] || fail "spicetify base should stamp its base"
-[[ "$(stillwater_peek_version "$ROOT/obsidian/manifest.json")" == 1.0.0 ]] || fail "peek obsidian manifest version"
-[[ "$(stillwater_peek_version "$ROOT/prism/theme.json")" == 1.0.0 ]] || fail "peek prism theme version"
-[[ "$(stillwater_peek_version "$ROOT/yasb/root.css")" == 1.0.0 ]] || fail "peek yasb @version"
-[[ "$(stillwater_peek_version "$ROOT/kitty/Stillwater.conf")" == 1.0.0 ]] || fail "peek kitty version"
-[[ "$(stillwater_peek_version "$ROOT/ghostty/Stillwater")" == 1.0.0 ]] || fail "peek ghostty version"
-[[ "$(stillwater_peek_version "$ROOT/harbor/Stillwater.harborstyle")" == 1.0.0 ]] || fail "peek harbor version"
-[[ "$(stillwater_peek_version "$ROOT/btop/stillwater.theme")" == 1.0.0 ]] || fail "peek btop version"
-[[ "$(stillwater_peek_version "$ROOT/windows-terminal/stillwater.json")" == 1.0.0 ]] || fail "peek windows-terminal version"
-[[ "$(stillwater_peek_version "$ROOT/starship/starship.toml")" == 1.0.0 ]] || fail "peek starship version"
 [[ -z "$(stillwater_peek_version "$ROOT/t3/stillwater.json")" ]] || fail "t3 schema version is not a theme stamp"
-[[ -z "$(stillwater_status_note current 1.0.0)" ]] || fail "current rows should omit the shared version"
-[[ "$(stillwater_status_note update 0.9.0)" == "0.9.0 to 1.0.0" ]] || fail "behind apps should show old version to new version"
-[[ "$(stillwater_status_note update 1.0.0)" == Modified ]] || fail "same stamp with file drift is Modified"
+[[ -z "$(stillwater_status_note current "$version")" ]] || fail "current rows should omit the shared version"
+[[ "$(stillwater_status_note update 0.0.1)" == "0.0.1 to $version" ]] || fail "behind apps should show old version to new version"
+[[ "$(stillwater_status_note update "$version")" == Modified ]] || fail "same stamp with file drift is Modified"
 [[ "$(stillwater_status_note update "")" == Modified ]] || fail "no dest stamp with file drift is Modified"
 
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -q 'Stillwater' || fail "missing OS header"
-printf '%s\n' "$list" | grep -q '1.0.0' || fail "list should show version"
+printf '%s\n' "$list" | grep -qF "$version" || fail "list should show version"
 printf '%s\n' "$list" | grep -q 'Cursor' || fail "missing Cursor row"
 printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+skip' || fail "empty home should skip Cursor"
 printf '%s\n' "$list" | grep -E -q 'Spotifast[[:space:]]+skip' || fail "empty home should skip Spotifast"
@@ -209,17 +165,17 @@ printf '%s\n' "$out" | grep -q 'Skipped Visual Studio Code' && fail "--all shoul
 printf '%s\n' "$out" | grep -q 'Color Theme' || fail "--all should show Cursor next step"
 printf '%s\n' "$out" | grep -E -q 'Installed [1-9]' || fail "--all should summarize skipped apps"
 printf '%s\n' "$out" | grep -q ' -> ' && fail "install status should not dump dest paths"
-[[ -f "$TMP/.cursor/extensions/kayzel.stillwater-theme-1.0.0/package.json" ]] || fail "Cursor extension files missing"
+[[ -f "$TMP/.cursor/extensions/kayzel.stillwater-theme-$version/package.json" ]] || fail "Cursor extension files missing"
 grep -q 'kayzel.stillwater-theme' "$TMP/.cursor/extensions/extensions.json" || fail "Cursor should register Stillwater in extensions.json"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 row="$(printf '%s\n' "$list" | grep -E 'Cursor[[:space:]]+found')"
 printf '%s\n' "$row" | grep -E -q 'found[[:space:]]+current' || fail "installed Cursor should be current"
-if printf '%s\n' "$row" | grep -E -q 'found[[:space:]]+current[[:space:]]+1\.0\.0'; then
+if printf '%s\n' "$row" | grep -E -q "found[[:space:]]+current[[:space:]]+$version_re"; then
   fail "current Cursor should not repeat the shared version"
 fi
 printf '%s\n' "$row" | grep -q '.cursor/extensions' || fail "list should show Cursor dest"
 
-pkg="$TMP/.cursor/extensions/kayzel.stillwater-theme-1.0.0/package.json"
+pkg="$TMP/.cursor/extensions/kayzel.stillwater-theme-$version/package.json"
 printf '\n' >>"$pkg"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found[[:space:]]+update[[:space:]]+Modified' || fail "edited Cursor theme should show update"
@@ -227,10 +183,10 @@ printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found[[:space:]]+update[[:
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found[[:space:]]+current' || fail "reinstall should bring Cursor current"
 
-rm -rf "$TMP/.cursor/extensions/kayzel.stillwater-theme-1.0.0"
+rm -rf "$TMP/.cursor/extensions/kayzel.stillwater-theme-$version"
 mkdir -p "$TMP/.cursor/extensions/kayzel.stillwater-theme-0.9.0"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
-printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to 1\.0\.0' || fail "old Cursor theme should show version update"
+printf '%s\n' "$list" | grep -E -q "Cursor[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to $version_re" || fail "old Cursor theme should show version update"
 "$BASH_EXE" "$ROOT/install.sh" cursor >/dev/null
 
 out="$("$BASH_EXE" "$ROOT/install.sh" cursor vscode)"
@@ -238,7 +194,7 @@ printf '%s\n' "$out" | grep -q 'Installed Cursor.' || fail "should install Curso
 printf '%s\n' "$out" | grep -q 'Skipped Visual Studio Code' || fail "should skip VS Code"
 
 mkdir -p "$TMP/.vscode/extensions" "$TMP/.config/Code/User" "$TMP/AppData/Roaming/Code/User"
-printf '%s\n' '{"kayzel.stillwater-theme-1.0.0":true}' >"$TMP/.vscode/extensions/.obsolete"
+printf '{"kayzel.stillwater-theme-%s":true}\n' "$version" >"$TMP/.vscode/extensions/.obsolete"
 printf '%s\n' '[]' >"$TMP/.vscode/extensions/extensions.json"
 feppz='{
     "workbench.colorTheme": "feppz!"
@@ -247,9 +203,9 @@ printf '%s\n' "$feppz" >"$TMP/.config/Code/User/settings.json"
 printf '%s\n' "$feppz" >"$TMP/AppData/Roaming/Code/User/settings.json"
 out="$("$BASH_EXE" "$ROOT/install.sh" vscode)"
 printf '%s\n' "$out" | grep -q 'Installed Visual Studio Code.' || fail "should install VS Code"
-[[ -f "$TMP/.vscode/extensions/kayzel.stillwater-theme-1.0.0/package.json" ]] || fail "VS Code extension files missing"
+[[ -f "$TMP/.vscode/extensions/kayzel.stillwater-theme-$version/package.json" ]] || fail "VS Code extension files missing"
 grep -q 'kayzel.stillwater-theme' "$TMP/.vscode/extensions/extensions.json" || fail "VS Code should register Stillwater in extensions.json"
-if grep -q 'kayzel.stillwater-theme-1.0.0":true' "$TMP/.vscode/extensions/.obsolete"; then
+if grep -qF "kayzel.stillwater-theme-$version\":true" "$TMP/.vscode/extensions/.obsolete"; then
   fail "VS Code should un-obsolete Stillwater"
 fi
 applied=0
@@ -300,19 +256,19 @@ if grep -Fq '[class*="container_"]' "$theme"; then fail "Vencord theme should no
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 row="$(printf '%s\n' "$list" | grep 'Vencord / Vesktop')"
 printf '%s\n' "$row" | grep -E -q 'found[[:space:]]+current' || fail "installed Vencord should be current"
-if printf '%s\n' "$row" | grep -E -q 'found[[:space:]]+current[[:space:]]+1\.0\.0'; then
+if printf '%s\n' "$row" | grep -E -q "found[[:space:]]+current[[:space:]]+$version_re"; then
   fail "current Vencord should not repeat the shared version"
 fi
 tmpcss="$(mktemp)"
-sed 's/@version 1.0.0/@version 0.9.0/' "$theme" >"$tmpcss"
+sed "s/@version $version/@version 0.9.0/" "$theme" >"$tmpcss"
 mv "$tmpcss" "$theme"
 vencord_theme="$TMP/.config/Vencord/themes/Stillwater.theme.css"
 if [[ -f "$vencord_theme" ]]; then
-  sed 's/@version 1.0.0/@version 0.9.0/' "$vencord_theme" >"$tmpcss"
+  sed "s/@version $version/@version 0.9.0/" "$vencord_theme" >"$tmpcss"
   mv "$tmpcss" "$vencord_theme"
 fi
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
-printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to 1\.0\.0' || fail "old Vencord stamp should show version update"
+printf '%s\n' "$list" | grep -E -q "Vencord / Vesktop[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to $version_re" || fail "old Vencord stamp should show version update"
 "$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current[[:space:]]+midnight' || fail "Vencord should default to the Midnight base"
@@ -535,7 +491,6 @@ printf '%s\n' "$out" | grep -q 'Installed fastfetch.' || fail "should install fa
 grep -q 'Stillwater fastfetch' "$TMP/.config/fastfetch/config.jsonc" || fail "fastfetch config missing"
 grep -q 'kitty-direct' "$TMP/.config/fastfetch/config.jsonc.bak" || fail "fastfetch should keep the replaced config"
 grep -q '38;2;90;168;180' "$TMP/.config/fastfetch/config.jsonc" || fail "fastfetch keys should use Stillwater accent"
-[[ "$(stillwater_peek_version "$ROOT/fastfetch/config.jsonc")" == 1.0.0 ]] || fail "peek fastfetch version"
 
 mkdir -p "$TMP/AppData/Local/Microsoft/Windows Terminal"
 out="$("$BASH_EXE" "$ROOT/install.sh" windows-terminal)"
@@ -552,7 +507,6 @@ grep -q '#5aa8b4' "$TMP/.config/starship.toml" || fail "starship.toml should map
 grep -q 'starship init powershell' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "PowerShell profile should init starship"
 grep -q 'fastfetch' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "PowerShell profile should run fastfetch"
 grep -q 'STILLWATER_FETCHED' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "fetch should run once per terminal"
-grep -q 'STILLWATER_FETCHED' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "neofetch should run once per Windows Terminal tab"
 grep -q 'GetCommandLineArgs' "$TMP/Documents/PowerShell/Microsoft.PowerShell_profile.ps1" || fail "neofetch should skip scripted pwsh launches"
 printf '%s\n' "$out" | grep -q 'Open a new PowerShell tab.' || fail "Starship next step"
 

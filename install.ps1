@@ -62,34 +62,47 @@ function Get-AdapterScripts {
 }
 
 # Runs every adapter's status at once and keeps the result, with the adapter
-# that printed each id, so nothing asks the adapters twice. -Skeleton draws the
-# picker frame while the adapters answer.
+# that printed each id, so nothing asks the adapters twice.
+$script:StatusJob = $null
+$script:StatusTotal = 0
 $script:StatusRows = $null
 $script:StatusOwners = @{}
-function Import-StillwaterStatus([switch]$Skeleton) {
-  if ($null -ne $script:StatusRows) { return }
+function Start-StillwaterStatus {
+  if ($script:StatusJob -or $null -ne $script:StatusRows) { return }
   $scripts = @(Get-AdapterScripts)
-  if ($Skeleton) {
-    Show-StillwaterLoading $null $scripts
-  }
-  $job = $scripts | ForEach-Object -AsJob -ThrottleLimit ([Math]::Max(2, [Environment]::ProcessorCount)) -Parallel {
+  $script:StatusTotal = $scripts.Count
+  $script:StatusJob = $scripts | ForEach-Object -AsJob -ThrottleLimit ([Math]::Max(2, [Environment]::ProcessorCount)) -Parallel {
     [pscustomobject]@{ Script = $_; Rows = @(& $_ -Action status 2>$null) }
   }
-  if ($Skeleton) {
-    Show-StillwaterLoading $job $scripts
-  }
-  $null = Wait-Job $job
-  $results = @(Receive-Job $job -ErrorAction SilentlyContinue)
-  Remove-Job $job
+}
+
+# The rows of the adapters that have answered so far, sorted.
+function Read-StillwaterStatus {
   $rows = @()
-  foreach ($result in $results) {
-    foreach ($row in $result.Rows) {
-      if (-not $row) { continue }
-      $rows += [string]$row
-      $script:StatusOwners[([string]$row).Split("|")[0]] = $result.Script
+  $done = 0
+  foreach ($child in $script:StatusJob.ChildJobs) {
+    if ($child.State -ne "Completed" -and $child.State -ne "Failed") { continue }
+    $done++
+    foreach ($result in $child.Output) {
+      foreach ($row in $result.Rows) {
+        if (-not $row) { continue }
+        $rows += [string]$row
+        $script:StatusOwners[([string]$row).Split("|")[0]] = $result.Script
+      }
     }
   }
-  $script:StatusRows = @(Sort-StillwaterStatus $rows)
+  return [pscustomobject]@{ Rows = @(Sort-StillwaterStatus $rows); Done = $done; Total = $script:StatusTotal }
+}
+
+# -Progress shows the inline count while the adapters answer.
+function Import-StillwaterStatus([switch]$Progress) {
+  if ($null -ne $script:StatusRows) { return }
+  Start-StillwaterStatus
+  if ($Progress) { Show-StillwaterLoading $script:StatusJob $script:StatusTotal }
+  $null = Wait-Job $script:StatusJob
+  $script:StatusRows = @((Read-StillwaterStatus).Rows)
+  Remove-Job $script:StatusJob
+  $script:StatusJob = $null
 }
 
 function Get-StillwaterStatus {
@@ -143,7 +156,7 @@ if (($All -or ($Only -and -not $Interactive)) -and -not [Console]::IsOutputRedir
   try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new() } catch { }
   $inlineStyle = Get-StillwaterPickerStyle
   Start-StillwaterInline $inlineStyle
-  Import-StillwaterStatus -Skeleton
+  Import-StillwaterStatus -Progress
 }
 
 function Stop-StillwaterIdCheck([string]$Message) {
@@ -199,8 +212,7 @@ function Invoke-StillwaterInteractive {
     exit 1
   }
   try {
-    Import-StillwaterStatus -Skeleton
-    return @(Invoke-StillwaterPicker -Rows @(Get-StillwaterStatus))
+    return @(Invoke-StillwaterPicker -Poll { Start-StillwaterStatus; Read-StillwaterStatus })
   } catch {
     if ($_.Exception.Message -eq "cancelled") { exit 0 }
     throw

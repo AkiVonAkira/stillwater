@@ -9,5 +9,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["build.ts", "showcase/*.ts"]
+  "include": ["build.ts", "version.ts", "showcase/*.ts"]
 }
