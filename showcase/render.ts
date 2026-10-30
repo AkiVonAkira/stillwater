@@ -39,8 +39,8 @@ function swatches(): string {
 }
 
 const backdrop = [
-  `radial-gradient(circle at 18% 12%, ${P.accentDeep}66, transparent 55%)`,
-  `radial-gradient(circle at 88% 92%, ${P.warm}33, transparent 50%)`,
+  `radial-gradient(circle at 82% 12%, ${P.accentDeep}66, transparent 55%)`,
+  `radial-gradient(circle at 12% 92%, ${P.warm}33, transparent 50%)`,
   P.canvasOverlay,
 ].join(", ");
 
