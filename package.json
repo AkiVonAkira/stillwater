@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "build": "tsx build.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "showcase": "playwright install chromium && tsx showcase/render.ts"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
+    "playwright": "^1.64.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }

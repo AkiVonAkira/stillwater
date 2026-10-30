@@ -21,3 +21,7 @@ bash install.sh --list
 ```
 
 `stillwater.css` must match `palette.json` after `npm run build`.
+
+## Showcase image
+
+`npm run showcase` redraws `showcase/showcase.png`, the README image, from `palette.json`. The app windows are HTML in `showcase/apps.ts`, rendered by Playwright's Chromium, which the command installs. Text is skeleton bars, so keep names, paths, and messages out of it. Run it after a palette change and commit the PNG.
