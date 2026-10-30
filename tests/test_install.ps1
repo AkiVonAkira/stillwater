@@ -62,3 +62,4 @@ try {
 } finally {
   Remove-Item -LiteralPath $Tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
+exit 0
