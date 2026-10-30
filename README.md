@@ -4,6 +4,30 @@ A muted dark theme with warm surfaces and a cyan accent.
 
 ## Install
 
+Without cloning, in PowerShell (Windows PowerShell or PowerShell 7; the installer itself runs in PowerShell 7):
+
+```powershell
+irm https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.ps1 | iex
+```
+
+On Linux or macOS:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.sh)"
+```
+
+Both download the repo to a temp folder, open the picker, and delete the folder afterwards. To pass options, such as installing everything:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.ps1))) -All
+```
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.sh)" _ --all
+```
+
+From a clone:
+
 ```bash
 bash install.sh
 bash install.sh --all
