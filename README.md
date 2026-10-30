@@ -4,7 +4,7 @@ A muted dark theme with warm surfaces and a cyan accent.
 
 ## Install
 
-Without cloning, in PowerShell (Windows PowerShell or PowerShell 7; the installer itself runs in PowerShell 7):
+Without cloning, in PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.ps1 | iex
@@ -14,36 +14,6 @@ On Linux or macOS:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.sh)"
-```
-
-Both download the repo to a temp folder, open the picker, and delete the folder afterwards. To pass options, such as installing everything:
-
-```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.ps1))) -All
-```
-
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/AkiVonAkira/stillwater/main/install.sh)" _ --all
-```
-
-From a clone:
-
-```bash
-bash install.sh
-bash install.sh --all
-bash install.sh --list
-bash install.sh --dry-run --all
-bash install.sh cursor t3
-bash install.sh spicetify:base
-```
-
-```powershell
-pwsh .\install.ps1
-pwsh .\install.ps1 -All
-pwsh .\install.ps1 -List
-pwsh .\install.ps1 -DryRun -All
-pwsh .\install.ps1 cursor t3
-pwsh .\install.ps1 spicetify:base
 ```
 
 In the picker, ← and → pick the base theme for apps that have more than one.
@@ -81,15 +51,12 @@ In the picker, ← and → pick the base theme for apps that have more than one.
 - [VSCodium](https://vscodium.com)
 - [Windsurf](https://windsurf.com)
 
-### Voltius
-
-Press `Ctrl+K`, choose **Import themes**, select the themes section, choose `voltius/stillwater.json`, and apply it. Importing the themes section replaces the current custom themes list.
-
 ## Credits
 
-- [Dribbblish](https://github.com/spicetify/spicetify-themes/tree/master/Dribbblish)
 - [feppz!](https://github.com/foxnne/feppz)
-- [midnight](https://github.com/refact0r/midnight-discord) and [system24](https://github.com/refact0r/system24)
+- [Dribbblish](https://github.com/spicetify/spicetify-themes/tree/master/Dribbblish)
+- [midnight](https://github.com/refact0r/midnight-discord)
+- [system24](https://github.com/refact0r/system24)
 - [OldCord](https://github.com/milbits/oldcord)
 - [RoundedDiscord](https://github.com/MarkChan0225/RoundedDiscord)
 - [surCord](https://github.com/SlippingGittys-Discord-Themes/surCord)
