@@ -69,3 +69,7 @@ Press `Ctrl+K`, choose **Import themes**, select the themes section, choose `vol
 - [OldCord](https://github.com/milbits/oldcord)
 - [RoundedDiscord](https://github.com/MarkChan0225/RoundedDiscord)
 - [surCord](https://github.com/SlippingGittys-Discord-Themes/surCord)
+
+## License
+
+MIT, see [LICENSE](LICENSE). Themes adapted from the projects in Credits keep their MIT notices, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,6 +1,7 @@
 {
   "name": "stillwater",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "tsx build.ts",
