@@ -38,36 +38,8 @@ function Get-YasbDest {
   return (Join-Path $env:HOME ".config\yasb\styles.css")
 }
 
-function Get-YasbRoleMap {
-  $map = @{}
-  foreach ($line in Get-Content -LiteralPath $MapFile) {
-    if ($line -match '^(\S+)\s+(\S+)$') {
-      $map[$Matches[1]] = $Matches[2]
-    }
-  }
-  return $map
-}
-
-function Get-YasbHexRoleMap {
-  $map = @{}
-  foreach ($line in Get-Content -LiteralPath $HexMapFile) {
-    if ($line -match '^([0-9A-Fa-f]{6})\s+(\S+)$') {
-      $map[$Matches[1].ToLowerInvariant()] = $Matches[2]
-    }
-  }
-  return $map
-}
-
 function Test-YasbSkipHex([string]$Hex) {
   return $Hex -in @("0078d4", "199143", "ff583b", "1db954", "ffffff", "000000")
-}
-
-function ConvertTo-YasbHex6([string]$Hex) {
-  $h = $Hex.ToLowerInvariant()
-  if ($h.Length -eq 3) {
-    return "{0}{0}{1}{1}{2}{2}" -f $h[0], $h[1], $h[2]
-  }
-  return $h
 }
 
 function Get-YasbHex([string]$Role) {
@@ -95,6 +67,27 @@ function Get-YasbHex([string]$Role) {
   return ([string]$hex).TrimStart("#").ToLowerInvariant()
 }
 
+# Status rewrites the whole stylesheet, so both maps resolve to Stillwater hex
+# once: variable name to hex, and old hex to hex.
+function Initialize-YasbMaps {
+  $script:YasbVars = @{}
+  foreach ($line in [System.IO.File]::ReadAllLines($MapFile)) {
+    if ($line -match '^(\S+)\s+(\S+)$') {
+      $hex = Get-YasbHex $Matches[2]
+      if ($hex) { $script:YasbVars[$Matches[1]] = $hex }
+    }
+  }
+  $script:YasbHexes = @{}
+  foreach ($line in [System.IO.File]::ReadAllLines($HexMapFile)) {
+    if ($line -match '^([0-9A-Fa-f]{6})\s+(\S+)$') {
+      $old = $Matches[1].ToLowerInvariant()
+      if (Test-YasbSkipHex $old) { continue }
+      $hex = Get-YasbHex $Matches[2]
+      if ($hex) { $script:YasbHexes[$old] = $hex }
+    }
+  }
+}
+
 function Format-YasbValue([string]$Old, [string]$Hex) {
   $r = [Convert]::ToInt32($Hex.Substring(0, 2), 16)
   $g = [Convert]::ToInt32($Hex.Substring(2, 2), 16)
@@ -112,62 +105,54 @@ function Format-YasbValue([string]$Old, [string]$Hex) {
   return "#$Hex"
 }
 
-function Rewrite-YasbColorLiterals([string]$Line, $HexRoleMap) {
-  $script:YasbHexRoleMap = $HexRoleMap
-  $line = [regex]::Replace($Line, 'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,[^)]*)?\)', {
-    param($m)
-    $r = [int]$m.Groups[1].Value
-    $g = [int]$m.Groups[2].Value
-    $b = [int]$m.Groups[3].Value
-    $hex = "{0:x2}{1:x2}{2:x2}" -f $r, $g, $b
-    if (Test-YasbSkipHex $hex) { return $m.Value }
-    $role = $script:YasbHexRoleMap[$hex]
-    if (-not $role) { return $m.Value }
-    $mapped = Get-YasbHex $role
-    if (-not $mapped) { return $m.Value }
-    $nr = [Convert]::ToInt32($mapped.Substring(0, 2), 16)
-    $ng = [Convert]::ToInt32($mapped.Substring(2, 2), 16)
-    $nb = [Convert]::ToInt32($mapped.Substring(4, 2), 16)
-    if ($m.Value.StartsWith("rgba")) {
-      return "rgba($nr, $ng, $nb$($m.Groups[4].Value))"
-    }
-    return "rgb($nr, $ng, $nb)"
-  })
-  return [regex]::Replace($line, '#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b', {
-    param($m)
-    $hex = ConvertTo-YasbHex6 $m.Groups[1].Value
-    if (Test-YasbSkipHex $hex) { return $m.Value }
-    $role = $script:YasbHexRoleMap[$hex]
-    if (-not $role) { return $m.Value }
-    $mapped = Get-YasbHex $role
-    if (-not $mapped) { return $m.Value }
-    return "#$mapped"
-  })
+$YasbVarRe = [regex]::new('^(?<indent>\s*)--(?<name>[A-Za-z0-9-]+)\s*:\s*(?<value>[^;]+);(?<rest>.*)$')
+$YasbRgbRe = [regex]::new('rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,[^)]*)?\)')
+$YasbHexRe = [regex]::new('#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b')
+$YasbRgbEval = [System.Text.RegularExpressions.MatchEvaluator]{
+  param($m)
+  $hex = "{0:x2}{1:x2}{2:x2}" -f [int]$m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value
+  $mapped = $script:YasbHexes[$hex]
+  if (-not $mapped) { return $m.Value }
+  $nr = [Convert]::ToInt32($mapped.Substring(0, 2), 16)
+  $ng = [Convert]::ToInt32($mapped.Substring(2, 2), 16)
+  $nb = [Convert]::ToInt32($mapped.Substring(4, 2), 16)
+  if ($m.Value.StartsWith("rgba")) {
+    return "rgba($nr, $ng, $nb$($m.Groups[4].Value))"
+  }
+  return "rgb($nr, $ng, $nb)"
+}
+$YasbHexEval = [System.Text.RegularExpressions.MatchEvaluator]{
+  param($m)
+  $hex = $m.Groups[1].Value.ToLowerInvariant()
+  if ($hex.Length -eq 3) { $hex = "{0}{0}{1}{1}{2}{2}" -f $hex[0], $hex[1], $hex[2] }
+  $mapped = $script:YasbHexes[$hex]
+  if (-not $mapped) { return $m.Value }
+  return "#$mapped"
 }
 
-function Rewrite-YasbLine([string]$Line, $RoleMap, $HexRoleMap) {
-  if ($Line -match '^(?<indent>\s*)--(?<name>[A-Za-z0-9-]+)\s*:\s*(?<value>[^;]+);(?<rest>.*)$') {
-    $name = $Matches.name
-    $value = $Matches.value.Trim()
-    $lookup = $name.ToLowerInvariant()
-    $role = $RoleMap[$lookup]
-    if (-not $role -and $lookup.EndsWith("-rgb")) {
-      $role = $RoleMap[$lookup.Substring(0, $lookup.Length - 4)]
-    }
-    if ($role -and -not $value.StartsWith("var(") -and $value -ne "transparent" -and $value -ne "none") {
-      $hex = Get-YasbHex $role
-      if ($hex) {
-        return "{0}--{1}: {2};{3}" -f $Matches.indent, $name, (Format-YasbValue $value $hex), $Matches.rest
+function Rewrite-YasbLine([string]$Line) {
+  if ($Line.Contains("--")) {
+    $m = $YasbVarRe.Match($Line)
+    if ($m.Success) {
+      $name = $m.Groups["name"].Value
+      $value = $m.Groups["value"].Value.Trim()
+      $lookup = $name.ToLowerInvariant()
+      $hex = $script:YasbVars[$lookup]
+      if (-not $hex -and $lookup.EndsWith("-rgb")) {
+        $hex = $script:YasbVars[$lookup.Substring(0, $lookup.Length - 4)]
+      }
+      if ($hex -and -not $value.StartsWith("var(") -and $value -ne "transparent" -and $value -ne "none") {
+        return "{0}--{1}: {2};{3}" -f $m.Groups["indent"].Value, $name, (Format-YasbValue $value $hex), $m.Groups["rest"].Value
       }
     }
   }
-  return (Rewrite-YasbColorLiterals $Line $HexRoleMap)
+  if (-not $Line.Contains("#") -and -not $Line.Contains("rgb")) { return $Line }
+  return $YasbHexRe.Replace($YasbRgbRe.Replace($Line, $YasbRgbEval), $YasbHexEval)
 }
 
 function Rewrite-YasbFile([string]$Dest) {
   $version = Get-StillwaterVersion
-  $roleMap = Get-YasbRoleMap
-  $hexRoleMap = Get-YasbHexRoleMap
+  if ($null -eq $script:YasbVars) { Initialize-YasbMaps }
   $depth = 0
   $stamped = $false
   $out = New-Object System.Collections.Generic.List[string]
@@ -181,11 +166,8 @@ function Rewrite-YasbFile([string]$Dest) {
       $out.Add("/* @version $version */")
       $stamped = $true
     }
-    $was = $depth
-    $opens = ([regex]::Matches($line, '\{')).Count
-    $closes = ([regex]::Matches($line, '\}')).Count
-    $out.Add((Rewrite-YasbLine $line $roleMap $hexRoleMap))
-    $depth = $was + $opens - $closes
+    $out.Add((Rewrite-YasbLine $line))
+    $depth += $line.Split("{").Count - $line.Split("}").Count
     if ($depth -lt 0) { $depth = 0 }
   }
   return ($out -join "`n") + "`n"

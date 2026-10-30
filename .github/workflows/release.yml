@@ -1,0 +1,30 @@
+name: release
+
+# Tags and releases each new version on main. Bump with npm run bump -- minor
+# (new adapter or palette change) or patch (fix), and merge.
+on:
+  push:
+    branches: [main]
+    paths: [palette.json]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Release new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./palette.json').version")"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "v$version is already released."
+            exit 0
+          fi
+          npx --yes tsx version.ts --check
+          gh release create "v$version" --target "$GITHUB_SHA" --title "Stillwater $version" --generate-notes

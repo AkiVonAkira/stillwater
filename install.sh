@@ -101,39 +101,68 @@ adapter_scripts() {
 }
 
 # Runs every adapter's status at once and keeps the result, with the adapter
-# that printed each id, so nothing asks the adapters twice. Call it in the main
-# shell; `skeleton` draws the picker frame while the adapters answer.
+# that printed each id, so nothing asks the adapters twice. Call these in the
+# main shell.
 STATUS_LOADED=0
 STATUS_ROWS=""
 STATUS_OWNERS=""
-load_status() {
-  local dir i line rows="" owners="" scripts=()
-  [[ "$STATUS_LOADED" == 1 ]] && return 0
-  dir="$(mktemp -d)"
+STATUS_DIR=""
+STATUS_SCRIPTS=()
+start_status() {
+  local i line
+  [[ "$STATUS_LOADED" == 1 || -n "$STATUS_DIR" ]] && return 0
+  STATUS_DIR="$(mktemp -d)"
   while IFS= read -r line; do
-    scripts+=("$line")
+    STATUS_SCRIPTS+=("$line")
   done < <(adapter_scripts)
-  for i in "${!scripts[@]}"; do
+  for i in "${!STATUS_SCRIPTS[@]}"; do
     {
-      "$BASH_EXE" "${scripts[$i]}" status >"$dir/$i.rows" 2>"$dir/$i.err" || true
-      : >"$dir/$i.done"
+      "$BASH_EXE" "${STATUS_SCRIPTS[$i]}" status >"$STATUS_DIR/$i.rows" 2>"$STATUS_DIR/$i.err" || true
+      : >"$STATUS_DIR/$i.done"
     } &
   done
-  if [[ "${1:-}" == skeleton ]]; then
-    stillwater_loading "$dir" "${scripts[@]}"
+}
+
+# For the picker: sets SW_POLL_DONE and SW_POLL_TOTAL, and SW_POLL_ROWS, sorted,
+# when more adapters have answered.
+poll_status() {
+  local i line done=0 rows=""
+  start_status
+  for i in "${!STATUS_SCRIPTS[@]}"; do
+    [[ -e "$STATUS_DIR/$i.done" ]] || continue
+    done=$((done + 1))
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && rows+="$line"$'\n'
+    done <"$STATUS_DIR/$i.rows"
+  done
+  SW_POLL_TOTAL="${#STATUS_SCRIPTS[@]}"
+  if [[ "$done" != "$SW_POLL_DONE" ]]; then
+    SW_POLL_DONE="$done"
+    SW_POLL_ROWS="$(printf '%s' "$rows" | stillwater_sort_status)"
+  fi
+}
+
+# `progress` shows the inline count while the adapters answer. `quiet` keeps
+# their stderr off a screen the picker owns.
+load_status() {
+  local i line rows="" owners=""
+  [[ "$STATUS_LOADED" == 1 ]] && return 0
+  start_status
+  if [[ "${1:-}" == progress ]]; then
+    stillwater_loading "$STATUS_DIR" "${#STATUS_SCRIPTS[@]}"
   fi
   wait
-  for i in "${!scripts[@]}"; do
-    if [[ "${1:-}" != skeleton && -s "$dir/$i.err" ]]; then
-      cat "$dir/$i.err" >&2
+  for i in "${!STATUS_SCRIPTS[@]}"; do
+    if [[ -z "${1:-}" && -s "$STATUS_DIR/$i.err" ]]; then
+      cat "$STATUS_DIR/$i.err" >&2
     fi
     while IFS= read -r line; do
       [[ -n "$line" ]] || continue
       rows+="$line"$'\n'
-      owners+="${line%%|*}"$'\t'"${scripts[$i]}"$'\n'
-    done <"$dir/$i.rows"
+      owners+="${line%%|*}"$'\t'"${STATUS_SCRIPTS[$i]}"$'\n'
+    done <"$STATUS_DIR/$i.rows"
   done
-  rm -rf "$dir"
+  rm -rf "$STATUS_DIR"
   STATUS_ROWS="$(printf '%s' "$rows" | stillwater_sort_status)"
   STATUS_OWNERS="$owners"
   STATUS_LOADED=1
@@ -246,10 +275,12 @@ prompt_interactive() {
     exit 1
   fi
   stillwater_picker_init_style
-  load_status skeleton
-  if ! stillwater_picker "$(collect_status)"; then
+  if ! stillwater_picker poll_status; then
+    kill $(jobs -p) 2>/dev/null
+    rm -rf "$STATUS_DIR"
     exit 0
   fi
+  load_status quiet
   ONLY=("${STILLWATER_PICKED[@]+"${STILLWATER_PICKED[@]}"}")
 }
 
@@ -265,7 +296,7 @@ if [[ "$ALL" == 1 || ${#ONLY[@]} -gt 0 ]]; then
   if [[ ( "$ALL" == 1 || "$INTERACTIVE" != 1 ) && -t 1 && -t 2 ]]; then
     stillwater_picker_init_style
     stillwater_inline_begin
-    load_status skeleton
+    load_status progress
   else
     load_status
   fi

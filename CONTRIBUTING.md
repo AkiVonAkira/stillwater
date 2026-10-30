@@ -16,11 +16,16 @@ Small fixes push straight to `main`. A new adapter, a new feature, or a large ch
 ```bash
 npm run typecheck
 npm run build
+npm run version:check
 bash tests/test_install.sh
-bash install.sh --list
+pwsh tests/test_install.ps1
 ```
 
 `stillwater.css` must match `palette.json` after `npm run build`.
+
+## Versions
+
+`palette.json` holds the version, and `npm run bump -- <patch|minor|major>` writes it into every adapter file that stamps one. A new adapter or a palette change is a minor bump. A fix is a patch. Merging a bump to `main` tags and releases it.
 
 ## Showcase image
 
