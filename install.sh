@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || pwd)"
+
+# Run without a checkout (bash -c "$(curl ...)"): download the repo to a temp folder, run its
+# installer, and delete the folder.
+if [[ ! -f "$ROOT/install/lib.sh" ]]; then
+  ref="${STILLWATER_REF:-main}"
+  url="${STILLWATER_ARCHIVE:-https://github.com/AkiVonAkira/stillwater/archive/refs/heads/$ref.tar.gz}"
+  command -v curl >/dev/null || { echo "Stillwater needs curl to download itself." >&2; exit 1; }
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  echo "Downloading Stillwater ($ref)..." >&2
+  curl -fsSL "$url" | tar -xz -C "$tmp" --strip-components=1
+  status=0
+  bash "$tmp/install.sh" "$@" || status=$?
+  exit "$status"
+fi
+
 export STILLWATER_ROOT="$ROOT"
 # shellcheck source=install/lib.sh
 source "$ROOT/install/lib.sh"

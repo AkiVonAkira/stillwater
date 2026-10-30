@@ -7,8 +7,42 @@ param(
   [string[]]$Only
 )
 
+# Run without a checkout (irm ... | iex): download the repo to a temp folder, run its installer
+# in PowerShell 7, and delete the folder. `return`, not `exit`, so the caller's shell stays open.
+$Root = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $Root -or -not (Test-Path -LiteralPath (Join-Path $Root "install\lib.ps1"))) {
+  & {
+    $ErrorActionPreference = "Stop"
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    if (-not $pwsh) {
+      Write-Host "Stillwater needs PowerShell 7. Install it with: winget install Microsoft.PowerShell"
+      return
+    }
+    $ref = if ($env:STILLWATER_REF) { $env:STILLWATER_REF } else { "main" }
+    $url = if ($env:STILLWATER_ARCHIVE) { $env:STILLWATER_ARCHIVE } else { "https://github.com/AkiVonAkira/stillwater/archive/refs/heads/$ref.zip" }
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("stillwater-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tmp | Out-Null
+    try {
+      Write-Host "Downloading Stillwater ($ref)..."
+      $ProgressPreference = "SilentlyContinue"
+      Invoke-WebRequest -Uri $url -OutFile (Join-Path $tmp "stillwater.zip") -UseBasicParsing
+      Expand-Archive -Path (Join-Path $tmp "stillwater.zip") -DestinationPath $tmp
+      $installer = Get-ChildItem -Path $tmp -Directory | ForEach-Object { Join-Path $_.FullName "install.ps1" } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+      $forward = @()
+      if ($List) { $forward += "-List" }
+      if ($DryRun) { $forward += "-DryRun" }
+      if ($Interactive) { $forward += "-Interactive" }
+      if ($All) { $forward += "-All" }
+      if ($Only) { $forward += $Only }
+      & $pwsh.Source -NoProfile -ExecutionPolicy Bypass -File $installer @forward
+    } finally {
+      Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+  return
+}
+
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $env:STILLWATER_ROOT = $Root
 . (Join-Path $Root "install\lib.ps1")
 . (Join-Path $Root "install\picker.ps1")
