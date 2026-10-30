@@ -127,6 +127,11 @@ start_status() {
 # when more adapters have answered.
 poll_status() {
   local i line done=0 rows=""
+  # The id check may have loaded everything already.
+  if [[ "$STATUS_LOADED" == 1 ]]; then
+    SW_POLL_DONE=1 SW_POLL_TOTAL=1 SW_POLL_ROWS="$STATUS_ROWS"
+    return 0
+  fi
   start_status
   for i in "${!STATUS_SCRIPTS[@]}"; do
     [[ -e "$STATUS_DIR/$i.done" ]] || continue
@@ -276,7 +281,7 @@ prompt_interactive() {
   fi
   stillwater_picker_init_style
   if ! stillwater_picker poll_status; then
-    kill $(jobs -p) 2>/dev/null
+    kill $(jobs -p) 2>/dev/null || true
     rm -rf "$STATUS_DIR"
     exit 0
   fi

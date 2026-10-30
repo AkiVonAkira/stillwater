@@ -78,6 +78,7 @@ function Start-StillwaterStatus {
 
 # The rows of the adapters that have answered so far, sorted.
 function Read-StillwaterStatus {
+  if ($null -ne $script:StatusRows) { return [pscustomobject]@{ Rows = $script:StatusRows; Done = 1; Total = 1 } }
   $rows = @()
   $done = 0
   foreach ($child in $script:StatusJob.ChildJobs) {
