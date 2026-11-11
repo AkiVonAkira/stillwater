@@ -414,7 +414,16 @@ function Test-StillwaterSameFile([string]$Src, [string]$Dest) {
   if (-not (Test-Path -LiteralPath $Dest -PathType Leaf)) { return $false }
   $a = Get-FileHash -LiteralPath $Src -Algorithm SHA256
   $b = Get-FileHash -LiteralPath $Dest -Algorithm SHA256
-  return $a.Hash -eq $b.Hash
+  if ($a.Hash -eq $b.Hash) { return $true }
+  $srcText = Get-StillwaterUnstamped ([System.IO.File]::ReadAllText($Src))
+  return $srcText -ceq (Get-StillwaterUnstamped ([System.IO.File]::ReadAllText($Dest)))
+}
+
+# The version stamps version.ts writes. A release that changes nothing else in a
+# file rewrites only these, so a copy that differs from its source only here is
+# still current.
+function Get-StillwaterUnstamped([string]$Text) {
+  return [regex]::Replace($Text, '(?m)(^\s*"version"\s*:\s*"|^\s*version\s*=\s*"|@version\s+|^\s*[;#*]\s*version\s+)\d+\.\d+\.\d+', '${1}0.0.0')
 }
 
 function Test-StillwaterSameTree([string]$Src, [string]$Dest) {
@@ -486,6 +495,11 @@ function Get-StillwaterVsCodePayloadState([string]$Src, [string]$Dest) {
       Where-Object { $_.Name -like "kayzel.stillwater-theme-*" -and $_.Name -ne $keep } |
       Select-Object -First 1
     if ($old) {
+      $oldState = Get-StillwaterPayloadState @(
+        (Join-Path $Src "package.json"), (Join-Path $old.FullName "package.json"),
+        (Join-Path $Src "themes"), (Join-Path $old.FullName "themes")
+      )
+      if ($oldState -eq "current") { return @{ Theme = "current"; Note = "" } }
       $oldver = Get-StillwaterPeekVersion (Join-Path $old.FullName "package.json")
       if (-not $oldver) {
         $oldver = $old.Name -replace "^kayzel\.stillwater-theme-", ""

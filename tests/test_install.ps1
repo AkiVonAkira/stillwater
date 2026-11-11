@@ -54,6 +54,22 @@ try {
     if ($r.Out -notmatch "$label\s+found\s+current") { Fail "$label should be current after install" }
   }
 
+  # A release that only bumps the version stamp leaves installed copies current.
+  $yasbCss = Join-Path $Tmp ".config\yasb\styles.css"
+  [IO.File]::WriteAllText($yasbCss, ([IO.File]::ReadAllText($yasbCss) -replace "@version $([regex]::Escape($version))", "@version 0.9.0"))
+  $cursorExt = Join-Path $Tmp ".cursor\extensions\kayzel.stillwater-theme-$version"
+  $oldExt = Join-Path $Tmp ".cursor\extensions\kayzel.stillwater-theme-0.9.0"
+  Move-Item -LiteralPath $cursorExt -Destination $oldExt
+  $pkg = Join-Path $oldExt "package.json"
+  [IO.File]::WriteAllText($pkg, ([IO.File]::ReadAllText($pkg) -replace """version"": ""$([regex]::Escape($version))""", '"version": "0.9.0"'))
+  $r = Invoke-Installer -List
+  foreach ($label in "Cursor", "YASB") {
+    if ($r.Out -notmatch "$label\s+found\s+current") { Fail "$label should stay current when only its version stamp is older: $($r.Out)" }
+  }
+  Add-Content -LiteralPath $pkg -Value " "
+  $r = Invoke-Installer -List
+  if ($r.Out -notmatch "Cursor\s+found\s+update\s+0\.9\.0 to $([regex]::Escape($version))") { Fail "an older Cursor install with other changes should show the version update: $($r.Out)" }
+
   $r = Invoke-Installer bogus
   if ($r.Code -eq 0) { Fail "an unknown adapter should fail" }
   if ($r.Out -notmatch "Unknown adapter: bogus") { Fail "an unknown adapter should be named: $($r.Out)" }

@@ -182,7 +182,7 @@ function Get-YasbState([string]$Dest) {
   if (-not $current.EndsWith("`n")) { $current += "`n" }
   $current = $current -replace "`r`n", "`n"
   $rewritten = $rewritten -replace "`r`n", "`n"
-  if ($current -eq $rewritten) { return "current" }
+  if ((Get-StillwaterUnstamped $current) -eq (Get-StillwaterUnstamped $rewritten)) { return "current" }
   if ($raw -match '@version') { return "update" }
   return "none"
 }
