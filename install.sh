@@ -412,17 +412,7 @@ repaint_jobs() {
 # Starts one adapter install in the background.
 start_install() {
   local i="$1"
-  local script
-  script="$(adapter_for_id "${jobs_id[$i]}" || true)"
-  if [[ -z "$script" ]]; then
-    jobs_state[$i]="fail"
-    jobs_next[$i]=""
-    failed=$((failed + 1))
-    if [[ "$CLACK" != 1 ]]; then
-      echo "Skipped ${jobs_label[$i]}. No installer."
-    fi
-    return 0
-  fi
+  local script="${jobs_script[$i]}"
   jobs_state[$i]="busy"
   if [[ "$CLACK" == 1 ]]; then
     "$BASH_EXE" "$script" install "${jobs_id[$i]}" "${jobs_base[$i]}" >/dev/null 2>&1 &
@@ -431,6 +421,39 @@ start_install() {
   fi
   jobs_pid[$i]=$!
   running=$((running + 1))
+}
+
+# One adapter script can own several ids that share files, such as VSCodium and
+# Code - OSS in ~/.vscode-oss, so a script runs one install at a time.
+script_busy() {
+  local j
+  for j in ${jobs_pid[@]+"${!jobs_pid[@]}"}; do
+    if [[ "${jobs_script[$j]}" == "$1" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Background installs ignore SIGINT, so a cancelled run stops them and the
+# commands they started itself.
+stop_tree() {
+  local children="" child
+  if stillwater_has_cmd pgrep; then
+    children="$(pgrep -P "$1" 2>/dev/null || true)"
+  fi
+  kill "$1" 2>/dev/null || true
+  for child in $children; do
+    stop_tree "$child"
+  done
+}
+
+stop_installs() {
+  local pid
+  for pid in ${jobs_pid[@]+"${jobs_pid[@]}"}; do
+    stop_tree "$pid"
+  done
+  wait 2>/dev/null || true
 }
 
 finish_install() {
@@ -461,13 +484,17 @@ finish_install() {
   fi
 }
 
+jobs_pid=()
+jobs_script=()
 if [[ "$CLACK" == 1 ]]; then
   SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
   [[ "${SW_INLINE:-0}" == 1 ]] || stillwater_screen_enter
-  trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
+  trap 'stop_installs; stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
   trap 'stillwater_picker_restore' EXIT
   trap 'SW_RESIZED=1' WINCH
   paint_jobs
+else
+  trap 'stop_installs; trap - INT TERM; exit 130' INT TERM
 fi
 
 # Adapters write to their own app's folders, so they install side by side, as
@@ -478,20 +505,35 @@ if ! [[ "$throttle" =~ ^[0-9]+$ ]] || [[ "$throttle" -lt 2 ]]; then
 fi
 queue=()
 for i in "${!jobs_id[@]}"; do
-  if [[ "${jobs_kind[$i]}" == install ]]; then
-    queue+=("$i")
-  elif [[ "$CLACK" != 1 ]]; then
-    echo "Skipped ${jobs_label[$i]}. Not found."
+  if [[ "${jobs_kind[$i]}" != install ]]; then
+    if [[ "$CLACK" != 1 ]]; then
+      echo "Skipped ${jobs_label[$i]}. Not found."
+    fi
+    continue
   fi
+  jobs_script[$i]="$(adapter_for_id "${jobs_id[$i]}" || true)"
+  if [[ -z "${jobs_script[$i]}" ]]; then
+    jobs_state[$i]="fail"
+    jobs_next[$i]=""
+    failed=$((failed + 1))
+    if [[ "$CLACK" != 1 ]]; then
+      echo "Skipped ${jobs_label[$i]}. No installer."
+    fi
+    continue
+  fi
+  queue+=("$i")
 done
-jobs_pid=()
 running=0
-next=0
-while [[ "$next" -lt ${#queue[@]} || "$running" -gt 0 ]]; do
-  while [[ "$next" -lt ${#queue[@]} && "$running" -lt "$throttle" ]]; do
-    start_install "${queue[$next]}"
-    next=$((next + 1))
+while [[ ${#queue[@]} -gt 0 || "$running" -gt 0 ]]; do
+  waiting=()
+  for i in ${queue[@]+"${queue[@]}"}; do
+    if [[ "$running" -lt "$throttle" ]] && ! script_busy "${jobs_script[$i]}"; then
+      start_install "$i"
+    else
+      waiting+=("$i")
+    fi
   done
+  queue=(${waiting[@]+"${waiting[@]}"})
   for i in ${jobs_pid[@]+"${!jobs_pid[@]}"}; do
     if kill -0 "${jobs_pid[$i]}" 2>/dev/null; then
       continue
