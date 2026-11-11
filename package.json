@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "bump": "tsx version.ts",
     "version:check": "tsx version.ts --check",
+    "update-classes": "tsx update-classes.ts",
     "showcase": "playwright install chromium && tsx showcase/render.ts"
   },
   "devDependencies": {
