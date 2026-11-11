@@ -245,7 +245,8 @@ grep -q "compact-server-shortcuts" "$theme" || fail "Vencord theme should import
 grep -q "SimplifiedPanelArea" "$theme" || fail "Vencord theme should import Simplified Panel Area"
 if grep -q "ImageViewerTweaks" "$theme"; then fail "Vencord theme should not import Image Viewer Tweaks"; fi
 grep -Fq -- "--ics-full-album-art: false" "$theme" || fail "Vencord theme should not force ISOUL's album-art square"
-grep -Fq -- "wrapper_e131a9:not(:has(.rtcConnectionStatus__06d62))" "$theme" || fail "Vencord theme should hide the empty voice wrapper"
+H='_{1,2}[A-Za-z0-9_-]{5,6}' # a Discord class hash, old (__5e434) or new (_SY_P2T), so npm run update-classes does not break these checks
+grep -Eq "wrapper$H:not\(:has\(\.rtcConnectionStatus$H\)\)" "$theme" || fail "Vencord theme should hide the empty voice wrapper"
 grep -Fq "overflow: visible !important" "$theme" || fail "Vencord theme should not clip Spotify hover controls"
 grep -Fq "var(--radius-lg) var(--radius-lg) 0 0" "$theme" || fail "Vencord theme should match midnight panel corner radius"
 grep -Fq ".vc-spotify-progress-time" "$theme" || fail "Vencord theme should keep Spotify duration visible"
@@ -287,11 +288,12 @@ if grep -E -q ':\s*(lime|magenta)\s*;' "$vencord_theme"; then fail "Base should 
 "$BASH_EXE" "$ROOT/install.sh" vencord:midnight >/dev/null
 grep -q 'RoundedDiscord, radius rules only' "$vencord_theme" || fail "Midnight should round its corners with RoundedDiscord"
 if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '^[[:space:]]*(margin|padding|width|height)'; then fail "RoundedDiscord on Midnight should only round corners, not move panels"; fi
-if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '\.(chat_f75fb0|sidebar__5e434|page__5e434)'; then fail "RoundedDiscord should leave Midnight's panels alone"; fi
+if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q "\.(chat|sidebar|page)$H\b"; then fail "RoundedDiscord should leave Midnight's panels alone"; fi
 grep -Fq -- '--radius: 16px' "$vencord_theme" || fail "Midnight should set RoundedDiscord's radius"
-if grep -q 'form_f75fb0 > .base_b88801' "$vencord_theme"; then fail "the typing row must stay absolute so it does not push the chat up"; fi
-if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q '^\.(header_f37cb1|sidebarListRounded__5e434),'; then fail "RoundedDiscord should leave the server header and channel list to Midnight"; fi
-grep -Fq '.bannerVisible_f37cb1 .header_f37cb1' "$vencord_theme" || fail "Midnight should match the banner header corners to the channel list"
+if grep -Eq "form$H > \.base$H" "$vencord_theme"; then fail "the typing row must stay absolute so it does not push the chat up"; fi
+guild_hash=$(grep -oE "bannerVisible$H" "$vencord_theme" | head -n 1); guild_hash=${guild_hash#bannerVisible}
+if sed -n '/RoundedDiscord, radius rules only/,$p' "$vencord_theme" | grep -E -q "^\.(header$guild_hash|sidebarListRounded$H),"; then fail "RoundedDiscord should leave the server header and channel list to Midnight"; fi
+grep -Eq "\.bannerVisible$H \.header$H" "$vencord_theme" || fail "Midnight should match the banner header corners to the channel list"
 for pair in "system24|system24/build/system24.css" "oldcord|milbits.github.io/oldcord/src/main.css" "surcord|surCord/src/source.css"; do
   key="${pair%%|*}"
   "$BASH_EXE" "$ROOT/install.sh" "vencord:$key" >/dev/null
