@@ -312,7 +312,7 @@ function Start-StillwaterInstallJob($Pool, $Script, [string]$Id, [string]$Base) 
     $env:STILLWATER_DRY_RUN = $dry
     $null = & $path -Action install -Only @($ident) @extra
   }).AddArgument($Script).AddArgument($Id).AddArgument($Root).AddArgument($env:STILLWATER_HOME).AddArgument($env:STILLWATER_DRY_RUN).AddArgument($extra)
-  return [pscustomobject]@{ Job = $null; Ps = $ps; Handle = $ps.BeginInvoke() }
+  return [pscustomobject]@{ Job = $null; Script = ""; Ps = $ps; Handle = $ps.BeginInvoke() }
 }
 
 # Returns "" when the install worked, else why it failed.
@@ -361,27 +361,36 @@ try {
 foreach ($job in $jobs) {
   if ($job.Kind -ne "install" -and -not $clack) { Write-Host ("Skipped {0}. Not found." -f $job.Label) }
 }
-$queue = [System.Collections.Generic.Queue[object]]::new()
-foreach ($job in $jobs) { if ($job.Kind -eq "install") { $queue.Enqueue($job) } }
+$queue = [System.Collections.Generic.List[object]]::new()
+foreach ($job in $jobs) {
+  if ($job.Kind -ne "install") { continue }
+  $script = Get-StillwaterAdapterScript $job.Id
+  if (-not $script) {
+    $job.State = "fail"
+    $job.Next = ""
+    $failed++
+    Write-StillwaterJobLine $job
+    continue
+  }
+  $queue.Add([pscustomobject]@{ Job = $job; Script = $script })
+}
 $throttle = [Math]::Max(2, [Environment]::ProcessorCount)
 if ($queue.Count -gt 0) {
   $pool = [runspacefactory]::CreateRunspacePool(1, $throttle)
   $pool.Open()
 }
 while ($queue.Count -gt 0 -or $running.Count -gt 0) {
-  while ($queue.Count -gt 0 -and $running.Count -lt $throttle) {
-    $job = $queue.Dequeue()
-    $script = Get-StillwaterAdapterScript $job.Id
-    if (-not $script) {
-      $job.State = "fail"
-      $job.Next = ""
-      $failed++
-      Write-StillwaterJobLine $job
-      continue
-    }
+  # One adapter script can own several ids that share files, such as VSCodium
+  # and Code - OSS in ~/.vscode-oss, so a script runs one install at a time.
+  for ($i = 0; $i -lt $queue.Count -and $running.Count -lt $throttle; ) {
+    $item = $queue[$i]
+    if (@($running | Where-Object { $_.Script -eq $item.Script }).Count -gt 0) { $i++; continue }
+    $queue.RemoveAt($i)
+    $job = $item.Job
     $job.State = "busy"
-    $run = Start-StillwaterInstallJob $pool $script $job.Id $job.Base
+    $run = Start-StillwaterInstallJob $pool $item.Script $job.Id $job.Base
     $run.Job = $job
+    $run.Script = $item.Script
     $running.Add($run)
   }
   for ($i = $running.Count - 1; $i -ge 0; $i--) {
