@@ -183,8 +183,13 @@ printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found[[:space:]]+update[[:
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found[[:space:]]+current' || fail "reinstall should bring Cursor current"
 
-rm -rf "$TMP/.cursor/extensions/kayzel.stillwater-theme-$version"
-mkdir -p "$TMP/.cursor/extensions/kayzel.stillwater-theme-0.9.0"
+old_ext="$TMP/.cursor/extensions/kayzel.stillwater-theme-0.9.0"
+mv "$TMP/.cursor/extensions/kayzel.stillwater-theme-$version" "$old_ext"
+sed "s/\"version\": \"$version\"/\"version\": \"0.9.0\"/" "$ROOT/vscode/package.json" >"$old_ext/package.json"
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Cursor[[:space:]]+found[[:space:]]+current' || fail "an older Cursor install that differs only in its version stamp should be current"
+rm -rf "$old_ext"
+mkdir -p "$old_ext"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q "Cursor[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to $version_re" || fail "old Cursor theme should show version update"
 "$BASH_EXE" "$ROOT/install.sh" cursor >/dev/null
@@ -268,6 +273,9 @@ if [[ -f "$vencord_theme" ]]; then
   sed "s/@version $version/@version 0.9.0/" "$vencord_theme" >"$tmpcss"
   mv "$tmpcss" "$vencord_theme"
 fi
+list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
+printf '%s\n' "$list" | grep -E -q 'Vencord / Vesktop[[:space:]]+found[[:space:]]+current' || fail "a Vencord theme that differs only in its version stamp should be current"
+printf '%s\n' '.stale { color: red; }' >>"$theme"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q "Vencord / Vesktop[[:space:]]+found[[:space:]]+update[[:space:]]+0\.9\.0 to $version_re" || fail "old Vencord stamp should show version update"
 "$BASH_EXE" "$ROOT/install.sh" vencord >/dev/null

@@ -553,16 +553,25 @@ stillwater_sort_status() {
   done | LC_ALL=C sort -f -t $'\t' -k1,1 | cut -f2-
 }
 
+# The version stamps version.ts writes. A release that changes nothing else in a
+# file rewrites only these, so a copy that differs from its source only here is
+# still current.
+stillwater_unstamped() {
+  sed -E \
+    -e 's/^([[:space:]]*("version"[[:space:]]*:[[:space:]]*"|version[[:space:]]*=[[:space:]]*"|[;#*][[:space:]]*version[[:space:]]+))[0-9]+\.[0-9]+\.[0-9]+/\10.0.0/' \
+    -e 's/(@version[[:space:]]+)[0-9]+\.[0-9]+\.[0-9]+/\10.0.0/' "$1"
+}
+
 stillwater_same_file() {
   local src="$1"
   local dest="$2"
   [[ -f "$src" && -f "$dest" ]] || return 1
   if stillwater_has_cmd cmp; then
-    cmp -s "$src" "$dest"
-    return
+    cmp -s "$src" "$dest" && return 0
+  elif [[ "$(wc -c <"$src")" == "$(wc -c <"$dest")" && "$(cksum <"$src")" == "$(cksum <"$dest")" ]]; then
+    return 0
   fi
-  [[ "$(wc -c <"$src")" == "$(wc -c <"$dest")" ]] || return 1
-  [[ "$(cksum <"$src")" == "$(cksum <"$dest")" ]]
+  [[ "$(stillwater_unstamped "$src" | cksum)" == "$(stillwater_unstamped "$dest" | cksum)" ]]
 }
 
 stillwater_iter_files() {
@@ -678,6 +687,10 @@ stillwater_vscode_payload_state() {
   for old in "$parent"/kayzel.stillwater-theme-*; do
     [[ -e "$old" ]] || continue
     if [[ "$(basename "$old")" != "$keep" ]]; then
+      if [[ "$(stillwater_payload_state "$src/package.json" "$old/package.json" "$src/themes" "$old/themes")" == current ]]; then
+        printf '%s|\n' current
+        return
+      fi
       oldver="$(stillwater_peek_version "$old/package.json")"
       if [[ -z "$oldver" ]]; then
         oldver="$(basename "$old")"
