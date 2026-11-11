@@ -409,52 +409,10 @@ repaint_jobs() {
   stillwater_jobs_redraw "$(job_summary)"
 }
 
-run_install() {
-  local script="$1"
-  local id="$2"
-  local base="$3"
-  local out err pid rc
-  if [[ "$CLACK" != 1 ]]; then
-    "$BASH_EXE" "$script" install "$id" "$base" >/dev/null
-    return
-  fi
-  out="$(mktemp)"
-  err="$(mktemp)"
-  set +e
-  "$BASH_EXE" "$script" install "$id" "$base" >"$out" 2>"$err" &
-  pid=$!
-  while kill -0 "$pid" 2>/dev/null; do
-    SW_SPIN_I=$((SW_SPIN_I + 1))
-    repaint_jobs
-    sleep 0.07
-  done
-  wait "$pid"
-  rc=$?
-  set -e
-  rm -f "$out" "$err"
-  return "$rc"
-}
-
-if [[ "$CLACK" == 1 ]]; then
-  SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
-  [[ "${SW_INLINE:-0}" == 1 ]] || stillwater_screen_enter
-  trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
-  trap 'stillwater_picker_restore' EXIT
-  trap 'SW_RESIZED=1' WINCH
-  paint_jobs
-fi
-
-for i in "${!jobs_id[@]}"; do
-  if [[ "${jobs_kind[$i]}" != install ]]; then
-    if [[ "$CLACK" != 1 ]]; then
-      echo "Skipped ${jobs_label[$i]}. Not found."
-    fi
-    continue
-  fi
-  if [[ "$CLACK" == 1 ]]; then
-    jobs_state[$i]="busy"
-    repaint_jobs
-  fi
+# Starts one adapter install in the background.
+start_install() {
+  local i="$1"
+  local script
   script="$(adapter_for_id "${jobs_id[$i]}" || true)"
   if [[ -z "$script" ]]; then
     jobs_state[$i]="fail"
@@ -463,7 +421,23 @@ for i in "${!jobs_id[@]}"; do
     if [[ "$CLACK" != 1 ]]; then
       echo "Skipped ${jobs_label[$i]}. No installer."
     fi
-  elif run_install "$script" "${jobs_id[$i]}" "${jobs_base[$i]}"; then
+    return 0
+  fi
+  jobs_state[$i]="busy"
+  if [[ "$CLACK" == 1 ]]; then
+    "$BASH_EXE" "$script" install "${jobs_id[$i]}" "${jobs_base[$i]}" >/dev/null 2>&1 &
+  else
+    "$BASH_EXE" "$script" install "${jobs_id[$i]}" "${jobs_base[$i]}" >/dev/null &
+  fi
+  jobs_pid[$i]=$!
+  running=$((running + 1))
+}
+
+finish_install() {
+  local i="$1"
+  local rc="$2"
+  local name
+  if [[ "$rc" == 0 ]]; then
     jobs_state[$i]="ok"
     installed=$((installed + 1))
     if [[ "$CLACK" != 1 ]]; then
@@ -485,8 +459,54 @@ for i in "${!jobs_id[@]}"; do
       echo "Failed ${jobs_label[$i]}."
     fi
   fi
+}
+
+if [[ "$CLACK" == 1 ]]; then
+  SW_STTY="${SW_STTY:-$(stty -g 2>/dev/null || true)}"
+  [[ "${SW_INLINE:-0}" == 1 ]] || stillwater_screen_enter
+  trap 'stillwater_picker_restore; trap - EXIT INT TERM; exit 130' INT TERM
+  trap 'stillwater_picker_restore' EXIT
+  trap 'SW_RESIZED=1' WINCH
+  paint_jobs
+fi
+
+# Adapters write to their own app's folders, so they install side by side, as
+# many at once as the machine has cores.
+throttle="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
+if ! [[ "$throttle" =~ ^[0-9]+$ ]] || [[ "$throttle" -lt 2 ]]; then
+  throttle=2
+fi
+queue=()
+for i in "${!jobs_id[@]}"; do
+  if [[ "${jobs_kind[$i]}" == install ]]; then
+    queue+=("$i")
+  elif [[ "$CLACK" != 1 ]]; then
+    echo "Skipped ${jobs_label[$i]}. Not found."
+  fi
+done
+jobs_pid=()
+running=0
+next=0
+while [[ "$next" -lt ${#queue[@]} || "$running" -gt 0 ]]; do
+  while [[ "$next" -lt ${#queue[@]} && "$running" -lt "$throttle" ]]; do
+    start_install "${queue[$next]}"
+    next=$((next + 1))
+  done
+  for i in ${jobs_pid[@]+"${!jobs_pid[@]}"}; do
+    if kill -0 "${jobs_pid[$i]}" 2>/dev/null; then
+      continue
+    fi
+    if wait "${jobs_pid[$i]}"; then rc=0; else rc=$?; fi
+    unset 'jobs_pid[i]'
+    running=$((running - 1))
+    finish_install "$i" "$rc"
+  done
   if [[ "$CLACK" == 1 ]]; then
+    SW_SPIN_I=$((SW_SPIN_I + 1))
     repaint_jobs
+  fi
+  if [[ "$running" -gt 0 ]]; then
+    sleep 0.07
   fi
 done
 

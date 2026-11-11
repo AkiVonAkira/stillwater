@@ -296,37 +296,53 @@ function Get-StillwaterFailureMessage($ErrorRecord) {
   return [string]$ErrorRecord
 }
 
-# Only adapters with base themes take -Base, so it is passed only when set.
-function Invoke-StillwaterInstallJob($Script, [string]$Id, [string]$Base) {
+# Starts one adapter install in the pool. Only adapters with base themes take
+# -Base, so it is passed only when set.
+function Start-StillwaterInstallJob($Pool, $Script, [string]$Id, [string]$Base) {
   $extra = @{}
   if ($Base) { $extra.Base = $Base }
-  if (-not $clack) {
-    $null = & $Script -Action install -Only @($Id) @extra
+  $ps = [powershell]::Create()
+  $ps.RunspacePool = $Pool
+  # Do not name the home argument $home. $HOME is a read-only automatic
+  # variable, and binding it in a nested runspace fails every adapter.
+  [void]$ps.AddScript({
+    param($path, $ident, $root, $stillwaterHome, $dry, $extra)
+    $env:STILLWATER_ROOT = $root
+    if ($stillwaterHome) { $env:STILLWATER_HOME = $stillwaterHome }
+    $env:STILLWATER_DRY_RUN = $dry
+    $null = & $path -Action install -Only @($ident) @extra
+  }).AddArgument($Script).AddArgument($Id).AddArgument($Root).AddArgument($env:STILLWATER_HOME).AddArgument($env:STILLWATER_DRY_RUN).AddArgument($extra)
+  return [pscustomobject]@{ Job = $null; Ps = $ps; Handle = $ps.BeginInvoke() }
+}
+
+# Returns "" when the install worked, else why it failed.
+function Complete-StillwaterInstallJob($Run) {
+  try {
+    $null = $Run.Ps.EndInvoke($Run.Handle)
+    if ($Run.Ps.HadErrors) { return (Get-StillwaterFailureMessage $Run.Ps.Streams.Error[0]) }
+    return ""
+  } catch {
+    return (Get-StillwaterFailureMessage $_)
+  } finally {
+    $Run.Ps.Dispose()
+  }
+}
+
+function Write-StillwaterJobLine($Job) {
+  if ($clack) { return }
+  if ($Job.State -eq "fail") {
+    if ($Job.Next) {
+      Write-Host ("Failed {0}: {1}" -f $Job.Label, $Job.Next)
+    } else {
+      Write-Host ("Skipped {0}. No installer." -f $Job.Label)
+    }
     return
   }
-  $ps = [powershell]::Create()
-  try {
-    # Do not name the home argument $home. $HOME is a read-only automatic
-    # variable, and binding it in a nested runspace fails every adapter.
-    [void]$ps.AddScript({
-      param($path, $ident, $root, $stillwaterHome, $dry, $extra)
-      $env:STILLWATER_ROOT = $root
-      if ($stillwaterHome) { $env:STILLWATER_HOME = $stillwaterHome }
-      $env:STILLWATER_DRY_RUN = $dry
-      & $path -Action install -Only @($ident) @extra
-    }).AddArgument($Script).AddArgument($Id).AddArgument($Root).AddArgument($env:STILLWATER_HOME).AddArgument($env:STILLWATER_DRY_RUN).AddArgument($extra)
-    $handle = $ps.BeginInvoke()
-    while (-not $handle.IsCompleted) {
-      $script:spinI++
-      Write-StillwaterJobFrame
-      Start-Sleep -Milliseconds 70
-    }
-    $null = $ps.EndInvoke($handle)
-    if ($ps.HadErrors) {
-      throw $ps.Streams.Error[0]
-    }
-  } finally {
-    $ps.Dispose()
+  $name = if ($Job.BaseLabel) { "{0} on {1}" -f $Job.Label, $Job.BaseLabel } else { $Job.Label }
+  if ($env:STILLWATER_DRY_RUN -eq "1") {
+    Write-Host ("Would install {0}." -f $name)
+  } else {
+    Write-Host ("Installed {0}." -f $name)
   }
 }
 
@@ -336,49 +352,64 @@ if ($clack) {
   Write-StillwaterJobFrame
 }
 
+# Adapters write to their own app's folders, so they install side by side, as
+# many at once as the machine has cores.
 $finished = $false
+$pool = $null
+$running = [System.Collections.Generic.List[object]]::new()
 try {
 foreach ($job in $jobs) {
-  if ($job.Kind -ne "install") {
-    if (-not $clack) { Write-Host ("Skipped {0}. Not found." -f $job.Label) }
-    continue
-  }
-  if ($clack) {
+  if ($job.Kind -ne "install" -and -not $clack) { Write-Host ("Skipped {0}. Not found." -f $job.Label) }
+}
+$queue = [System.Collections.Generic.Queue[object]]::new()
+foreach ($job in $jobs) { if ($job.Kind -eq "install") { $queue.Enqueue($job) } }
+$throttle = [Math]::Max(2, [Environment]::ProcessorCount)
+if ($queue.Count -gt 0) {
+  $pool = [runspacefactory]::CreateRunspacePool(1, $throttle)
+  $pool.Open()
+}
+while ($queue.Count -gt 0 -or $running.Count -gt 0) {
+  while ($queue.Count -gt 0 -and $running.Count -lt $throttle) {
+    $job = $queue.Dequeue()
+    $script = Get-StillwaterAdapterScript $job.Id
+    if (-not $script) {
+      $job.State = "fail"
+      $job.Next = ""
+      $failed++
+      Write-StillwaterJobLine $job
+      continue
+    }
     $job.State = "busy"
-    Write-StillwaterJobFrame
+    $run = Start-StillwaterInstallJob $pool $script $job.Id $job.Base
+    $run.Job = $job
+    $running.Add($run)
   }
-  $script = Get-StillwaterAdapterScript $job.Id
-  if (-not $script) {
-    $job.State = "fail"
-    $job.Next = ""
-    $failed++
-    if (-not $clack) { Write-Host ("Skipped {0}. No installer." -f $job.Label) }
-  } else {
-    try {
-      Invoke-StillwaterInstallJob $script $job.Id $job.Base
+  for ($i = $running.Count - 1; $i -ge 0; $i--) {
+    $run = $running[$i]
+    if (-not $run.Handle.IsCompleted) { continue }
+    $running.RemoveAt($i)
+    $job = $run.Job
+    $why = Complete-StillwaterInstallJob $run
+    if ($why) {
+      $job.State = "fail"
+      $job.Next = $why
+      $failed++
+    } else {
       $job.State = "ok"
       $installed++
-      if (-not $clack) {
-        $name = if ($job.BaseLabel) { "{0} on {1}" -f $job.Label, $job.BaseLabel } else { $job.Label }
-        if ($env:STILLWATER_DRY_RUN -eq "1") {
-          Write-Host ("Would install {0}." -f $name)
-        } else {
-          Write-Host ("Installed {0}." -f $name)
-        }
-      }
-    } catch {
-      $job.State = "fail"
-      $job.Next = Get-StillwaterFailureMessage $_
-      $failed++
-      if (-not $clack) { Write-Host ("Failed {0}: {1}" -f $job.Label, $job.Next) }
     }
+    Write-StillwaterJobLine $job
   }
   if ($clack) {
+    $script:spinI++
     Write-StillwaterJobFrame
   }
+  if ($running.Count -gt 0) { Start-Sleep -Milliseconds 70 }
 }
 $finished = $true
 } finally {
+  foreach ($run in @($running)) { $run.Ps.Stop(); $run.Ps.Dispose() }
+  if ($pool) { $pool.Dispose() }
   if ($script:StillwaterInline) {
     if (-not $finished) { Stop-StillwaterInline $style }
   } elseif ($clack) {
