@@ -1,6 +1,6 @@
 {
   "name": "Stillwater",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "widgets": "windows11",
   "qssFilePath": "themeStyle.css",
   "colors": {

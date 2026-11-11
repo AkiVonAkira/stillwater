@@ -1,4 +1,4 @@
-# Stillwater fish colours. kayzel. @version 1.0.0
+# Stillwater fish colours. kayzel. @version 1.0.1
 # Sourced from ~/.config/fish/user.fish, which Ryoku loads after its own config.fish.
 
 set -g fish_color_normal ebdbb2

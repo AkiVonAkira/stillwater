@@ -36,6 +36,8 @@ When one token reads badly, check every ink and surface pair in that adapter, no
 
 Theme CSS for Electron apps (Vencord, Equicord, Spicetify) has to stay cheap. Broad selectors like `[class*=...]` combined with `:has()` made Discord lag. Target specific classes.
 
+"Update classes" means run `npm run update-classes`. It renames stale Discord class names in every `vencord/*/Stillwater.theme.css` with the map behind https://syndishanx.github.io/Website/Update_Classes.html. `npm run update-classes -- --check` lists them without writing. Class names alone do not cause lag; check the selectors too.
+
 ## Writing
 
 - README, picker text, and installer output stay short and plain. No "then reload" filler and no help boxes nobody asked for.
