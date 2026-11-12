@@ -10,28 +10,6 @@ function admin {
   }
 }
 
-# Update T3: stop the server on 3773 and the "T3 Code server" task's loop
-# restarts it on the latest nightly.
-function t3up {
-  $listen = Get-NetTCPConnection -LocalPort 3773 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-  if (-not $listen) {
-    Write-Host "Nothing is listening on 3773."
-    return
-  }
-  $old = $listen.OwningProcess
-  Stop-Process -Id $old -Force
-  Write-Host "Stopped T3 server ($old). Waiting for the restart..."
-  $deadline = (Get-Date).AddMinutes(3)
-  while ((Get-Date) -lt $deadline) {
-    Start-Sleep -Seconds 2
-    $new = Get-NetTCPConnection -LocalPort 3773 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($new -and $new.OwningProcess -ne $old) {
-      Write-Host "T3 server is back ($($new.OwningProcess))."
-      return
-    }
-  }
-  Write-Host "T3 server did not come back on 3773 within 3 minutes."
-}
 if ($Host.Name -ne "ConsoleHost") { return }
 try {
   if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) { return }
