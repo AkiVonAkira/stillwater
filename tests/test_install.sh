@@ -353,10 +353,13 @@ printf '%s\n' "$list" | grep -E -q 'Spicetify[[:space:]]+found[[:space:]]+update
 "$BASH_EXE" "$ROOT/install.sh" spicetify >/dev/null
 grep -q '@base dribbblish' "$dest/user.css" || fail "updating an unstamped install should stamp Dribbblish"
 
-mkdir -p "$TMP/.t3"
+mkdir -p "$TMP/.t3/userdata/themes"
+printf 'rollback' >"$TMP/.t3/userdata/themes/stillwater-observatory.json"
 out="$("$BASH_EXE" "$ROOT/install.sh" t3)"
 printf '%s\n' "$out" | grep -q 'Installed T3 Code.' || fail "should install T3"
-[[ -f "$TMP/.t3/userdata/themes/stillwater.json" ]] || fail "T3 theme should be copied"
+cmp -s "$ROOT/t3/stillwater.json" "$TMP/.t3/userdata/themes/stillwater.json" || fail "T3 theme should be copied as is"
+grep -q -- "--stillwater-canvas" "$TMP/.t3/userdata/themes/stillwater.json" || fail "T3 theme should carry the palette CSS"
+[[ "$(cat "$TMP/.t3/userdata/themes/stillwater-observatory.json")" == rollback ]] || fail "T3 install should leave the rollback theme alone"
 printf '%s\n' "$out" | grep -q 'Select Stillwater in T3 Code.' || fail "T3 next step"
 list="$("$BASH_EXE" "$ROOT/install.sh" --list)"
 printf '%s\n' "$list" | grep -E -q 'T3 Code[[:space:]]+found[[:space:]]+current' || fail "matching T3 theme file should be current"

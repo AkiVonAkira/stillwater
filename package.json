@@ -9,7 +9,10 @@
     "bump": "tsx version.ts",
     "version:check": "tsx version.ts --check",
     "update-classes": "tsx update-classes.ts",
-    "showcase": "playwright install chromium && tsx showcase/render.ts"
+    "showcase": "playwright install chromium && tsx showcase/render.ts",
+    "build:check": "tsx build.ts --check",
+    "t3:apply": "tsx t3/apply.ts",
+    "t3:capture": "tsx t3/capture.ts"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",

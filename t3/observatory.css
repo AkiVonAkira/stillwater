@@ -1,0 +1,166 @@
+/* Observatory glass for T3 Code. npm run build prepends the palette as
+   --stillwater-* variables and writes t3/stillwater.json. Selectors come from
+   the stable list in t3_theme_read, plus the data attributes named in AGENTS.md. */
+
+:root {
+  --radius: .5rem !important;
+  --ob-card-radius: 12px;
+  --ob-sheet-radius: 16px;
+}
+
+.dark {
+  --ob-glass: color-mix(in srgb, var(--stillwater-canvas-raised) 42%, transparent);
+  --ob-edge: color-mix(in srgb, var(--stillwater-text) 7%, transparent);
+  --ob-shine: color-mix(in srgb, var(--stillwater-text) 6%, transparent);
+  --ob-shadow: inset 0 1px 0 var(--ob-shine), 0 10px 30px rgb(0 0 0 / .25);
+  --ob-sheet: color-mix(in srgb, var(--stillwater-canvas-raised) 76%, transparent);
+  --ob-menu: color-mix(in srgb, var(--stillwater-canvas) 97%, transparent);
+  --ob-bar: color-mix(in srgb, var(--stillwater-canvas-overlay) 78%, transparent);
+  --ob-well: color-mix(in srgb, var(--stillwater-canvas-overlay) 55%, transparent);
+  --ob-focus: color-mix(in srgb, var(--stillwater-accent) 40%, transparent);
+  --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
+}
+
+/* The light variant's surfaces are not palette colors. */
+:root:not(.dark) {
+  --ob-glass: rgb(235 228 216 / .6);
+  --ob-edge: rgb(60 56 54 / .12);
+  --ob-shine: rgb(255 255 255 / .55);
+  --ob-shadow: inset 0 1px 0 var(--ob-shine), 0 10px 30px rgb(60 56 54 / .08);
+  --ob-sheet: rgb(244 239 230 / .9);
+  --ob-menu: rgb(244 239 230 / .97);
+  --ob-bar: rgb(235 228 216 / .85);
+  --ob-well: rgb(230 223 210 / .6);
+  --ob-focus: color-mix(in srgb, var(--stillwater-accent) 40%, transparent);
+  --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
+}
+
+/* One gradient on the chat column. The header is its direct child, and the
+   chat area inside it goes transparent so the gradient shows through. */
+.dark [data-chat-column]:has(> [data-chat-header]),
+.dark [data-workspace-area="conversation"] {
+  background:
+    radial-gradient(60% 45% at 8% 6%, color-mix(in srgb, var(--stillwater-accent-deep) 18%, transparent), transparent 70%),
+    radial-gradient(45% 50% at 96% 96%, color-mix(in srgb, var(--stillwater-warm) 9%, transparent), transparent 70%),
+    var(--stillwater-canvas) !important;
+}
+
+.dark [data-chat-column]:has(> [data-chat-header]) [data-workspace-area="conversation"],
+.dark [data-chat-column] > [data-chat-header] ~ :has([data-workspace-area="conversation"]) {
+  background: transparent !important;
+}
+
+[data-slot="sidebar-inner"] {
+  background: var(--ob-bar) !important;
+  backdrop-filter: blur(20px) saturate(140%);
+  border-color: var(--ob-edge) !important;
+}
+
+[data-chat-header] {
+  background: transparent !important;
+  border-color: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+[data-slot="composer-host"],
+[data-thread-details-card],
+[data-user-message-bubble] {
+  background: var(--ob-glass) !important;
+  border: 1px solid var(--ob-edge) !important;
+  border-radius: var(--ob-card-radius) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--ob-shadow) !important;
+}
+
+[data-slot="composer-host"]:focus-within {
+  border-color: var(--ob-focus) !important;
+}
+
+/* The composer nests a backing, a ring, and a drop surface inside the card.
+   Each sits 1px further in, so each radius is the card's minus that gap. */
+[data-slot="composer-shell"]::before {
+  border-radius: var(--ob-card-radius) !important;
+}
+
+[data-slot="composer-host"]::after,
+[data-chat-composer-main-surface],
+[data-chat-composer-main-surface]::after {
+  border-radius: calc(var(--ob-card-radius) - 1px) !important;
+}
+
+[data-chat-composer-surface] {
+  border-radius: calc(var(--ob-card-radius) - 2px) !important;
+}
+
+/* The selected sidebar row gets the bubble's shadow. The ring variables keep
+   the app's focus and light-mode rings drawn on top of it. */
+[data-thread-item] > [aria-current="page"] {
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--ob-shadow) !important;
+}
+
+/* Rows use content-visibility, which clips paint to the row. Only the
+   selected row lets its shadow out. */
+[data-thread-item]:has(> [aria-current="page"]) {
+  content-visibility: visible !important;
+  position: relative;
+  z-index: 1;
+}
+
+[data-thread-terminal-drawer] {
+  border-color: var(--ob-edge) !important;
+  border-top-left-radius: var(--ob-card-radius) !important;
+  border-top-right-radius: var(--ob-card-radius) !important;
+}
+
+.chat-markdown-codeblock {
+  border: 1px solid var(--ob-edge) !important;
+  border-radius: 8px !important;
+  background: var(--ob-well) !important;
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / .2), inset 0 -1px 0 var(--ob-shine);
+}
+
+[data-thread-item] {
+  border-radius: 8px !important;
+}
+
+[data-slot="button"] {
+  border-radius: 6px !important;
+}
+
+[data-slot="input"],
+[data-slot="select-trigger"] {
+  border-radius: 8px !important;
+}
+
+[data-slot="dialog-popup"] {
+  background: var(--ob-sheet) !important;
+  border: 1px solid var(--ob-edge) !important;
+  border-radius: var(--ob-sheet-radius) !important;
+  backdrop-filter: blur(28px) saturate(120%);
+  box-shadow: 0 30px 80px rgb(0 0 0 / .45), 0 0 0 1px var(--ob-halo), inset 0 1px 0 var(--ob-shine) !important;
+}
+
+[data-slot="popover-popup"],
+[data-slot="menu-popup"] {
+  background: var(--ob-menu) !important;
+  border: 1px solid var(--ob-edge) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(28px) saturate(120%);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / .25), inset 0 1px 0 var(--ob-shine) !important;
+}
+
+[data-slot="tooltip-popup"] {
+  background: var(--ob-menu) !important;
+  border: 1px solid var(--ob-edge) !important;
+  border-radius: 4px !important;
+  box-shadow: var(--ob-shadow) !important;
+}
+
+svg.lucide {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

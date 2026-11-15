@@ -36,6 +36,9 @@ try {
   if ($r.Out -notmatch "Would install T3 Code") { Fail "-DryRun should name the install: $($r.Out)" }
   if (Test-Path (Join-Path $Tmp ".t3\userdata\themes\stillwater.json")) { Fail "-DryRun must not write" }
 
+  $rollback = Join-Path $Tmp ".t3\userdata\themes\stillwater-observatory.json"
+  New-Item -ItemType Directory -Force -Path (Split-Path $rollback) | Out-Null
+  Set-Content -NoNewline -Path $rollback -Value "rollback"
   $r = Invoke-Installer t3 cursor yasb
   if ($r.Code -ne 0) { Fail "named install exited $($r.Code): $($r.Out)" }
   foreach ($label in "T3 Code", "Cursor", "YASB") {
@@ -43,6 +46,8 @@ try {
   }
   $theme = Join-Path $Tmp ".t3\userdata\themes\stillwater.json"
   if ((Get-FileHash $theme).Hash -ne (Get-FileHash (Join-Path $Root "t3\stillwater.json")).Hash) { Fail "T3 theme should be copied as is" }
+  if ((Get-Content -Raw $theme) -notmatch "--stillwater-canvas") { Fail "T3 theme should carry the palette CSS" }
+  if ((Get-Content -Raw $rollback) -ne "rollback") { Fail "T3 install should leave the rollback theme alone" }
   if (-not (Test-Path (Join-Path $Tmp ".cursor\extensions\kayzel.stillwater-theme-$version\package.json"))) { Fail "Cursor extension missing" }
   $css = Get-Content -Raw (Join-Path $Tmp ".config\yasb\styles.css")
   if ($css -notmatch "--background: #1d2021;") { Fail "YASB should map --background by name" }
