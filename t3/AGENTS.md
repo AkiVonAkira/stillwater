@@ -19,6 +19,8 @@
 
 Rollback: select a built-in theme in T3's appearance settings, or check out an earlier commit and run `npm run t3:apply`.
 
+When a client shows Stillwater's colors but none of the glass, gradient, or corners, it has a saved custom theme with the id `stillwater`, such as an old import. A custom theme overrides the published one with the same id, and an imported copy has no CSS. Remove that custom Stillwater with the trash icon in Settings → Appearance, then select Stillwater again. The capture cannot catch this, because it runs with a clean client.
+
 ## Capture
 
 `npm run t3:capture` loads the frontend assets from the local T3 server at `http://127.0.0.1:3773` into headless Chromium. Every API call and the RPC WebSocket are answered from `t3/capture-fixture.ts`, so the real app renders synthetic projects, threads, and messages with explicit fixture preferences. The browser never opens a WebSocket to the server, sends no credentials, and reads no private T3 data. The only non-asset server request is the public `/.well-known/t3/environment`, for the protocol version and capabilities.
