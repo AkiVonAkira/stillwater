@@ -511,7 +511,7 @@ async function record(env: Environment, label: string, theme: Theme, origin: str
 async function main(): Promise<void> {
   const origin = arg("origin") ?? "http://127.0.0.1:3773";
   const out = arg("out") ?? join(tmpdir(), "stillwater-t3-capture");
-  const liveBefore = join(homedir(), ".t3", "userdata", "themes", "stillwater-observatory.json");
+  const liveBefore = join(homedir(), ".t3", "userdata", "themes", "stillwater.json");
   const beforeFile = arg("before") ?? (existsSync(liveBefore) ? liveBefore : undefined);
   const after = loadTheme(arg("after") ?? join(ROOT, "t3", "stillwater.json"));
   mkdirSync(out, { recursive: true });
