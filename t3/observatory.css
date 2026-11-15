@@ -250,9 +250,10 @@
   box-shadow: inset 0 1px 0 var(--ob-shine) !important;
 }
 
-/* A surface such as the pull request view paints an opaque root, which ends in a hard edge under the
-   glass tab strip. Let the card's glass show through it. Sticky headers inside keep their fill. */
-[data-preview-panel-mode="inline"] [data-right-panel-surface-content] .h-full.flex-col.bg-background {
+/* Surfaces such as the pull request and file views paint opaque roots and header rows, which end in
+   a hard edge under the glass tab strip. Let the card's glass show through them. Sticky headers and
+   floating popovers keep their fill, so content does not show through them. */
+[data-preview-panel-mode="inline"] [data-right-panel-surface-content] .bg-background:not(.sticky, .absolute, .fixed) {
   background: transparent !important;
 }
 
@@ -270,14 +271,15 @@
   color: var(--foreground) !important;
 }
 
-/* The terminal drawer floats as a card like the workspace panel. Its parent clips for the open and
-   close animation, so the gap is padding there, not a margin on the drawer that would be cut
-   off. The terminal paints an opaque background, so the card is solid. */
-div:has(> [data-thread-terminal-drawer]) {
+/* The terminal drawer floats as a card like the workspace panel. A terminal in the panel uses the
+   same element with another owner, and stays flat inside the panel card. The drawer's parent clips
+   for the open and close animation, so the gap is padding there, not a margin on the drawer that
+   would be cut off. The terminal paints an opaque background, so the card is solid. */
+div:has(> [data-thread-terminal-drawer][data-terminal-owner="drawer"]) {
   padding: 8px var(--ob-card-gap-right) var(--ob-card-gap) var(--ob-card-gap);
 }
 
-[data-thread-terminal-drawer] {
+[data-thread-terminal-drawer][data-terminal-owner="drawer"] {
   border: 1px solid var(--ob-edge) !important;
   border-radius: var(--ob-card-radius) !important;
   box-shadow: inset 0 1px 0 var(--ob-shine) !important;
