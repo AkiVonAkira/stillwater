@@ -343,6 +343,16 @@ div:has(> [data-thread-terminal-drawer][data-terminal-owner="drawer"]) {
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / .25), inset 0 1px 0 var(--ob-shine) !important;
 }
 
+/* When the chat is too narrow for the thread details card, T3 opens the same card in a popover. The
+   card is already glass with its own edge and shadow, so the popover's own sheet would draw a
+   second box around it. */
+[data-slot="popover-popup"]:has([data-thread-details-panel="popover"]) {
+  background: transparent !important;
+  border-color: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
 [data-slot="tooltip-popup"] {
   background: var(--ob-menu) !important;
   border: 1px solid var(--ob-edge) !important;
