@@ -19,13 +19,56 @@
 
 /* import theme modules */
 @import url('https://refact0r.github.io/midnight-discord/build/midnight.css');
-@import url('https://raw.githubusercontent.com/abbie/discord-css/refs/heads/main/import.css');
 @import url('https://raw.githubusercontent.com/davart154/Themes/refs/heads/main/Snippets/Simplified%20Panel%20Area/SimplifiedPanelArea.css');
 @import url('https://raw.githubusercontent.com/ISOUL22/rice/refs/heads/main/Vencord/improvedSpotifyControls.css');
 @import url('https://raw.githubusercontent.com/amozeo/discord-css-snippets/refs/heads/main/snippets/compact-search-button.css');
 @import url('https://davart154.github.io/Themes/Snippets/Mana%20Page%20Switcher/ManaPageSwitcherSource.css');
 @import url('https://davart154.github.io/Themes/Snippets/Plugin%20Icon%20Consistency/IconConsistencySource.css');
 @import url('https://raw.githubusercontent.com/Just-Me-22/Compact-Server-Shortcut-Buttons/main/compact-server-shortcuts.css');
+
+/* Clutter hiding, kept from abbie/discord-css (MIT) without importing it.
+ * That file wraps 38 toggles in unnamed @container style() queries, and its
+ * selectors still match while a toggle is off: div:has(), span:has(), and
+ * :has() over [class*=] and svg path[d^=] re-run on every class change and
+ * every Lottie frame on the chat buttons. Discord lagged with it imported.
+ * Only the toggles this theme had on are here, without those :has() forms. */
+div#channels > ul > div[class*="containerWithMargin"], /* server boost goal */
+[aria-label="Edit Image with Apps"],
+[role=button][aria-label="Open GIF picker"],
+[role=button][aria-label="Open sticker picker"],
+[role=button][aria-label="Send a gift"],
+div.app-launcher-entrypoint,
+div[data-fullscreen] div[class*="trailing_"] a[href="https://support.discord.com"],
+li[role="listitem"]:has(> div > a[href*="/shop"]),
+li[role="listitem"]:has(> div > a[href*="/store"]),
+div[class*="profileButtons"] span:has(> button[aria-label="Shop"]),
+[class*="upsell_"],
+[class*="floatingUpsellContainer"],
+[class*="guildProfileUpsell"],
+.vc-platform-indicator svg[aria-label="Desktop"] {
+    display: none !important;
+}
+
+body, [class*="scroller__"] {
+    --scrollbar-auto-track: #00001116;
+    --scrollbar-auto-thumb: #0005;
+}
+
+body {
+    --message-background-hover: #00001116;
+}
+
+svg[class*="ownerIcon__"] {
+    top: -1px;
+}
+
+svg[class*="flowerStar__"] path[d^="m16 7.6c0"] {
+    transform: translateY(-0.5px);
+}
+
+[class*="guildDropdown_"] svg path[d^="M5.3 9.3a1"] {
+    transform: translateY(2px);
+}
 
 body {
     /* RoundedDiscord corner radius */
@@ -165,40 +208,6 @@ body {
     --purple-3: #ae81ff;
     --purple-4: #ae81ff;
     --purple-5: #ae81ff;
-
-    /* abbie/discord-css toggles (from Akira's Theme) */
-    --\\--compact-title-bar: false;
-    --\\--compact-input-box: false;
-    --\\--compact-context-menu: false;
-    --\\--compact-user-area: false;
-    --\\--compact-channel-categories: false;
-    --\\--compact-server-list: false;
-    --\\--hide-nameplates: false;
-    --\\--hide-guild-tags: false;
-    --\\--hide-profile-effects: false;
-    --\\--hide-avatar-decorations: false;
-    --\\--hide-gradient-glow-usernames: false;
-    --\\--hide-server-boost-goal: true;
-    --\\--hide-server-activity: false;
-    --\\--hide-user-activity: false;
-    --\\--hide-context-menu-quick-reactions: false;
-    --\\--hide-hover-quick-reactions: false;
-    --\\--hide-image-edit-button: true;
-    --\\--hide-gif-button: true;
-    --\\--hide-sticker-button: true;
-    --\\--hide-emoji-button: false;
-    --\\--hide-apps-button: true;
-    --\\--hide-gift-button: true;
-    --\\--hide-help-button: true;
-    --\\--hide-shop-button: true;
-    --\\--hide-nitro-button: true;
-    --\\--hide-nitro-upsells: true;
-    --\\--hide-vencord-desktop-platform-indicator: true;
-    --\\--hide-cluttery-badges: false;
-    --\\--darker-scrollbar: true;
-    --\\--darker-hovered-message: true;
-    --\\--prevent-sidebar-resizing: false;
-    --\\--fix-minor-icon-misalignments: true;
 
     /* ISOUL improved Spotify controls */
     --isc-bg: var(--bg-4);
