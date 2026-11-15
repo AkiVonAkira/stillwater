@@ -25,10 +25,8 @@ jobs:
           node --input-type=commonjs -e "const fs=require('fs'); for (const file of ['palette.json','vscode/package.json','t3/stillwater.json','voltius/stillwater.json','ryoku/scheme.json','ryoku/meta.json']) JSON.parse(fs.readFileSync(file,'utf8'));"
       - name: Check versions
         run: npm run version:check
-      - name: Rebuild CSS
-        run: |
-          npm run build
-          git diff --exit-code stillwater.css
+      - name: Generated files match their sources
+        run: npm run build:check
       - name: Installer tests
         run: bash tests/test_install.sh
 

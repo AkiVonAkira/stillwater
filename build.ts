@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { darkRoles, lightRoles } from "./t3/roles.ts";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const SKIP_KEYS = new Set(["id", "label", "publisher"]);
@@ -54,11 +55,72 @@ function writeCss(palette: { [key: string]: Json }): string {
   return lines.join("\n");
 }
 
+// T3 themes accept at most 20,000 characters of CSS and cannot load files.
+const T3_CSS_LIMIT = 20_000;
+
+function t3CssProblems(css: string): string[] {
+  const problems: string[] = [];
+  if (css.length > T3_CSS_LIMIT) problems.push(`css is ${css.length} characters, over ${T3_CSS_LIMIT}`);
+  if (/@import/i.test(css)) problems.push("css uses @import");
+  if (/image-set\(/i.test(css)) problems.push("css uses image-set()");
+  for (const m of css.matchAll(/url\(\s*['"]?([^'")\s]*)/gi)) {
+    if (!/^(data:|#)/i.test(m[1])) problems.push(`css loads ${m[1]}`);
+  }
+  return problems;
+}
+
+function writeT3(palette: { [key: string]: Json }): string {
+  const source = readFileSync(join(ROOT, "t3", "observatory.css"), "utf8")
+    .replace(/\r\n/g, "\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+  const css = `${writeCss(palette).trim()}
+${source}
+`;
+  const problems = t3CssProblems(css);
+  if (problems.length > 0) {
+    throw new Error(`t3/observatory.css: ${problems.join("; ")}`);
+  }
+  const lower = (roles: Record<string, string>) =>
+    Object.fromEntries(Object.entries(roles).map(([role, hex]) => [role, hex.toLowerCase()]));
+  const colors = lower(darkRoles(palette as Parameters<typeof darkRoles>[0]));
+  const theme = {
+    version: 1,
+    id: palette.id,
+    name: palette.label,
+    appearance: "dark",
+    canvas: colors.canvas,
+    accent: colors.accent,
+    colors,
+    variants: { light: lower(lightRoles) },
+    css,
+  };
+  return `${JSON.stringify(theme, null, 2)}
+`;
+}
+
+function emit(path: string, text: string, check: boolean): boolean {
+  if (check) {
+    const same = existsSync(path) && readFileSync(path, "utf8").replace(/\r\n/g, "\n") === text;
+    if (!same) console.error(`${path} is stale. Run npm run build.`);
+    return same;
+  }
+  writeFileSync(path, text, "utf8");
+  console.log(`wrote ${path}`);
+  return true;
+}
+
 function main(): void {
   const spec = JSON.parse(readFileSync(join(ROOT, "palette.json"), "utf8")) as Spec;
-  const cssPath = join(ROOT, "stillwater.css");
-  writeFileSync(cssPath, writeCss(spec.palette), "utf8");
-  console.log(`wrote ${cssPath}`);
+  const check = process.argv.includes("--check");
+  const fresh = [
+    emit(join(ROOT, "stillwater.css"), writeCss(spec.palette), check),
+    emit(join(ROOT, "t3", "stillwater.json"), writeT3(spec.palette), check),
+  ];
+  if (check) {
+    process.exit(fresh.every(Boolean) ? 0 : 1);
+  }
 
   const feppz = process.argv[2];
   if (!feppz) {

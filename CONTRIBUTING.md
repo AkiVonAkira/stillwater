@@ -1,6 +1,8 @@
 # Contributing
 
-Small fixes push straight to `main`. A new adapter, a new feature, or a large change lands through a pull request. Do not open empty or placeholder PRs.
+Contributors fork and open a pull request. `main` takes no direct pushes or force-pushes, and a PR merges after the `linux` and `windows` checks pass. Do not open empty or placeholder PRs.
+
+The owner may push small fixes straight to `main`. A new adapter, a new feature, or a large change lands through a pull request.
 
 ## Rules
 

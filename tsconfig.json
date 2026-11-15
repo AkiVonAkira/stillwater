@@ -7,7 +7,15 @@
     "noEmit": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["build.ts", "version.ts", "update-classes.ts", "showcase/*.ts"]
+  "include": [
+    "build.ts",
+    "version.ts",
+    "update-classes.ts",
+    "showcase/*.ts",
+    "t3/*.ts"
+  ]
 }

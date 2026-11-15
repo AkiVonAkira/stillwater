@@ -5,7 +5,8 @@ A personal color theme. `palette.json` holds the colors, each app folder is an a
 ## How work is asked for
 
 - Requests are short: an app, a symptom, sometimes a guess ("discord is so slow, update the theme classes maybe?"). Treat the guess as a lead. Find the cause before you change anything. Toggling animations did not fix that lag.
-- Small fixes, such as a color, a font, a selector, or a doc line, commit and push straight to `main`. A new adapter, a new feature, or a large change goes through a PR: branch, push, open the PR, wait for CI, then merge. `main` has no ruleset.
+- Small fixes, such as a color, a font, a selector, or a doc line, commit and push straight to `main`. A new adapter, a new feature, or a large change goes through a PR: branch, push, open the PR, wait for CI, then merge.
+- The `main` ruleset requires a PR, the `linux` and `windows` checks, and no force-push or deletion. Repo admins bypass it, so the owner's account, and an agent using it, can push small fixes straight to `main`. GitHub prints "Bypassed rule violations" on that push; it is expected. Never force-push `main`.
 - Two adapters means two PRs.
 - In a stack, retarget the next PR to `main` before you merge the bottom one with `--delete-branch`. Deleting its base branch closes the next PR instead of retargeting it.
 - "Install it" means run the real installer on this machine, such as `pwsh ./install.ps1 t3` or `bash install.sh t3`. Do not hand-edit the app's live config in place of the adapter.
