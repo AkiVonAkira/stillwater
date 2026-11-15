@@ -55,6 +55,23 @@
   background-clip: border-box !important;
 }
 
+/* The Windows desktop app pads #root on the right for its resize grab zone, and the body's flat
+   canvas shows there. Paint that lane with the window-sized gradient anchored right: the gradient's
+   sizes are percentages, so its right edge matches the chat column's at every height. */
+.dark #root::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--desktop-window-right-resize-inset, 0px);
+  background: var(--ob-workspace-background);
+  background-size: 100vw 100%;
+  background-position: right top;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
 [data-slot="sidebar-inner"] {
   background: var(--ob-bar) !important;
   backdrop-filter: blur(20px) saturate(140%);

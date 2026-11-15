@@ -296,6 +296,13 @@ async function openThread(page: Page, origin: string): Promise<void> {
     await page.screenshot({ path });
     throw new Error(`The thread did not render. Page at ${path}.`, { cause: error });
   }
+  // The Windows desktop app adds this class, which pads #root on the right for the resize grab zone.
+  // Headless Chromium never gets it, so add it here or the gutter check misses that lane.
+  const inset = await page.evaluate(() => {
+    document.documentElement.classList.add("electron-windows");
+    return getComputedStyle(document.getElementById("root")!).paddingRight;
+  });
+  assert(inset !== "0px", "T3 no longer pads #root for .electron-windows. Check the desktop resize inset in apps/web/src/index.css.");
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(800);
 }
@@ -330,7 +337,7 @@ async function measure(page: Page): Promise<unknown> {
   return page.evaluate(MEASURE);
 }
 
-async function measureGutter(page: Page): Promise<unknown> {
+async function measureGutter(page: Page, enforce: boolean): Promise<unknown> {
   const png = (await page.screenshot()).toString("base64");
   const facts = await page.evaluate(`(async () => {
     const s = document.querySelector('.messages-timeline-scroll');
@@ -352,7 +359,7 @@ async function measureGutter(page: Page): Promise<unknown> {
     });
     return { samples, styles, scrollTop: s.scrollTop, scrollHeight: s.scrollHeight, clientHeight: s.clientHeight };
   })()`) as { samples: Array<{ y: number; darkening: number }> };
-  for (const sample of facts.samples) {
+  for (const sample of enforce ? facts.samples : []) {
     assert(sample.darkening <= 3, `Gradient stops before the right edge at y=${sample.y}, RGB drop ${sample.darkening}.`);
   }
   return facts;
@@ -435,7 +442,7 @@ async function captureTheme(env: Environment, label: string, theme: Theme, origi
           }), "Selected row must retain the user bubble's glass shadow.");
         }
         await shot(page, `${viewport.name}-thread`);
-        facts[`${viewport.name}-gutter-end`] = await measureGutter(page);
+        facts[`${viewport.name}-gutter-end`] = await measureGutter(page, label === "after");
         await clip(page, `${viewport.name}-gutter`, { x: viewport.width - 220, y: viewport.height - 480, width: 220, height: 480 });
         await page.evaluate(() => {
           const scroller = document.querySelector<HTMLElement>(".messages-timeline-scroll")!;
@@ -445,7 +452,7 @@ async function captureTheme(env: Environment, label: string, theme: Theme, origi
         await page.mouse.move(viewport.width - 3, viewport.height - 100);
         await page.mouse.wheel(0, 1);
         await shot(page, `${viewport.name}-scroll-middle`);
-        facts[`${viewport.name}-gutter-middle`] = await measureGutter(page);
+        facts[`${viewport.name}-gutter-middle`] = await measureGutter(page, label === "after");
         await scrollChatToEnd(page);
         await clip(page, `${viewport.name}-row`, { x: 0, y: 90, width: 260, height: 170 });
         const drop = await dragRowOverComposer(page);
