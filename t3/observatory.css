@@ -198,6 +198,37 @@
   z-index: 1;
 }
 
+/* The inline workspace panel floats as a glass card over the same sky as the chat. */
+.dark [data-slot="sidebar-inset"]:has([data-workspace-area="panel"][data-preview-panel-mode="inline"]) {
+  background: var(--ob-workspace-background) !important;
+}
+
+[data-workspace-area="panel"][data-preview-panel-mode="inline"] {
+  margin: 8px 8px 8px 0 !important;
+  height: calc(100% - 16px) !important;
+  align-self: center !important;
+  overflow: hidden;
+  background: var(--ob-glass) !important;
+  border: 1px solid var(--ob-edge) !important;
+  border-radius: var(--ob-card-radius) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--ob-shadow) !important;
+}
+
+/* Pinned rows read as glass cards. A pinned row is the one with T3's pin icon. The selected row
+   keeps its own fill and shadow. */
+[data-thread-item]:has(.lucide-pin) > [role="button"]:not([aria-current="page"]) {
+  background: var(--ob-glass) !important;
+  box-shadow: inset 0 0 0 1px var(--ob-edge), inset 0 1px 0 var(--ob-shine) !important;
+}
+
+.chat-markdown code[data-inline-code] {
+  background: color-mix(in srgb, var(--stillwater-accent) 12%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--stillwater-accent) 22%, transparent) !important;
+  border-radius: 5px !important;
+  color: var(--stillwater-text) !important;
+}
+
 [data-thread-terminal-drawer] {
   border-color: var(--ob-edge) !important;
   border-top-left-radius: var(--ob-card-radius) !important;
