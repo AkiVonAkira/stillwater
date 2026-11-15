@@ -289,10 +289,17 @@
   color: var(--stillwater-text) !important;
 }
 
+/* The terminal drawer floats as a card like the workspace panel. Its parent clips for the open and
+   close animation, so the 8px gap is padding there, not a margin on the drawer that would be cut
+   off. The terminal paints an opaque background, so the card is solid; its shadow fits in the gap. */
+div:has(> [data-thread-terminal-drawer]) {
+  padding: 8px;
+}
+
 [data-thread-terminal-drawer] {
-  border-color: var(--ob-edge) !important;
-  border-top-left-radius: var(--ob-card-radius) !important;
-  border-top-right-radius: var(--ob-card-radius) !important;
+  border: 1px solid var(--ob-edge) !important;
+  border-radius: var(--ob-card-radius) !important;
+  box-shadow: inset 0 1px 0 var(--ob-shine), 0 4px 8px rgb(0 0 0 / .25) !important;
 }
 
 .chat-markdown-codeblock {
