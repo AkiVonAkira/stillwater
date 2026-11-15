@@ -1,7 +1,3 @@
-/* Observatory glass for T3 Code. npm run build prepends the palette as
-   --stillwater-* variables and writes t3/stillwater.json. Selectors come from
-   the stable list in t3_theme_read, plus the data attributes named in AGENTS.md. */
-
 :root {
   --radius: .5rem !important;
   --ob-card-radius: 12px;
@@ -19,9 +15,12 @@
   --ob-well: color-mix(in srgb, var(--stillwater-canvas-overlay) 55%, transparent);
   --ob-focus: color-mix(in srgb, var(--stillwater-accent) 40%, transparent);
   --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
+  --ob-workspace-background:
+    radial-gradient(60% 45% at 8% 6%, color-mix(in srgb, var(--stillwater-accent-deep) 18%, transparent), transparent 70%),
+    radial-gradient(45% 50% at 96% 96%, color-mix(in srgb, var(--stillwater-warm) 9%, transparent), transparent 70%),
+    var(--stillwater-canvas);
 }
 
-/* The light variant's surfaces are not palette colors. */
 :root:not(.dark) {
   --ob-glass: rgb(235 228 216 / .6);
   --ob-edge: rgb(60 56 54 / .12);
@@ -35,19 +34,25 @@
   --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
 }
 
-/* One gradient on the chat column. The header is its direct child, and the
-   chat area inside it goes transparent so the gradient shows through. */
 .dark [data-chat-column]:has(> [data-chat-header]),
 .dark [data-workspace-area="conversation"] {
-  background:
-    radial-gradient(60% 45% at 8% 6%, color-mix(in srgb, var(--stillwater-accent-deep) 18%, transparent), transparent 70%),
-    radial-gradient(45% 50% at 96% 96%, color-mix(in srgb, var(--stillwater-warm) 9%, transparent), transparent 70%),
-    var(--stillwater-canvas) !important;
+  background: var(--ob-workspace-background) !important;
 }
 
 .dark [data-chat-column]:has(> [data-chat-header]) [data-workspace-area="conversation"],
 .dark [data-chat-column] > [data-chat-header] ~ :has([data-workspace-area="conversation"]) {
   background: transparent !important;
+}
+
+/* Chromium may paint the reserved native scrollbar gutter from the scrollport.
+   Its background uses the chat column's size and origin, including the header. */
+.dark [data-chat-column] .messages-timeline-scroll {
+  background: var(--ob-workspace-background) !important;
+  background-size: 100% calc(100% + var(--workspace-topbar-height)) !important;
+  background-position: 0 calc(-1 * var(--workspace-topbar-height)) !important;
+  background-repeat: no-repeat !important;
+  background-origin: border-box !important;
+  background-clip: border-box !important;
 }
 
 [data-slot="sidebar-inner"] {
@@ -77,8 +82,17 @@
   border-color: var(--ob-focus) !important;
 }
 
-/* The composer nests a backing, a ring, and a drop surface inside the card.
-   Each sits 1px further in, so each radius is the card's minus that gap. */
+[data-slot="composer-host"]:has([data-pending-user-input-toggle]) {
+  background: transparent !important;
+  border-color: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+[data-slot="composer-host"]:has([data-pending-user-input-toggle]):focus-within [data-chat-composer-main-surface]::after {
+  border-color: var(--ob-focus) !important;
+}
+
 [data-slot="composer-shell"]::before {
   border-radius: var(--ob-card-radius) !important;
 }

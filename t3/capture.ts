@@ -1,15 +1,9 @@
-// Screenshots the installed T3 Code web client with Stillwater themes and synthetic data.
-//   npm run t3:capture
-//   npm run t3:capture -- --before <theme.json> --after <theme.json> --out <dir>
-//
-// The page loads the real frontend assets from the local T3 server, then every
-// API call and the RPC WebSocket are answered here from t3/capture-fixture.ts.
-// The browser never opens a socket to the server and sends no credentials.
-import { existsSync, mkdirSync, readFileSync, renameSync } from "node:fs";
+import assert from "node:assert/strict";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium, type BrowserContext, type Page, type WebSocketRoute } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page, type WebSocketRoute } from "playwright";
 import * as fixture from "./capture-fixture.ts";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -18,10 +12,11 @@ const NOW = Date.parse("2026-11-14T12:00:00.000Z");
 const STATIC_PATH = /^\/(assets\/|favicon|apple-touch-icon|manifest\.webmanifest|[\w.-]+\.(?:js|css|woff2?|ttf|png|svg|ico|wasm|webp)$)/;
 
 type Theme = { id: string; file: string; json: Record<string, unknown> };
-type Viewport = { name: "desktop" | "phone"; width: number; height: number };
+type Viewport = { name: "wide" | "desktop" | "phone"; width: number; height: number };
 type Json = Record<string, unknown>;
 
 const VIEWPORTS: Viewport[] = [
+  { name: "wide", width: 2000, height: 1258 },
   { name: "desktop", width: 1440, height: 900 },
   { name: "phone", width: 390, height: 844 },
 ];
@@ -117,7 +112,13 @@ function threadProjection(thread: fixture.FixtureThread): Json {
       ? { type: "user_message", createdBy: "user", creationSource: "web", inputIntent: "turn_start" }
       : { type: "assistant_message", streaming: false }),
   }));
-  const visibleTurnItems = turnItems.map((item, position) => ({ position, visibility: "local", sourceThreadId: thread.id, sourceItemId: item.id, item }));
+  const pendingInput = thread.id === fixture.questionThreadId;
+  const allTurnItems = [...turnItems, ...(pendingInput ? [{
+    ...turnItems.at(-1), id: "fixture-question-item", nodeId: "fixture-question-node",
+    type: "user_input_request", requestId: "fixture-question", questions: fixture.questions,
+    responseMode: "message",
+  }] : [])];
+  const visibleTurnItems = allTurnItems.map((item, position) => ({ position, visibility: "local", sourceThreadId: thread.id, sourceItemId: item.id, item }));
   const keys = ["id", "projectId", "title", "providerInstanceId", "modelSelection", "runtimeMode", "interactionMode", "branch", "worktreePath", "activeProviderThreadId", "lineage", "forkedFrom", "createdBy", "creationSource", "createdAt", "updatedAt", "archivedAt", "settledOverride", "settledAt", "lastVisitedAt", "deletedAt"];
   return {
     thread: Object.fromEntries(keys.map((key) => [key, shell[key]])),
@@ -128,10 +129,14 @@ function threadProjection(thread: fixture.FixtureThread): Json {
     providerSessions: [],
     providerThreads: [],
     providerTurns: [],
-    runtimeRequests: [],
+    runtimeRequests: pendingInput ? [{
+      id: "fixture-question", nodeId: "fixture-question-node", providerTurnId: null, nativeRequestRef: null,
+      kind: "user_input", status: "pending", responseCapability: { type: "message" },
+      createdAt: iso(0), resolvedAt: null,
+    }] : [],
     messages,
     plans: [],
-    turnItems,
+    turnItems: allTurnItems,
     checkpointScopes: [],
     checkpoints: [],
     contextHandoffs: [],
@@ -141,13 +146,12 @@ function threadProjection(thread: fixture.FixtureThread): Json {
   };
 }
 
-// Only the protocol fields of the real descriptor are kept. Its id and label stay on the server.
 async function fixtureEnvironment(origin: string) {
   const real = (await (await fetch(`${origin}/.well-known/t3/environment`)).json()) as Json;
   const descriptor = {
     environmentId: ENVIRONMENT_ID,
     label: "Fixture",
-    platform: real.platform,
+    platform: { os: (real.platform as Json).os, arch: (real.platform as Json).arch },
     serverVersion: real.serverVersion,
     orchestrationProtocolVersion: real.orchestrationProtocolVersion,
     capabilities: real.capabilities,
@@ -217,8 +221,7 @@ function answerSocket(ws: WebSocketRoute, env: Environment, theme: Theme, traffi
   });
 }
 
-async function openContext(env: Environment, theme: Theme, viewport: Viewport, origin: string, traffic: Traffic, video?: string): Promise<BrowserContext> {
-  const browser = await chromium.launch({ headless: true });
+async function openContext(browser: Browser, env: Environment, theme: Theme, viewport: Viewport, origin: string, traffic: Traffic, video?: string): Promise<BrowserContext> {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     deviceScaleFactor: viewport.name === "phone" ? 2 : 1,
@@ -228,7 +231,6 @@ async function openContext(env: Environment, theme: Theme, viewport: Viewport, o
     serviceWorkers: "block",
     ...(video ? { recordVideo: { dir: video, size: { width: viewport.width, height: viewport.height } } } : {}),
   });
-  context.on("close", () => void browser.close());
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -263,6 +265,28 @@ async function openContext(env: Environment, theme: Theme, viewport: Viewport, o
   return context;
 }
 
+async function withPage<T>(env: Environment, theme: Theme, viewport: Viewport, origin: string, traffic: Traffic, action: (page: Page) => Promise<T>, video?: string): Promise<T> {
+  const browser = await chromium.launch({ headless: true });
+  let context: BrowserContext | undefined;
+  try {
+    context = await openContext(browser, env, theme, viewport, origin, traffic, video);
+    const page = await context.newPage();
+    const errors: Error[] = [];
+    page.on("pageerror", (error) => errors.push(error));
+    await openThread(page, origin);
+    await scrollChatToEnd(page);
+    const result = await action(page);
+    assert.equal(errors.length, 0, `Client errors: ${errors.map((error) => error.message).join("; ")}`);
+    return result;
+  } finally {
+    try {
+      await context?.close();
+    } finally {
+      await browser.close();
+    }
+  }
+}
+
 async function openThread(page: Page, origin: string): Promise<void> {
   await page.goto(`${origin}/${ENVIRONMENT_ID}/${fixture.selectedThreadId}`, { waitUntil: "domcontentloaded" });
   try {
@@ -284,7 +308,6 @@ async function scrollChatToEnd(page: Page): Promise<void> {
   await page.waitForTimeout(500);
 }
 
-// Facts a reviewer compares across themes: shared shadow, kept fill, and who paints the gutter.
 // A string, because tsx wraps named functions in a helper the page does not have.
 const MEASURE = `(() => {
   const style = (el) => (el ? getComputedStyle(el) : null);
@@ -307,7 +330,34 @@ async function measure(page: Page): Promise<unknown> {
   return page.evaluate(MEASURE);
 }
 
-// --probe <file.js> runs an expression in the loaded thread page and prints the result, for finding selectors.
+async function measureGutter(page: Page): Promise<unknown> {
+  const png = (await page.screenshot()).toString("base64");
+  const facts = await page.evaluate(`(async () => {
+    const s = document.querySelector('.messages-timeline-scroll');
+    const image = new Image();
+    image.src = 'data:image/png;base64,${png}';
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width; canvas.height = image.height;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+    const pixel = (x, y) => Array.from(ctx.getImageData(x, y, 1, 1).data).slice(0, 3);
+    const samples = [.35, .6, .88, .96].map(fraction => {
+      const y = Math.round(innerHeight * fraction);
+      const inside = pixel(innerWidth - 36, y), edge = pixel(innerWidth - 1, y);
+      return { y, inside, edge, darkening: Math.max(...inside.map((value, i) => value - edge[i])) };
+    });
+    const styles = ['', '::-webkit-scrollbar', '::-webkit-scrollbar-track', '::-webkit-scrollbar-corner'].map(pseudo => {
+      const c = getComputedStyle(s, pseudo || null);
+      return { pseudo, background: c.background, clip: c.backgroundClip, mask: c.maskImage };
+    });
+    return { samples, styles, scrollTop: s.scrollTop, scrollHeight: s.scrollHeight, clientHeight: s.clientHeight };
+  })()`) as { samples: Array<{ y: number; darkening: number }> };
+  for (const sample of facts.samples) {
+    assert(sample.darkening <= 3, `Gradient stops before the right edge at y=${sample.y}, RGB drop ${sample.darkening}.`);
+  }
+  return facts;
+}
+
 async function probe(page: Page, file: string): Promise<unknown> {
   return page.evaluate(readFileSync(file, "utf8"));
 }
@@ -318,7 +368,6 @@ async function openMenu(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-// A real pointer drag of a sidebar row onto the composer, held over the drop target.
 async function dragRowOverComposer(page: Page): Promise<() => Promise<void>> {
   const row = page.locator("[data-thread-item] > [role='button']").nth(1);
   const target = page.locator("[data-slot='composer-host']");
@@ -329,7 +378,7 @@ async function dragRowOverComposer(page: Page): Promise<() => Promise<void>> {
   await page.mouse.down();
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.move(to.x + to.width / 2 + 6, to.y + to.height / 2, { steps: 2 });
-  await page.waitForTimeout(300);
+  await page.waitForSelector("[data-thread-context-over]", { timeout: 5_000 });
   return async () => {
     await page.mouse.up();
     await page.waitForTimeout(400);
@@ -345,7 +394,7 @@ async function focusComposer(page: Page): Promise<void> {
 async function openDialog(page: Page): Promise<void> {
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
-  await page.getByText("Search", { exact: true }).first().click({ timeout: 3_000 });
+  await page.getByRole("button", { name: "Settings", exact: true }).click({ timeout: 3_000 });
   await page.waitForSelector("[data-slot='dialog-popup']", { timeout: 5_000 });
   await page.waitForTimeout(300);
 }
@@ -369,52 +418,94 @@ async function captureTheme(env: Environment, label: string, theme: Theme, origi
     await page.screenshot({ path, clip: area });
     shots.push(path);
   };
+  const composerShot = async (page: Page, name: string) => {
+    const box = await page.locator("[data-slot='composer-host']").boundingBox();
+    assert(box, "Composer must be visible for capture.");
+    await clip(page, name, { x: Math.max(0, box.x - 20), y: Math.max(0, box.y - 50), width: box.width + 40, height: box.height + 60 });
+  };
   for (const viewport of VIEWPORTS) {
-    const context = await openContext(env, theme, viewport, origin, traffic);
-    const page = await context.newPage();
-    await openThread(page, origin);
-    await scrollChatToEnd(page);
-    if (viewport.name === "desktop") {
-      facts[viewport.name] = await measure(page);
-      await shot(page, `${viewport.name}-thread`);
-      await clip(page, `${viewport.name}-gutter`, { x: viewport.width - 220, y: viewport.height - 480, width: 220, height: 480 });
-      await clip(page, `${viewport.name}-row`, { x: 0, y: 90, width: 260, height: 170 });
-      const drop = await dragRowOverComposer(page);
-      await clip(page, `${viewport.name}-drag-over`, { x: 360, y: 700, width: 780, height: 200 });
-      await drop();
-      await focusComposer(page);
-      await clip(page, `${viewport.name}-composer-focus`, { x: 360, y: 700, width: 780, height: 200 });
-      await openMenu(page);
-      await shot(page, `${viewport.name}-menu`);
-      await openDialog(page).then(() => shot(page, `${viewport.name}-dialog`), () => { facts.dialog = "no dialog opened from the sidebar search"; });
-    } else {
-      await shot(page, `${viewport.name}-thread`);
-      await openPhoneSidebar(page);
-      facts[viewport.name] = await measure(page);
-      await shot(page, `${viewport.name}-sidebar`);
-    }
-    await context.close();
+    await withPage(env, theme, viewport, origin, traffic, async (page) => {
+      if (viewport.name !== "phone") {
+        facts[viewport.name] = await measure(page);
+        if (label === "after") {
+          assert(await page.evaluate(() => {
+            const row = document.querySelector("[data-thread-item] [aria-current='page']");
+            const bubble = document.querySelector("[data-user-message-bubble]");
+            return row && bubble && getComputedStyle(bubble).boxShadow !== "none" && getComputedStyle(row).boxShadow.endsWith(getComputedStyle(bubble).boxShadow);
+          }), "Selected row must retain the user bubble's glass shadow.");
+        }
+        await shot(page, `${viewport.name}-thread`);
+        facts[`${viewport.name}-gutter-end`] = await measureGutter(page);
+        await clip(page, `${viewport.name}-gutter`, { x: viewport.width - 220, y: viewport.height - 480, width: 220, height: 480 });
+        await page.evaluate(() => {
+          const scroller = document.querySelector<HTMLElement>(".messages-timeline-scroll")!;
+          scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) / 2;
+        });
+        await page.waitForTimeout(400);
+        await page.mouse.move(viewport.width - 3, viewport.height - 100);
+        await page.mouse.wheel(0, 1);
+        await shot(page, `${viewport.name}-scroll-middle`);
+        facts[`${viewport.name}-gutter-middle`] = await measureGutter(page);
+        await scrollChatToEnd(page);
+        await clip(page, `${viewport.name}-row`, { x: 0, y: 90, width: 260, height: 170 });
+        const drop = await dragRowOverComposer(page);
+        await composerShot(page, `${viewport.name}-drag-over`);
+        await drop();
+        const mention = page.locator("[data-chat-composer-form]").getByText(fixture.threads[1].title, { exact: true });
+        await mention.hover({ timeout: 5_000 });
+        await page.locator("[data-slot='tooltip-popup']").waitFor({ state: "visible", timeout: 5_000 });
+        await composerShot(page, `${viewport.name}-mention-tooltip`);
+        await page.locator("[data-chat-header]").click();
+        const unfocusedBorder = await page.locator("[data-slot='composer-host']").evaluate((el) => getComputedStyle(el).borderColor);
+        await focusComposer(page);
+        assert(await page.locator("[data-slot='composer-host']").evaluate((el) => el.matches(":focus-within")), "Composer must receive keyboard focus.");
+        const focusedBorder = await page.locator("[data-slot='composer-host']").evaluate((el) => getComputedStyle(el).borderColor);
+        assert.notEqual(focusedBorder, unfocusedBorder, "Focus must change the composer's border.");
+        await composerShot(page, `${viewport.name}-composer-focus`);
+        await openMenu(page);
+        await shot(page, `${viewport.name}-menu`);
+        await openDialog(page);
+        await shot(page, `${viewport.name}-dialog`);
+        await page.keyboard.press("Escape");
+        await page.goto(`${origin}/${ENVIRONMENT_ID}/${fixture.questionThreadId}`, { waitUntil: "domcontentloaded" });
+        await page.locator("[data-pending-user-input-toggle]").waitFor({ state: "visible", timeout: 10_000 });
+        await page.locator("[data-chat-header]").click();
+        const questionSurface = page.locator("[data-chat-composer-main-surface]");
+        const questionBorder = await questionSurface.evaluate((el) => getComputedStyle(el, "::after").borderColor);
+        await page.locator("[data-chat-composer-form] [contenteditable='true']").first().click();
+        await composerShot(page, `${viewport.name}-question`);
+        if (label === "after") {
+          assert(await page.locator("[data-slot='composer-host']").evaluate((el) => getComputedStyle(el).borderColor === "rgba(0, 0, 0, 0)"), "Questions must not draw the extra outer frame.");
+          assert.notEqual(await questionSurface.evaluate((el) => getComputedStyle(el, "::after").borderColor), questionBorder, "The question answer input must retain focus feedback.");
+        }
+      } else {
+        await shot(page, `${viewport.name}-thread`);
+        await openPhoneSidebar(page);
+        facts[viewport.name] = await measure(page);
+        await shot(page, `${viewport.name}-sidebar`);
+      }
+    });
   }
   return { shots, facts };
 }
 
 async function record(env: Environment, label: string, theme: Theme, origin: string, out: string, stamp: string, traffic: Traffic): Promise<string> {
   const dir = join(out, `${stamp}-video`);
-  const context = await openContext(env, theme, VIEWPORTS[0], origin, traffic, dir);
-  const page = await context.newPage();
-  await openThread(page, origin);
-  await page.mouse.move(800, 450);
-  for (const delta of [-900, -900, 900, 900]) {
-    await page.mouse.wheel(0, delta);
-    await page.waitForTimeout(500);
-  }
-  await page.locator("[data-thread-item]").nth(2).hover();
-  await page.waitForTimeout(600);
-  const video = page.video();
-  await context.close();
   const path = join(out, `${stamp}-${label}-desktop.webm`);
-  if (video) renameSync(await video.path(), path);
-  return path;
+  return withPage(env, theme, VIEWPORTS[0], origin, traffic, async (page) => {
+    await page.mouse.move(800, 450);
+    for (const delta of [-900, -900, 900, 900]) {
+      await page.mouse.wheel(0, delta);
+      await page.waitForTimeout(500);
+    }
+    await page.locator("[data-thread-item]").nth(2).hover();
+    await page.waitForTimeout(600);
+    const video = page.video();
+    assert(video, "Recording must be enabled for the capture page.");
+    await page.close();
+    await video.saveAs(path);
+    return path;
+  }, dir);
 }
 
 async function main(): Promise<void> {
@@ -430,12 +521,12 @@ async function main(): Promise<void> {
 
   const probeFile = arg("probe");
   if (probeFile) {
-    const context = await openContext(env, after, VIEWPORTS[0], origin, traffic);
-    const page = await context.newPage();
-    await openThread(page, origin);
-    await scrollChatToEnd(page);
-    console.log(JSON.stringify(await probe(page, probeFile), null, 2));
-    await context.close();
+    await withPage(env, after, VIEWPORTS[0], origin, traffic, async (page) => {
+      console.log(JSON.stringify(await probe(page, probeFile), null, 2));
+      await page.mouse.move(VIEWPORTS[0].width - 3, VIEWPORTS[0].height - 100);
+      await page.mouse.wheel(0, 1);
+      await page.screenshot({ path: join(out, `${stamp}-probe.png`) });
+    });
     return;
   }
 
@@ -443,6 +534,15 @@ async function main(): Promise<void> {
   const report: Record<string, unknown> = { client: env.serverVersion };
   for (const [label, theme] of runs) {
     report[label] = { theme: theme.id, ...(await captureTheme(env, label, theme, origin, out, stamp, traffic)) };
+  }
+  const rowFill = (label: string, viewport: string) => {
+    const run = report[label] as { facts: Record<string, { selectedRow: { fill: string } }> } | undefined;
+    return run?.facts[viewport]?.selectedRow?.fill;
+  };
+  if (report.before) {
+    for (const viewport of VIEWPORTS) {
+      assert.equal(rowFill("before", viewport.name), rowFill("after", viewport.name), "Theme must preserve the selected row's active fill.");
+    }
   }
   report.video = await record(env, "after", after, origin, out, stamp, traffic);
   report.traffic = {
@@ -452,7 +552,9 @@ async function main(): Promise<void> {
     offOriginAborted: traffic.offOrigin,
     serverSockets: 0,
   };
-  console.log(JSON.stringify(report, null, 2));
+  const reportPath = join(out, `${stamp}-report.json`);
+  writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  console.log(`Captured ${env.serverVersion}. Report: ${reportPath}`);
 }
 
 await main();

@@ -6,7 +6,7 @@
 
 - `palette.json` owns the colors. `npm run build` writes them into the theme as `--stillwater-*` CSS variables and as the dark color roles.
 - `t3/roles.ts` maps each T3 color role to a palette key. Tints that are not in the palette and the light variant stay explicit there.
-- `t3/observatory.css` is the Observatory glass: header gradient, glass cards, radii, and the selected sidebar row shadow. Its tokens follow `P:/Projects/observatory/packages/ui/src/tokens.css`.
+- `t3/observatory.css` owns the header and scrollbar gradient, glass cards, nested composer radii, question-card framing, and selected sidebar row shadow. Its tokens follow `packages/ui/src/tokens.css` in the Observatory checkout.
 - Fonts, font sizes, chat width, and sidebar layout are T3 client settings, not theme. The theme never sets them.
 
 ## Edit, build, apply
@@ -21,8 +21,9 @@ Rollback: the earlier hand-made theme is still published as `stillwater-observat
 
 ## Capture
 
-`npm run t3:capture` loads the frontend assets from the local T3 server at `http://127.0.0.1:3773` into a headless Chromium. Every API call and the RPC WebSocket are answered from `t3/capture-fixture.ts`, so the real app renders synthetic projects, threads, and messages with the owner's client settings. The browser never opens a socket to the server, sends no credentials, and reads no T3 data. The only server request is the public `/.well-known/t3/environment`, for the protocol version and capabilities.
+`npm run t3:capture` loads the frontend assets from the local T3 server at `http://127.0.0.1:3773` into headless Chromium. Every API call and the RPC WebSocket are answered from `t3/capture-fixture.ts`, so the real app renders synthetic projects, threads, and messages with explicit fixture preferences. The browser never opens a WebSocket to the server, sends no credentials, and reads no private T3 data. The only non-asset server request is the public `/.well-known/t3/environment`, for the protocol version and capabilities.
 
 - `--before <theme.json>` defaults to the published `stillwater-observatory`. `--after` defaults to `t3/stillwater.json`.
-- Output goes to `<tmp>/stillwater-t3-capture/`, one timestamp per run: desktop thread, gutter, selected row, drag-over, composer focus, model menu, phone thread and sidebar, and a desktop recording. The JSON report on stdout has the measured shadows and every RPC and blocked request.
+- Output goes to `<tmp>/stillwater-t3-capture/`, one timestamp per run. It captures the thread, scrollbar gutter at middle and end, selected row, drag-over, thread-mention tooltip, composer focus, question card, model menu, and Settings dialog at 2000 by 1258 and 1440 by 900. It also captures the thread and sidebar at 390 by 844 and records the wide desktop. The JSON report file has the measured shadows, gutter pixels, RPCs, and blocked requests. Missing required controls or mismatched shadows, active fill, focus feedback, question framing, or gutter continuity fail the command.
+- In PowerShell, use `npm.cmd run t3:capture -- --out <dir>` when passing flags. The npm PowerShell shim drops the named flags in this environment.
 - A new T3 nightly can change the protocol. When the thread does not render, the tool saves the page and names the file. Check the RPC list in the report against `packages/contracts` in the T3 source.

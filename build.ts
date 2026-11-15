@@ -71,6 +71,7 @@ function t3CssProblems(css: string): string[] {
 
 function writeT3(palette: { [key: string]: Json }): string {
   const source = readFileSync(join(ROOT, "t3", "observatory.css"), "utf8")
+    .replace(/\r\n/g, "\n")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\n{2,}/g, "\n")
     .trim();
@@ -99,10 +100,9 @@ ${source}
 `;
 }
 
-// --check fails when a committed generated file differs from what the build writes.
 function emit(path: string, text: string, check: boolean): boolean {
   if (check) {
-    const same = existsSync(path) && readFileSync(path, "utf8") === text;
+    const same = existsSync(path) && readFileSync(path, "utf8").replace(/\r\n/g, "\n") === text;
     if (!same) console.error(`${path} is stale. Run npm run build.`);
     return same;
   }

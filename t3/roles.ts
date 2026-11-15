@@ -1,5 +1,3 @@
-// T3 Code color roles. Dark roles map palette.json. Values that are not in the
-// palette (blends and tints) and the light variant stay explicit.
 export type Palette = { [key: string]: string | { [key: string]: string } };
 
 export function darkRoles(palette: Palette): Record<string, string> {

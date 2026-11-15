@@ -1,5 +1,3 @@
-// Synthetic data for t3/capture.ts. Nothing here comes from a real T3 install.
-
 export type FixtureProject = { id: string; title: string; root: string };
 
 export type FixtureThread = {
@@ -11,7 +9,6 @@ export type FixtureThread = {
 
 export type FixtureMessage = { role: "user" | "assistant"; text: string };
 
-// The owner's client settings, written to the same localStorage key the app uses.
 export type FixturePreferences = {
   fontFamilySans: string;
   fontFamilyCode: string;
@@ -42,10 +39,21 @@ export const threads: FixtureThread[] = [
   { id: "thread-dialog", projectId: "project-tide", title: "Dialog corner radius", ageMinutes: 180 },
   { id: "thread-menu", projectId: "project-tide", title: "Menu glass opacity", ageMinutes: 600 },
   { id: "thread-fonts", projectId: "project-glass", title: "Mono font in the composer", ageMinutes: 1500 },
+  { id: "thread-question", projectId: "project-glass", title: "Choose the observation details", ageMinutes: 1600 },
 ];
 
-// The thread the capture opens. Long enough that the chat scroller shows a scrollbar.
 export const selectedThreadId = "thread-row";
+export const questionThreadId = "thread-question";
+
+export const questions = [{
+  id: "detail", header: "Details", question: "How much detail should the observation cards show?",
+  options: [
+    { label: "Keep it compact", description: "Show the next observation and current conditions." },
+    { label: "Show more", description: "Include the full list of observation details." },
+  ],
+  allowCustomAnswer: true,
+  multiSelect: false,
+}];
 
 const answer = (n: number): string =>
   [

@@ -1,5 +1,3 @@
-// Builds t3/stillwater.json, then installs it with the real installer, which runs t3 theme set.
-//   npm run t3:apply
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
