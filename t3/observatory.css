@@ -145,8 +145,11 @@
   }
 }
 
-/* Stillwater's sky already marks the sidebar header, so the Nightly pill is hidden. */
-[data-slot="sidebar-inner"] div:has(> [data-environment-identification="pill"]) {
+/* Stillwater's sky already marks the sidebar header, so the Nightly pill is hidden. T3 wraps it in
+   a margin div of its own, which goes too, but only while the pill is its only child, so the
+   header's brand link and sidebar trigger stay. */
+[data-slot="sidebar-inner"] [data-environment-identification="pill"],
+[data-slot="sidebar-inner"] div:has(> [data-environment-identification="pill"]:only-child) {
   display: none !important;
 }
 
