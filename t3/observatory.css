@@ -249,23 +249,24 @@
   z-index: 1;
 }
 
-/* The inline workspace panel floats as a glass card over the same sky as the chat. While it is open,
-   one gradient on the inset spans the chat and the panel: the layers between them go transparent,
-   or the chat's own gradient ends at its edge and the panel's flat parent hides the sky. */
-.dark [data-slot="sidebar-inset"]:has([data-workspace-area="panel"][data-preview-panel-mode="inline"]) {
+/* The inline workspace panel and the terminal drawer float as cards over the same sky as the chat.
+   While either is open, one gradient on the inset spans the chat and the card gaps: the layers
+   between go transparent, or the scroller's own gradient ends above the drawer and the panel's flat
+   parent hides the sky. T3 mounts the drawer only while it is open. */
+.dark [data-slot="sidebar-inset"]:has([data-workspace-area="panel"][data-preview-panel-mode="inline"], [data-thread-terminal-drawer]) {
   background: var(--ob-workspace-background) !important;
 }
 
-.dark [data-slot="sidebar-inset"]:has([data-workspace-area="panel"][data-preview-panel-mode="inline"])
+.dark [data-slot="sidebar-inset"]:has([data-workspace-area="panel"][data-preview-panel-mode="inline"], [data-thread-terminal-drawer])
   :is(div:has(> [data-workspace-area="panel"]), [data-chat-column], [data-workspace-area="conversation"], .messages-timeline-scroll) {
   background: transparent !important;
 }
 
 /* The card starts below the titlebar row, so the window buttons and T3's titlebar icons sit on the
-   sky above it, and keeps 8px from the chat's scrollbar. */
+   sky above it. It keeps 8px from the chat's scrollbar and 4px from the window edges. */
 [data-workspace-area="panel"][data-preview-panel-mode="inline"] {
-  margin: var(--workspace-topbar-height) 8px 8px !important;
-  height: calc(100% - var(--workspace-topbar-height) - 8px) !important;
+  margin: var(--workspace-topbar-height) 4px 4px 8px !important;
+  height: calc(100% - var(--workspace-topbar-height) - 4px) !important;
   align-self: flex-end !important;
   overflow: hidden;
   background: var(--ob-glass) !important;
@@ -273,6 +274,12 @@
   border-radius: var(--ob-card-radius) !important;
   backdrop-filter: blur(18px) saturate(140%);
   box-shadow: var(--ob-shadow) !important;
+}
+
+/* A surface such as the pull request view paints an opaque root, which ends in a hard edge under the
+   glass tab strip. Let the card's glass show through it. Sticky headers inside keep their fill. */
+[data-preview-panel-mode="inline"] [data-right-panel-surface-content] .h-full.flex-col.bg-background {
+  background: transparent !important;
 }
 
 /* Pinned rows read as glass cards. A pinned row is the one with T3's pin icon. The selected row
@@ -290,10 +297,10 @@
 }
 
 /* The terminal drawer floats as a card like the workspace panel. Its parent clips for the open and
-   close animation, so the 8px gap is padding there, not a margin on the drawer that would be cut
+   close animation, so the gap is padding there, not a margin on the drawer that would be cut
    off. The terminal paints an opaque background, so the card is solid; its shadow fits in the gap. */
 div:has(> [data-thread-terminal-drawer]) {
-  padding: 8px;
+  padding: 8px 4px 4px;
 }
 
 [data-thread-terminal-drawer] {

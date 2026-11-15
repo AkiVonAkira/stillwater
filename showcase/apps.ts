@@ -216,28 +216,55 @@ export function spotify(P: Palette): string {
 export function t3code(P: Palette): string {
   const S = P.syntax;
   const r = rnd(9);
-  let threads = "";
-  for (let i = 0; i < 10; i++) {
-    const on = i === 1;
-    threads += row(sk(90 + r() * 70, on ? P.text : P.warm, 8, on ? 1 : 0.8), `padding:8px 12px;margin:1px 6px;border-radius:6px;${on ? `background:${mix(P.accent, 20, P.canvas)}` : ""}`);
-  }
+  const glass = mix(P.canvasRaised, 42);
+  const edge = mix(P.text, 7);
+  // The sidebar sky: a teal and a warm glow over a deep accent band, with field stars and two sparkles.
+  const stars = [[22, 14, 1, 0.9], [58, 30, 1, 0.5], [96, 10, 1.4, 0.95], [130, 36, 1, 0.45], [164, 18, 1, 0.7], [200, 8, 1.4, 0.9], [214, 40, 1, 0.4], [40, 48, 1, 0.3], [150, 54, 1, 0.3]]
+    .map(([x, y, s, o], i) => `<i style="position:absolute;left:${x}px;top:${y}px;width:${s * 2}px;height:${s * 2}px;border-radius:50%;background:${[P.text, P.warm, P.accent][i % 3]};opacity:${o}"></i>`).join("");
+  const sparkle = (x: number, y: number, c: string) => `<i style="position:absolute;left:${x - 5}px;top:${y - 0.5}px;width:10px;height:1px;background:linear-gradient(90deg,transparent,${c},transparent)"></i><i style="position:absolute;left:${x - 0.5}px;top:${y - 5}px;width:1px;height:10px;background:linear-gradient(transparent,${c},transparent)"></i>`;
+  const sky = `<div style="position:absolute;inset:0 0 auto;height:84px;pointer-events:none;background:
+      radial-gradient(55% 60px at 92% 0, ${mix(P.warm, 16)}, transparent 75%),
+      radial-gradient(50% 54px at 6% 0, ${mix(P.accent, 18)}, transparent 75%),
+      linear-gradient(${mix(P.accentDeep, 38)}, ${mix(P.accentDeep, 14)} 50%, transparent)">${stars}${sparkle(78, 22, P.text)}${sparkle(184, 30, P.warm)}</div>`;
+  const tags = [P.warm, P.accent, P.syntax.constant, P.warm, P.accent];
+  const thread = (i: number, state: "pinned" | "selected" | "working" | "") => {
+    const card = state === "pinned" ? `background:${glass};box-shadow:inset 0 0 0 1px ${edge}` : state === "selected" ? `background:${mix(P.accent, 22, P.canvas)}` : "";
+    const age = state === "working"
+      ? `<span style="width:8px;height:8px;border-radius:50%;border:1.5px solid ${P.accent};border-right-color:transparent"></span>${sk(26, P.accent, 6, 0.9)}`
+      : sk(14, P.textFaint, 6);
+    return `<div style="padding:6px 10px;margin:2px 6px;border-radius:8px;${card}">
+      <div class="row" style="gap:6px"><b style="width:9px;height:9px;border-radius:2px;background:${mix(tags[i % tags.length], 45)}"></b>${sk(46 + r() * 24, P.warm, 6, 0.75)}<span class="flex1"></span>${age}</div>
+      ${row(sk(100 + r() * 70, P.text, 7, state === "selected" ? 1 : 0.8), "margin-top:6px")}</div>`;
+  };
   const text = (w: number, n: number) => {
     let b = "";
     for (let i = 0; i < n; i++) b += row(sk(w - r() * 60, P.text, 8, 0.8), "margin:7px 0");
     return b;
   };
-  return `<div class="win" style="background:${P.canvas};border-color:${P.border}">
+  const chip = `<span style="display:inline-flex;padding:2px 5px;border-radius:5px;background:${mix(P.accent, 12)};box-shadow:inset 0 0 0 1px ${mix(P.accent, 22)}">${sk(26, P.text, 6, 0.85)}</span>`;
+  const bubble = (w: number) => `<div style="align-self:end;background:${glass};box-shadow:inset 0 0 0 1px ${edge},inset 0 1px 0 ${mix(P.text, 5)};border-radius:12px;padding:6px 14px">${row(sk(w, P.text, 8, 0.85), "margin:5px 0")}</div>`;
+  return `<div class="win" style="border-color:${P.border};background:
+      radial-gradient(60% 45% at 30% 6%, ${mix(P.accentDeep, 18)}, transparent 70%),
+      radial-gradient(45% 50% at 96% 96%, ${mix(P.warm, 9)}, transparent 70%), ${P.canvas}">
    ${titlebar(P, "T3 Code")}
    <div class="flex1" style="display:flex">
-    <div style="width:230px;background:${P.canvasOverlay};border-right:1px solid ${P.border};padding-top:8px">${row(sk(60, P.textMuted, 7), "padding:8px 18px")}${threads}</div>
-    <div class="flex1" style="display:flex;flex-direction:column;padding:16px 28px">
-      <div style="align-self:end;background:${P.canvasRaised};border:1px solid ${P.border};border-radius:12px;padding:6px 14px">${text(240, 2)}</div>
-      <div style="margin-top:12px">${text(420, 3)}</div>
-      <div style="background:${P.canvasOverlay};border:1px solid ${P.border};border-radius:8px;padding:12px 14px;margin:8px 0">${row(sk(60, S.keyword, 8) + sk(90, S.function, 8))}${row(sk(40, S.support, 8) + sk(120, S.string, 8), "margin-top:8px")}</div>
-      ${text(380, 2)}
+    <div style="position:relative;width:230px;background:${mix(P.canvasOverlay, 78)};border-right:1px solid ${edge};padding-top:30px;display:flex;flex-direction:column">
+      ${sky}
+      <div style="position:relative;display:flex;flex-direction:column;flex:1">
+        ${row(sk(12, P.textMuted, 12, 0.7) + sk(44, P.text, 7, 0.85), "padding:4px 16px 10px")}
+        ${thread(0, "pinned")}${thread(1, "selected")}${thread(2, "")}${thread(3, "")}
+        ${row(sk(46, P.text, 6, 0.7), "padding:10px 16px 2px")}
+        ${thread(4, "working")}
+      </div>
+    </div>
+    <div class="flex1" style="display:flex;flex-direction:column;padding:16px 28px 14px">
+      ${bubble(220)}
+      <div style="margin-top:10px">${text(420, 2)}<div class="row" style="margin:7px 0">${sk(150, P.text, 8, 0.8)}${chip}${sk(110, P.text, 8, 0.8)}</div></div>
+      <div style="background:${mix(P.canvasOverlay, 55)};border:1px solid ${edge};border-radius:8px;box-shadow:inset 0 2px 3px rgb(0 0 0 / .2);padding:12px 14px;margin:8px 0">${row(sk(60, S.keyword, 8) + sk(90, S.function, 8))}${row(sk(40, S.support, 8) + sk(120, S.string, 8), "margin-top:8px")}</div>
+      ${text(380, 1)}
       <span class="flex1"></span>
-      <div style="border:1px solid ${P.border};background:${P.canvasRaised};border-radius:14px;padding:14px;display:flex;align-items:end;gap:10px">
-        <div class="flex1">${sk(200, P.warm, 8, 0.7)}<div class="row" style="margin-top:18px">${sk(70, P.textMuted, 16, 0.6)}${sk(50, P.textMuted, 16, 0.6)}</div></div>
+      <div style="background:${glass};box-shadow:inset 0 0 0 1px ${edge},inset 0 1px 0 ${mix(P.text, 6)},0 10px 30px rgb(0 0 0 / .25);border-radius:14px;padding:14px;display:flex;align-items:end;gap:10px">
+        <div class="flex1">${sk(200, P.warm, 8, 0.7)}<div class="row" style="margin-top:18px">${sk(16, P.textMuted, 16, 0.5)}<span class="flex1"></span>${sk(64, P.warm, 8, 0.8)}</div></div>
         <span style="width:30px;height:30px;border-radius:50%;background:${P.accent}"></span>
       </div>
     </div>
