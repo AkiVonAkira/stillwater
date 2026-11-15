@@ -273,6 +273,8 @@ async function openContext(browser: Browser, env: Environment, theme: Theme, vie
     return route.abort();
   });
   await context.routeWebSocket(/.*/, (ws) => answerSocket(ws, env, theme, traffic));
+  // Thread ages are relative to NOW, so pin the page clock to it. Timers keep running.
+  await context.clock.setFixedTime(NOW);
   await context.addInitScript(
     ({ preferences, themeId }) => {
       localStorage.setItem("t3code:client-settings:v1", JSON.stringify({ ...preferences, onboardingCompletedAt: "2026-01-01T00:00:00.000Z" }));

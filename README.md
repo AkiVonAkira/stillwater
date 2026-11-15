@@ -4,6 +4,8 @@ A muted dark theme with warm surfaces and a cyan accent.
 
 ![Stillwater in VS Code, T3 Code, Discord, Spotify and Ghostty](showcase/showcase.png)
 
+![Stillwater in T3 Code, with its glass rows and starry sidebar](showcase/t3.png)
+
 ## Install
 
 Without cloning, in PowerShell:
