@@ -34,47 +34,25 @@
   --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
 }
 
-.dark [data-chat-column]:has(> [data-chat-header]),
-.dark [data-workspace-area="conversation"] {
+/* One sky behind the whole chat area: the inset paints it, and the layers above it go transparent,
+   so the chat, the scrollbar gutter, and the gaps around the floating panel and terminal cards are
+   one gradient. Separate copies sized to each layer never line up. The Windows desktop app pads
+   #root on the right for its resize grab zone, so the inset reaches into that lane and pads its
+   content back, or the body's flat canvas shows there. */
+.dark [data-slot="sidebar-inset"] {
+  margin-right: calc(-1 * var(--desktop-window-right-resize-inset, 0px)) !important;
+  padding-right: var(--desktop-window-right-resize-inset, 0px) !important;
   background: var(--ob-workspace-background) !important;
 }
 
-.dark [data-chat-column]:has(> [data-chat-header]) [data-workspace-area="conversation"],
-.dark [data-chat-column] > [data-chat-header] ~ :has([data-workspace-area="conversation"]) {
+.dark [data-slot="sidebar-inset"]
+  :is(div:has(> [data-chat-column]), [data-chat-column], [data-workspace-area="conversation"], .messages-timeline-scroll) {
   background: transparent !important;
-}
-
-/* Chromium may paint the reserved native scrollbar gutter from the scrollport.
-   Its background uses the chat column's size and origin, including the header. */
-.dark [data-chat-column] .messages-timeline-scroll {
-  background: var(--ob-workspace-background) !important;
-  background-size: 100% calc(100% + var(--workspace-topbar-height)) !important;
-  background-position: 0 calc(-1 * var(--workspace-topbar-height)) !important;
-  background-repeat: no-repeat !important;
-  background-origin: border-box !important;
-  background-clip: border-box !important;
 }
 
 /* Keep the chat scrollbar thumb off the window's bottom edge. */
 .messages-timeline-scroll::-webkit-scrollbar-track {
   margin-bottom: var(--radius);
-}
-
-/* The Windows desktop app pads #root on the right for its resize grab zone, and the body's flat
-   canvas shows there. Paint that lane with the window-sized gradient anchored right: the gradient's
-   sizes are percentages, so its right edge matches the chat column's at every height. */
-.dark #root::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: var(--desktop-window-right-resize-inset, 0px);
-  background: var(--ob-workspace-background);
-  background-size: 100vw 100%;
-  background-position: right top;
-  background-repeat: no-repeat;
-  pointer-events: none;
 }
 
 [data-slot="sidebar-inner"] {
@@ -249,31 +227,27 @@
   z-index: 1;
 }
 
-/* The inline workspace panel and the terminal drawer float as cards over the same sky as the chat.
-   While either is open, one gradient on the inset spans the chat and the card gaps: the layers
-   between go transparent, or the scroller's own gradient ends above the drawer and the panel's flat
-   parent hides the sky. T3 mounts the drawer only while it is open. */
-.dark [data-slot="sidebar-inset"]:has([data-workspace-area="panel"][data-preview-panel-mode="inline"], [data-thread-terminal-drawer]) {
-  background: var(--ob-workspace-background) !important;
-}
-
-.dark [data-slot="sidebar-inset"]:has([data-workspace-area="panel"][data-preview-panel-mode="inline"], [data-thread-terminal-drawer])
-  :is(div:has(> [data-workspace-area="panel"]), [data-chat-column], [data-workspace-area="conversation"], .messages-timeline-scroll) {
-  background: transparent !important;
+/* The inline workspace panel and the terminal drawer float as cards over the chat's sky. They keep
+   one gap from the window's right and bottom edges. On Windows the inset pads its right by the
+   resize inset, so the right margin takes only what is left of it. The cards have no drop shadow:
+   their parents clip it on some sides and not others, which shades the gaps unevenly. */
+[data-slot="sidebar-inset"] {
+  --ob-card-gap: max(4px, var(--desktop-window-right-resize-inset, 0px));
+  --ob-card-gap-right: calc(var(--ob-card-gap) - var(--desktop-window-right-resize-inset, 0px));
 }
 
 /* The card starts below the titlebar row, so the window buttons and T3's titlebar icons sit on the
-   sky above it. It keeps 8px from the chat's scrollbar and 4px from the window edges. */
+   sky above it, and keeps 8px from the chat's scrollbar. */
 [data-workspace-area="panel"][data-preview-panel-mode="inline"] {
-  margin: var(--workspace-topbar-height) 4px 4px 8px !important;
-  height: calc(100% - var(--workspace-topbar-height) - 4px) !important;
+  margin: var(--workspace-topbar-height) var(--ob-card-gap-right) var(--ob-card-gap) 8px !important;
+  height: calc(100% - var(--workspace-topbar-height) - var(--ob-card-gap)) !important;
   align-self: flex-end !important;
   overflow: hidden;
   background: var(--ob-glass) !important;
   border: 1px solid var(--ob-edge) !important;
   border-radius: var(--ob-card-radius) !important;
   backdrop-filter: blur(18px) saturate(140%);
-  box-shadow: var(--ob-shadow) !important;
+  box-shadow: inset 0 1px 0 var(--ob-shine) !important;
 }
 
 /* A surface such as the pull request view paints an opaque root, which ends in a hard edge under the
@@ -298,15 +272,15 @@
 
 /* The terminal drawer floats as a card like the workspace panel. Its parent clips for the open and
    close animation, so the gap is padding there, not a margin on the drawer that would be cut
-   off. The terminal paints an opaque background, so the card is solid; its shadow fits in the gap. */
+   off. The terminal paints an opaque background, so the card is solid. */
 div:has(> [data-thread-terminal-drawer]) {
-  padding: 8px 4px 4px;
+  padding: 8px var(--ob-card-gap-right) var(--ob-card-gap) var(--ob-card-gap);
 }
 
 [data-thread-terminal-drawer] {
   border: 1px solid var(--ob-edge) !important;
   border-radius: var(--ob-card-radius) !important;
-  box-shadow: inset 0 1px 0 var(--ob-shine), 0 4px 8px rgb(0 0 0 / .25) !important;
+  box-shadow: inset 0 1px 0 var(--ob-shine) !important;
 }
 
 .chat-markdown-codeblock {
