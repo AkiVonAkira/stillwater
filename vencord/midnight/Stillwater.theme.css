@@ -26,48 +26,400 @@
 @import url('https://davart154.github.io/Themes/Snippets/Plugin%20Icon%20Consistency/IconConsistencySource.css');
 @import url('https://raw.githubusercontent.com/Just-Me-22/Compact-Server-Shortcut-Buttons/main/compact-server-shortcuts.css');
 
-/* Clutter hiding, kept from abbie/discord-css (MIT) without importing it.
- * That file wraps 38 toggles in unnamed @container style() queries, and its
- * selectors still match while a toggle is off: div:has(), span:has(), and
- * :has() over [class*=] and svg path[d^=] re-run on every class change and
- * every Lottie frame on the chat buttons. Discord lagged with it imported.
- * Only the toggles this theme had on are here, without those :has() forms. */
-div#channels > ul > div[class*="containerWithMargin"], /* server boost goal */
-[aria-label="Edit Image with Apps"],
-[role=button][aria-label="Open GIF picker"],
-[role=button][aria-label="Open sticker picker"],
-[role=button][aria-label="Send a gift"],
-div.app-launcher-entrypoint,
-div[data-fullscreen] div[class*="trailing_"] a[href="https://support.discord.com"],
-li[role="listitem"]:has(> div > a[href*="/shop"]),
-li[role="listitem"]:has(> div > a[href*="/store"]),
-div[class*="profileButtons"] span:has(> button[aria-label="Shop"]),
-[class*="upsell_"],
-[class*="floatingUpsellContainer"],
-[class*="guildProfileUpsell"],
-.vc-platform-indicator svg[aria-label="Desktop"] {
-    display: none !important;
+/* Clutter toggles, rewritten from abbie/discord-css (MIT):
+ * https://github.com/abbie/discord-css
+ * Importing that file made Discord lag. Its selectors run even with a toggle
+ * off, and div:has(), span:has(), and :has() over [class*=] or an animated
+ * svg path re-ran on every class change and every frame of the chat button
+ * animations. Here each selector names Discord's own hashed class, read from
+ * its webpack class maps, and the :has() left test an href or aria-label
+ * inside one small element. The toggles are on/off in the :root block below,
+ * read through midnight's named root container (html).
+ * Rules abbie had that match nothing in current Discord are left out:
+ * jumpToPresentBar, goalTextContainer, floatingUpsellContainer, ownerIcon__,
+ * flowerStar__, and the rtcConnectionStatus*__ labels. */
+
+@container root style(--compact-title-bar: on) {
+    #app-mount {
+        --custom-app-top-bar-height: 28px;
+    }
+
+    .bar_3zSH5d {
+        --space-32: var(--custom-app-top-bar-height);
+    }
 }
 
-body, [class*="scroller__"] {
-    --scrollbar-auto-track: #00001116;
-    --scrollbar-auto-thumb: #0005;
+@container root style(--compact-input-box: on) {
+    .channelBottomBarArea_z_gUBg {
+        --custom-channel-textarea-text-area-height: 44px;
+
+        .attachButton_7TM4SO > div {
+            padding: 10px !important;
+        }
+
+        .attachWrapper_7TM4SO {
+            padding: 5px;
+        }
+
+        .buttons_2x8-Qn {
+            gap: 0;
+        }
+
+        .codeLine_nsjAhz {
+            line-height: 1.125rem;
+        }
+    }
 }
 
-body {
-    --message-background-hover: #00001116;
+@container root style(--compact-context-menu: on) {
+    .menu_M3qk4j {
+        div[role="group"] {
+            padding: 0;
+        }
+
+        :is([role="menuitem"], [role="menuitemcheckbox"], .hideInteraction_M3qk4j) {
+            padding: 4px;
+        }
+
+        .colorDefault_M3qk4j:not(:hover) .label_M3qk4j {
+            color: var(--interactive-normal);
+        }
+    }
 }
 
-svg[class*="ownerIcon__"] {
-    top: -1px;
+@container root style(--compact-user-area: on) {
+    section[aria-label="User area"],
+    .sidebar_pog62O > section[aria-label] {
+        left: 0 !important;
+        bottom: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        width: 100% !important;
+        background-color: color-mix(in oklab, var(--background-tertiary, var(--background-base-lowest)), #000 11%) !important;
+
+        .container_g6VwXp {
+            --space-xs: 6px;
+        }
+    }
+
+    .privateChannels_u88IQl > :is(.scroller__BRe_9, .scroller__xoAVS),
+    .guilds_pog62O {
+        margin-bottom: calc(var(--custom-app-panels-height, 0)) !important;
+    }
+
+    .sidebarList_pog62O #channels {
+        margin-bottom: 0;
+    }
+
+    .activityPanel_pog62O {
+        background-color: transparent;
+        padding-top: 4px;
+        padding-bottom: 4px;
+    }
 }
 
-svg[class*="flowerStar__"] path[d^="m16 7.6c0"] {
-    transform: translateY(-0.5px);
+@container root style(--compact-channel-categories: on) {
+    .containerDefault_yOdhm_ .link_yOdhm_ {
+        --radius-sm: 5px;
+    }
+
+    .containerDefault_yOdhm_ .name_yOdhm_ > div {
+        font-size: 95%;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
 }
 
-[class*="guildDropdown_"] svg path[d^="M5.3 9.3a1"] {
-    transform: translateY(2px);
+@container root style(--compact-server-list: on) {
+    .guilds_pog62O {
+        --custom-guild-list-width: 56px;
+        --custom-guild-list-padding: 8px;
+    }
+}
+
+@container root style(--hide-nameplates: on) {
+    .childContainer_J1Adu_.nameplated_J1Adu_ {
+        padding-right: inherit;
+
+        & > .container_J1Adu_[style] {
+            display: none;
+        }
+    }
+
+    .interactive_zln_tS > .container_AFi54G {
+        display: none;
+    }
+
+    .closeButtonPlated_zln_tS {
+        opacity: 0.7;
+    }
+
+    .innerCloseButtonPlated_zln_tS {
+        background-color: transparent;
+    }
+}
+
+@container root style(--hide-guild-tags: on) {
+    .usernameAndPronounsRow_C2XpHA .guildTag_PTA1Mz,
+    .clanTag_zln_tS,
+    .clanTag_YUoOxm,
+    .clanTagChiplet_2i8Bfm {
+        display: none;
+    }
+}
+
+@container root style(--hide-profile-effects: on) {
+    .profileEffects_ZjcCyW {
+        display: none;
+    }
+}
+
+@container root style(--hide-profile-frames: on) {
+    .profileFrameContainer_MSDRWg,
+    .profileFrameContainer_v8co33 {
+        display: none;
+    }
+}
+
+@container root style(--hide-avatar-decorations: on) {
+    .avatarDecoration_XpIUHy,
+    .avatarDecoration_2i8Bfm,
+    .avatarDecoration_mwdTRW,
+    .avatarDecoration_MSDRWg {
+        display: none;
+    }
+}
+
+@container root style(--hide-gradient-glow-usernames: on) {
+    .twoColorGradient_HG2xvK,
+    .threeColorGradient_HG2xvK {
+        background: none;
+        -webkit-text-fill-color: initial;
+        filter: none;
+    }
+
+    .twoColorGradient_HG2xvK {
+        color: color-mix(in oklab, var(--custom-gradient-color-1), var(--custom-gradient-color-2));
+    }
+
+    .threeColorGradient_HG2xvK {
+        color: color-mix(in oklab, color-mix(in oklab, var(--custom-gradient-color-1), var(--custom-gradient-color-2)), var(--custom-gradient-color-3));
+    }
+}
+
+@container root style(--hide-user-notes: on) {
+    .note_vW8dhG {
+        display: none;
+    }
+}
+
+@container root style(--hide-server-boost-goal: on) {
+    #channels > ul > .containerWithMargin_BFMMcK {
+        display: none;
+    }
+}
+
+@container root style(--hide-server-activity: on) {
+    .membersGroup_86es0b:has(svg path[d^="M10.56 1.1c"]),
+    .members_86es0b .openOnHover_g7esM5 {
+        display: none;
+    }
+}
+
+@container root style(--hide-user-activity: on) {
+    section > .activityPanel_pog62O {
+        display: none;
+    }
+}
+
+@container root style(--hide-context-menu-quick-reactions: on) {
+    .menu_M3qk4j :is([id^="message-quickreact"], [id^="message-actions-quickreact"]) {
+        display: none;
+    }
+}
+
+@container root style(--hide-hover-quick-reactions: on) {
+    [aria-label^="Click to react with"],
+    .buttonsInner_SY_P2T > .separator_DpHsW6 {
+        display: none;
+    }
+}
+
+@container root style(--hide-back-forward-buttons: on) {
+    .backForwardButtons_nS9Yqn {
+        display: none;
+    }
+}
+
+@container root style(--hide-image-edit-button: on) {
+    [aria-label="Edit Image with Apps"] {
+        display: none;
+    }
+}
+
+@container root style(--hide-gif-button: on) {
+    [aria-label="Open GIF picker"] {
+        display: none;
+    }
+}
+
+@container root style(--hide-sticker-button: on) {
+    [aria-label="Open sticker picker"] {
+        display: none;
+    }
+}
+
+@container root style(--hide-emoji-button: on) {
+    [aria-label="Select emoji"] {
+        display: none;
+    }
+}
+
+@container root style(--hide-apps-button: on) {
+    .app-launcher-entrypoint {
+        display: none !important;
+    }
+}
+
+@container root style(--hide-gift-button: on) {
+    [aria-label="Send a gift"] {
+        display: none;
+    }
+}
+
+@container root style(--hide-help-button: on) {
+    .trailing_3zSH5d a[href="https://support.discord.com"] {
+        display: none;
+    }
+}
+
+@container root style(--hide-inbox-button: on) {
+    .trailing_3zSH5d > [data-jump-section="global"] {
+        display: none;
+    }
+}
+
+/* A DM list row holds one link, so this :has() re-runs only when a row's
+ * children change, not on class changes elsewhere in the app. */
+@container root style(--hide-shop-button: on) {
+    .channel_zln_tS:has(> div > a[href="/shop"]),
+    .profileButtons_s3DB6Y span:has(> button[aria-label="Shop"]) {
+        display: none;
+    }
+}
+
+@container root style(--hide-nitro-button: on) {
+    .channel_zln_tS:has(> div > a[href="/store"]) {
+        display: none;
+    }
+}
+
+@container root style(--hide-quest-button: on) {
+    .channel_zln_tS:has(> div > a[href="/quest-home"]) {
+        display: none;
+    }
+}
+
+@container root style(--hide-active-now: on) {
+    .nowPlayingColumn_zrUwGA {
+        display: none;
+    }
+}
+
+@container root style(--hide-nitro-upsells: on) {
+    .upsell_14qEft, .upsell_7V4PrP, .upsell_A7cPID, .upsell_BttH2K, .upsell_DnqwZl,
+    .upsell_NDbtCG, .upsell_banner, .upsell_dDiSsj, .upsell_jPuskz, .upsell_pjsc5i,
+    .guildProfileUpsell_cuaHiV, .guildProfileUpsellContent_cuaHiV, .guildProfileUpsellDivider_cuaHiV {
+        display: none;
+    }
+}
+
+@container root style(--hide-vencord-desktop-platform-indicator: on) {
+    .vc-platform-indicator svg[aria-label="Desktop"] {
+        display: none;
+    }
+}
+
+@container root style(--hide-cluttery-badges: on) {
+    [aria-label="User Badges"] :is(
+        [aria-label="Active Developer"],
+        [aria-label="Completed a Quest"],
+        [aria-label^="Originally known as"],
+        [aria-label^="Collected the Orb Profile Badge"],
+        [aria-label^="HypeSquad"],
+        [aria-label^="Level"][aria-label$="Reached"]
+    ) {
+        display: none;
+    }
+}
+
+@container root style(--darker-scrollbar: on) {
+    body,
+    .scroller__BRe_9,
+    .scroller__xoAVS {
+        --scrollbar-auto-track: #00001116;
+        --scrollbar-auto-thumb: #0005;
+    }
+}
+
+@container root style(--darker-hovered-message: on) {
+    body {
+        --message-background-hover: #00001116;
+    }
+}
+
+@container root style(--prevent-sidebar-resizing: on) {
+    .sidebarResizeHandle_pog62O {
+        display: none !important;
+    }
+}
+
+@container root style(--fix-minor-icon-misalignments: on) {
+    .guildDropdown_XH4OpX svg path[d^="M5.3 9.3a1"] {
+        transform: translateY(2px);
+    }
+}
+
+/* clutter toggles, on or off. On :root because the rules above ask the root container. */
+:root {
+    --compact-title-bar: off;
+    --compact-input-box: off;
+    --compact-context-menu: off;
+    --compact-user-area: off;
+    --compact-channel-categories: off;
+    --compact-server-list: off;
+    --hide-nameplates: off;
+    --hide-guild-tags: off;
+    --hide-profile-effects: off;
+    --hide-profile-frames: off;
+    --hide-avatar-decorations: off;
+    --hide-gradient-glow-usernames: off;
+    --hide-user-notes: off;
+    --hide-server-boost-goal: on;
+    --hide-server-activity: off;
+    --hide-user-activity: off;
+    --hide-context-menu-quick-reactions: off;
+    --hide-hover-quick-reactions: off;
+    --hide-back-forward-buttons: off;
+    --hide-image-edit-button: on;
+    --hide-gif-button: on;
+    --hide-sticker-button: on;
+    --hide-emoji-button: off;
+    --hide-apps-button: on;
+    --hide-gift-button: on;
+    --hide-help-button: on;
+    --hide-inbox-button: off;
+    --hide-shop-button: on;
+    --hide-nitro-button: on;
+    --hide-quest-button: off;
+    --hide-active-now: off;
+    --hide-nitro-upsells: on;
+    --hide-vencord-desktop-platform-indicator: on;
+    --hide-cluttery-badges: off;
+    --darker-scrollbar: on;
+    --darker-hovered-message: on;
+    --prevent-sidebar-resizing: off;
+    --fix-minor-icon-misalignments: on;
 }
 
 body {
