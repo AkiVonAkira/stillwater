@@ -83,6 +83,39 @@
   border-color: var(--ob-edge) !important;
 }
 
+/* T3 shows its Nightly sky art only for built-in themes, so draw Stillwater's own: T3's star
+   positions in the text color over a teal night sky, tiled every 288px like T3's pattern. Background
+   layers sit under the sidebar's content. */
+.dark {
+  --ob-stars:
+    radial-gradient(circle at 14px 10px, color-mix(in srgb, var(--stillwater-text) 85%, transparent) 0.84px, transparent 1.56px),
+    radial-gradient(circle at 38px 22px, color-mix(in srgb, var(--stillwater-text) 55%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 58px 8px, color-mix(in srgb, var(--stillwater-text) 70%, transparent) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 84px 16px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 104px 7px, color-mix(in srgb, var(--stillwater-text) 80%, transparent) 0.84px, transparent 1.56px),
+    radial-gradient(circle at 126px 20px, color-mix(in srgb, var(--stillwater-text) 55%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 148px 11px, color-mix(in srgb, var(--stillwater-text) 70%, transparent) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 170px 24px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 192px 9px, color-mix(in srgb, var(--stillwater-text) 80%, transparent) 0.84px, transparent 1.56px),
+    radial-gradient(circle at 214px 18px, color-mix(in srgb, var(--stillwater-text) 55%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 236px 8px, color-mix(in srgb, var(--stillwater-text) 70%, transparent) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 258px 20px, color-mix(in srgb, var(--stillwater-text) 60%, transparent) 0.63px, transparent 1.17px),
+    radial-gradient(circle at 278px 11px, color-mix(in srgb, var(--stillwater-text) 75%, transparent) 0.77px, transparent 1.43px),
+    radial-gradient(circle at 26px 34px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 118px 34px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 202px 32px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 268px 34px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--stillwater-accent-deep) 34%, transparent), color-mix(in srgb, var(--stillwater-accent-deep) 12%, transparent) 55%, transparent 80px);
+}
+
+.dark [data-slot="sidebar-inner"] {
+  background-color: var(--ob-bar) !important;
+  background-image: var(--ob-stars) !important;
+  background-size: 288px 96px !important;
+  background-repeat: repeat-x !important;
+  background-position: 0 0 !important;
+}
+
 [data-chat-header] {
   background: transparent !important;
   border-color: transparent !important;
