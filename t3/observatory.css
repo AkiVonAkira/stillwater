@@ -116,6 +116,25 @@
   background-position: 0 0 !important;
 }
 
+/* The Nightly pill sits at the sidebar header's right end, clear of the brand and arrows. */
+[data-slot="sidebar-inner"] div:has(> [data-environment-identification="pill"]) {
+  margin-left: auto;
+}
+
+/* Windows draws its caption buttons natively, so a theme cannot restyle them. Match T3's titlebar
+   icons to them instead: center them in the native button band (the window controls overlay height,
+   or the topbar where there is no overlay), and draw 1px strokes like the native glyphs. At 16px a
+   1.5 stroke is 1px wide, but Lucide's whole-number points put it on half pixels, where it blurs
+   across two. The half-pixel shift lands it on one. */
+[data-workspace-titlebar-controls] {
+  height: env(titlebar-area-height, var(--workspace-topbar-height)) !important;
+}
+
+[data-workspace-titlebar-controls] svg.lucide {
+  stroke-width: 1.5;
+  translate: -.5px -.5px;
+}
+
 [data-chat-header] {
   background: transparent !important;
   border-color: transparent !important;
