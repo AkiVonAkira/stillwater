@@ -286,7 +286,7 @@
   background: color-mix(in srgb, var(--stillwater-accent) 12%, transparent) !important;
   border: 1px solid color-mix(in srgb, var(--stillwater-accent) 22%, transparent) !important;
   border-radius: 5px !important;
-  color: var(--stillwater-text) !important;
+  color: var(--foreground) !important;
 }
 
 /* The terminal drawer floats as a card like the workspace panel. Its parent clips for the open and
@@ -338,7 +338,7 @@ div:has(> [data-thread-terminal-drawer]) {
   background: var(--ob-glass) !important;
   border-color: var(--ob-edge) !important;
   border-radius: 8px !important;
-  color: var(--stillwater-text) !important;
+  color: var(--foreground) !important;
   backdrop-filter: blur(18px) saturate(140%);
   box-shadow: var(--ob-shadow) !important;
 }
