@@ -67,7 +67,23 @@ function threadShell(thread: fixture.FixtureThread): Json {
     settledAt: null,
     lastVisitedAt: at,
     deletedAt: null,
+    ...shelfFields(thread),
   };
+}
+
+function shelfFields(thread: fixture.FixtureThread): Json {
+  switch (thread.state) {
+    case "working":
+      return { status: "running", activeRunId: `${thread.id}-run`, latestRunId: `${thread.id}-run`, activityRunStatus: "running", activityRunStartedAt: iso(thread.ageMinutes) };
+    case "pinned":
+      return { pinnedAt: iso(thread.ageMinutes) };
+    case "snoozed":
+      return { snoozedAt: iso(thread.ageMinutes), snoozedUntil: new Date(NOW + 2 * 86_400_000).toISOString() };
+    case "settled":
+      return { settledOverride: "settled", settledAt: iso(thread.ageMinutes - 1) };
+    default:
+      return {};
+  }
 }
 
 function threadProjection(thread: fixture.FixtureThread): Json {
@@ -235,6 +251,10 @@ async function openContext(browser: Browser, env: Environment, theme: Theme, vie
     const request = route.request();
     const url = new URL(request.url());
     const key = `${request.method()} ${url.pathname}`;
+    if (url.href === fixture.skyUrl) {
+      traffic.fixtures.add(key);
+      return route.fulfill({ contentType: "image/png", body: readFileSync(join(ROOT, "t3", "capture-sky.png")) });
+    }
     if (url.origin !== origin) {
       traffic.offOrigin += 1;
       return route.abort();
@@ -376,7 +396,7 @@ async function openMenu(page: Page): Promise<void> {
 }
 
 async function dragRowOverComposer(page: Page): Promise<() => Promise<void>> {
-  const row = page.locator("[data-thread-item] > [role='button']").nth(1);
+  const row = page.locator(`[data-thread-item="${ENVIRONMENT_ID}:${fixture.threads[1].id}"] > [role='button']`);
   const target = page.locator("[data-slot='composer-host']");
   const from = await row.boundingBox();
   const to = await target.boundingBox();
@@ -454,7 +474,20 @@ async function captureTheme(env: Environment, label: string, theme: Theme, origi
         await shot(page, `${viewport.name}-scroll-middle`);
         facts[`${viewport.name}-gutter-middle`] = await measureGutter(page, label === "after");
         await scrollChatToEnd(page);
-        await clip(page, `${viewport.name}-row`, { x: 0, y: 90, width: 260, height: 170 });
+        const rowBox = await page.locator("[data-thread-item]:has([aria-current='page'])").boundingBox();
+        assert(rowBox, "The selected sidebar row is not on screen.");
+        await clip(page, `${viewport.name}-row`, { x: 0, y: Math.max(0, rowBox.y - 60), width: 260, height: 170 });
+        await page.locator(".chat-markdown img").last().click();
+        const lightbox = page.locator("[data-slot='dialog-popup']");
+        await lightbox.waitFor({ state: "visible", timeout: 5_000 });
+        await page.waitForTimeout(400);
+        await shot(page, `${viewport.name}-lightbox`);
+        if (label === "after") {
+          const fill = await lightbox.evaluate((el) => getComputedStyle(el).backgroundColor);
+          assert.equal(fill, "rgba(0, 0, 0, 0)", "The image lightbox must stay transparent. Scope dialog sheet rules to .dialog-glass.");
+        }
+        await page.keyboard.press("Escape");
+        await lightbox.waitFor({ state: "detached", timeout: 5_000 });
         const drop = await dragRowOverComposer(page);
         await composerShot(page, `${viewport.name}-drag-over`);
         await drop();
@@ -534,6 +567,23 @@ async function main(): Promise<void> {
       await page.mouse.wheel(0, 1);
       await page.screenshot({ path: join(out, `${stamp}-probe.png`) });
     });
+    return;
+  }
+
+  const showcase = arg("showcase");
+  if (showcase) {
+    await withPage(env, after, VIEWPORTS[0], origin, traffic, async (page) => {
+      await page.evaluate((layout) => {
+        for (const [key, value] of Object.entries(layout)) localStorage.setItem(key, value);
+      }, fixture.showcaseLayout);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForSelector("[data-user-message-bubble]", { timeout: 20_000 });
+      await page.evaluate(() => document.fonts.ready);
+      await scrollChatToEnd(page);
+      await page.mouse.move(VIEWPORTS[0].width / 2, VIEWPORTS[0].height / 2);
+      await page.screenshot({ path: showcase });
+    });
+    console.log(`wrote ${showcase}`);
     return;
   }
 

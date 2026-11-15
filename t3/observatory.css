@@ -205,12 +205,33 @@
   border-radius: 8px !important;
 }
 
-[data-slot="dialog-popup"] {
+/* Only glass dialogs get the sheet. The image and video lightbox uses the same popup slot
+   without `dialog-glass`, and T3 leaves it transparent over the dark backdrop. */
+[data-slot="dialog-popup"].dialog-glass {
   background: var(--ob-sheet) !important;
   border: 1px solid var(--ob-edge) !important;
   border-radius: var(--ob-sheet-radius) !important;
   backdrop-filter: blur(28px) saturate(120%);
   box-shadow: 0 30px 80px rgb(0 0 0 / .45), 0 0 0 1px var(--ob-halo), inset 0 1px 0 var(--ob-shine) !important;
+}
+
+/* The lightbox's Back button is a black pill with a white ring. Give it the composer's glass so it
+   reads as Stillwater over the backdrop. Focus swaps the edge for the composer's focus color. */
+[data-slot="dialog-popup"]:not(.dialog-glass) > [data-slot="button"][aria-label^="Back"] {
+  background: var(--ob-glass) !important;
+  border-color: var(--ob-edge) !important;
+  border-radius: 8px !important;
+  color: var(--stillwater-text) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--ob-shadow) !important;
+}
+
+[data-slot="dialog-popup"]:not(.dialog-glass) > [data-slot="button"][aria-label^="Back"]:is(:hover, [data-pressed]) {
+  background: var(--ob-sheet) !important;
+}
+
+[data-slot="dialog-popup"]:not(.dialog-glass) > [data-slot="button"][aria-label^="Back"]:focus-visible {
+  border-color: var(--ob-focus) !important;
 }
 
 [data-slot="popover-popup"],
