@@ -55,6 +55,11 @@
   background-clip: border-box !important;
 }
 
+/* Keep the chat scrollbar thumb off the window's bottom edge. */
+.messages-timeline-scroll::-webkit-scrollbar-track {
+  margin-bottom: var(--radius);
+}
+
 /* The Windows desktop app pads #root on the right for its resize grab zone, and the body's flat
    canvas shows there. Paint that lane with the window-sized gradient anchored right: the gradient's
    sizes are percentages, so its right edge matches the chat column's at every height. */
