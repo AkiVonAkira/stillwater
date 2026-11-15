@@ -32,6 +32,9 @@ function loadTheme(file: string): Theme {
   return { id, file, json };
 }
 
+/** The selected thread's messages. `--bench` swaps in a longer list. */
+let timeline: fixture.FixtureMessage[] = fixture.messages;
+
 const iso = (minutesAgo: number): string => new Date(NOW - minutesAgo * 60_000).toISOString();
 
 function threadShell(thread: fixture.FixtureThread): Json {
@@ -58,8 +61,8 @@ function threadShell(thread: fixture.FixtureThread): Json {
     latestVisibleMessage: null,
     latestUserMessageAt: at,
     hasActionableProposedPlan: false,
-    itemCount: thread.id === fixture.selectedThreadId ? fixture.messages.length : 2,
-    visibleItemCount: thread.id === fixture.selectedThreadId ? fixture.messages.length : 2,
+    itemCount: thread.id === fixture.selectedThreadId ? timeline.length : 2,
+    visibleItemCount: thread.id === fixture.selectedThreadId ? timeline.length : 2,
     createdAt: at,
     updatedAt: at,
     archivedAt: null,
@@ -89,8 +92,8 @@ function shelfFields(thread: fixture.FixtureThread): Json {
 function threadProjection(thread: fixture.FixtureThread): Json {
   const shell = threadShell(thread);
   const at = iso(thread.ageMinutes);
-  const messages = fixture.messages.map((message, index) => {
-    const created = new Date(NOW - (fixture.messages.length - index) * 60_000 - thread.ageMinutes * 60_000).toISOString();
+  const messages = timeline.map((message, index) => {
+    const created = new Date(NOW - (timeline.length - index) * 60_000 - thread.ageMinutes * 60_000).toISOString();
     return {
       id: `${thread.id}-message-${index}`,
       threadId: thread.id,
@@ -550,6 +553,111 @@ async function record(env: Environment, label: string, theme: Theme, origin: str
   }, dir);
 }
 
+// Swaps the theme's adopted stylesheet in place, the way a theme switch does, then scrolls the
+// timeline top to bottom and reads Chromium's style and layout counters for that scroll alone.
+const SCROLL = `(async ({ step, frames }) => {
+  const s = document.querySelector(".messages-timeline-scroll");
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  const gaps = [];
+  let last = await frame();
+  for (let i = 0; i < frames; i++) {
+    s.scrollTop += step;
+    const now = await frame();
+    gaps.push(now - last);
+    last = now;
+  }
+  return { gaps, scrollTop: s.scrollTop, scrollHeight: s.scrollHeight };
+})`;
+
+// Stillwater measures about 1.08x and one `div:has(:hover)` rule pushes it to 1.27x, so 1.2x catches a rule like that.
+const BENCH_LIMIT = 1.2;
+
+type Stage = { stage: string; recalcMs: number; recalcCount: number; layoutMs: number; frameP95Ms: number; runs: number[] };
+
+const median = (values: number[]): number => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+
+async function bench(env: Environment, theme: Theme, origin: string, out: string, stamp: string, traffic: Traffic): Promise<void> {
+  const messages = Number(arg("messages") ?? 400);
+  const reps = Number(arg("reps") ?? 5);
+  const step = 45;
+  const frames = 120;
+  // Cycle the text-only pairs; the last pair carries the sky image.
+  timeline = Array.from({ length: messages }, (_, i) => fixture.messages[i % (fixture.messages.length - 2)]);
+  const full = String(theme.json.css ?? "");
+  const seed = ":root { --stillwater-bench: 0; }";
+  const baseTheme: Theme = { ...theme, json: { ...theme.json, css: seed } };
+  const viewport = VIEWPORTS[1];
+  // "switch" loads the theme and removes it again in one session, the sequence that left T3 Clawd's
+  // style cost behind after a theme switch. "no-has" is the same theme without its :has() rules.
+  const sessions: Array<{ name: string; stages: Array<"base" | "theme" | "no-has"> }> = [
+    { name: "switch", stages: ["base", "base", "theme", "base", "theme", "base"] },
+    { name: "no-has", stages: ["base", "no-has", "base", "no-has", "base"] },
+  ];
+  const report: Record<string, Stage[]> = {};
+  for (const session of sessions) {
+    report[session.name] = await withPage(env, baseTheme, viewport, origin, traffic, async (page) => {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Performance.enable");
+      const metrics = async () => Object.fromEntries(((await cdp.send("Performance.getMetrics")).metrics).map((m) => [m.name, m.value]));
+      const css = await page.evaluate(({ full, seed }) => {
+        const sheet = document.adoptedStyleSheets.find((s) => [...s.cssRules].some((r) => r.cssText.includes("--stillwater-bench")));
+        if (!sheet) throw new Error("No adopted theme stylesheet. T3 changed how it applies theme CSS.");
+        const probe = new CSSStyleSheet();
+        probe.replaceSync(full);
+        const noHas = [...probe.cssRules].map((r) => r.cssText).filter((text) => !text.includes(":has(")).join("\n");
+        (window as unknown as { __benchSheet: CSSStyleSheet }).__benchSheet = sheet;
+        return { base: seed, theme: full, "no-has": noHas };
+      }, { full, seed });
+      const stages: Stage[] = [];
+      for (const name of session.stages) {
+        await page.evaluate((text) => (window as unknown as { __benchSheet: CSSStyleSheet }).__benchSheet.replaceSync(text), css[name]);
+        await page.waitForTimeout(300);
+        const runs: Array<{ recalc: number; count: number; layout: number; p95: number }> = [];
+        for (let rep = 0; rep < reps; rep++) {
+          const box = await page.evaluate(() => {
+            const scroller = document.querySelector<HTMLElement>(".messages-timeline-scroll")!;
+            scroller.scrollTop = 0;
+            const { x, y, width, height } = scroller.getBoundingClientRect();
+            return { x: x + width / 2, y: y + height / 2 };
+          });
+          // The cursor rests on the timeline, as it does under a wheel scroll, so hover moves with the content.
+          await page.mouse.move(box.x, box.y);
+          await page.waitForTimeout(400);
+          const before = await metrics();
+          const scroll = (await page.evaluate(`${SCROLL}(${JSON.stringify({ step, frames })})`)) as { gaps: number[]; scrollTop: number; scrollHeight: number };
+          const after = await metrics();
+          assert(scroll.scrollTop >= step * frames * 0.95, `Timeline too short to scroll ${step * frames}px: reached ${scroll.scrollTop} of ${scroll.scrollHeight}.`);
+          const gaps = [...scroll.gaps].sort((a, b) => a - b);
+          runs.push({
+            recalc: (after.RecalcStyleDuration - before.RecalcStyleDuration) * 1000,
+            count: after.RecalcStyleCount - before.RecalcStyleCount,
+            layout: (after.LayoutDuration - before.LayoutDuration) * 1000,
+            p95: gaps[Math.floor(gaps.length * 0.95)],
+          });
+        }
+        const stage = {
+          stage: name,
+          recalcMs: +median(runs.map((r) => r.recalc)).toFixed(1),
+          recalcCount: median(runs.map((r) => r.count)),
+          layoutMs: +median(runs.map((r) => r.layout)).toFixed(1),
+          frameP95Ms: +median(runs.map((r) => r.p95)).toFixed(1),
+          runs: runs.map((r) => +r.recalc.toFixed(1)),
+        };
+        stages.push(stage);
+        console.log(`${session.name.padEnd(7)} ${name.padEnd(11)} recalc ${String(stage.recalcMs).padStart(6)} ms (${stage.recalcCount} recalcs)  layout ${String(stage.layoutMs).padStart(6)} ms  frame p95 ${stage.frameP95Ms} ms  runs ${stage.runs.join(" ")}`);
+      }
+      return stages;
+    });
+  }
+  const [, base, themed, after] = report.switch.map((stage) => stage.recalcMs);
+  const verdict = { themeOverBase: +(themed / base).toFixed(2), afterSwitchOverBase: +(after / base).toFixed(2), limit: BENCH_LIMIT };
+  const path = join(out, `${stamp}-bench.json`);
+  writeFileSync(path, `${JSON.stringify({ client: env.serverVersion, theme: theme.file, messages, reps, scrollPx: step * frames, viewport, verdict, report }, null, 2)}\n`);
+  console.log(`Theme ${verdict.themeOverBase}x base, ${verdict.afterSwitchOverBase}x after switching away. Bench report: ${path}`);
+  assert(verdict.themeOverBase <= BENCH_LIMIT, `The theme makes scroll style recalc ${verdict.themeOverBase}x the base. Look for :has() or [class*=] rules that match timeline rows.`);
+  assert(verdict.afterSwitchOverBase <= BENCH_LIMIT, `Style recalc stays at ${verdict.afterSwitchOverBase}x the base after the theme is removed.`);
+}
+
 async function main(): Promise<void> {
   const origin = arg("origin") ?? "http://127.0.0.1:3773";
   const out = arg("out") ?? join(tmpdir(), "stillwater-t3-capture");
@@ -569,6 +677,11 @@ async function main(): Promise<void> {
       await page.mouse.wheel(0, 1);
       await page.screenshot({ path: join(out, `${stamp}-probe.png`) });
     });
+    return;
+  }
+
+  if (process.argv.includes("--bench")) {
+    await bench(env, after, origin, out, stamp, traffic);
     return;
   }
 

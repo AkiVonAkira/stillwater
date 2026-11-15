@@ -12,7 +12,8 @@
     "showcase": "playwright install chromium && tsx showcase/render.ts",
     "build:check": "tsx build.ts --check",
     "t3:apply": "tsx t3/apply.ts",
-    "t3:capture": "tsx t3/capture.ts"
+    "t3:capture": "tsx t3/capture.ts",
+    "t3:bench": "tsx t3/capture.ts --bench"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
