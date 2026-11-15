@@ -83,29 +83,42 @@
   border-color: var(--ob-edge) !important;
 }
 
-/* T3 shows its Nightly sky art only for built-in themes, so draw Stillwater's own: T3's star
-   positions in the text color over a teal night sky, tiled every 288px like T3's pattern. Background
-   layers sit under the sidebar's content. */
+/* T3 shows its Nightly sky art only for built-in themes, so draw Stillwater's own from T3's star
+   positions, tiled every 288px like T3's pattern. Three layers sit under the sidebar's content:
+   dim field stars in the background, the sky and its glows on ::before (not tiled, so no seam), and
+   the bright stars and sparkles on ::after, which twinkle. */
 .dark {
   --ob-stars:
-    radial-gradient(circle at 14px 10px, color-mix(in srgb, var(--stillwater-text) 85%, transparent) 0.84px, transparent 1.56px),
-    radial-gradient(circle at 38px 22px, color-mix(in srgb, var(--stillwater-text) 55%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 58px 8px, color-mix(in srgb, var(--stillwater-text) 70%, transparent) 0.7px, transparent 1.3px),
-    radial-gradient(circle at 84px 16px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 104px 7px, color-mix(in srgb, var(--stillwater-text) 80%, transparent) 0.84px, transparent 1.56px),
-    radial-gradient(circle at 126px 20px, color-mix(in srgb, var(--stillwater-text) 55%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 148px 11px, color-mix(in srgb, var(--stillwater-text) 70%, transparent) 0.7px, transparent 1.3px),
-    radial-gradient(circle at 170px 24px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 192px 9px, color-mix(in srgb, var(--stillwater-text) 80%, transparent) 0.84px, transparent 1.56px),
-    radial-gradient(circle at 214px 18px, color-mix(in srgb, var(--stillwater-text) 55%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 236px 8px, color-mix(in srgb, var(--stillwater-text) 70%, transparent) 0.7px, transparent 1.3px),
-    radial-gradient(circle at 258px 20px, color-mix(in srgb, var(--stillwater-text) 60%, transparent) 0.63px, transparent 1.17px),
-    radial-gradient(circle at 278px 11px, color-mix(in srgb, var(--stillwater-text) 75%, transparent) 0.77px, transparent 1.43px),
-    radial-gradient(circle at 26px 34px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 118px 34px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 202px 32px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
-    radial-gradient(circle at 268px 34px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--stillwater-accent-deep) 34%, transparent), color-mix(in srgb, var(--stillwater-accent-deep) 12%, transparent) 55%, transparent 80px);
+    radial-gradient(circle at 38px 22px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 58px 8px, color-mix(in srgb, var(--stillwater-warm) 60%, transparent) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 84px 16px, color-mix(in srgb, var(--stillwater-accent) 55%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 126px 20px, color-mix(in srgb, var(--stillwater-text) 50%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 148px 11px, color-mix(in srgb, var(--stillwater-warm) 55%, transparent) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 170px 24px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 214px 18px, color-mix(in srgb, var(--stillwater-accent) 55%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 236px 8px, color-mix(in srgb, var(--stillwater-text) 60%, transparent) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 258px 20px, color-mix(in srgb, var(--stillwater-warm) 50%, transparent) 0.63px, transparent 1.17px),
+    radial-gradient(circle at 26px 34px, color-mix(in srgb, var(--stillwater-text) 40%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 118px 34px, color-mix(in srgb, var(--stillwater-accent) 45%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 202px 32px, color-mix(in srgb, var(--stillwater-text) 45%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 268px 34px, color-mix(in srgb, var(--stillwater-text) 40%, transparent) 0.56px, transparent 1.04px),
+    radial-gradient(circle at 92px 44px, color-mix(in srgb, var(--stillwater-text) 30%, transparent) 0.49px, transparent 0.91px),
+    radial-gradient(circle at 182px 48px, color-mix(in srgb, var(--stillwater-accent) 30%, transparent) 0.49px, transparent 0.91px),
+    radial-gradient(circle at 40px 52px, color-mix(in srgb, var(--stillwater-text) 25%, transparent) 0.49px, transparent 0.91px);
+  --ob-twinkle:
+    radial-gradient(circle at 14px 10px, color-mix(in srgb, var(--stillwater-text) 95%, transparent) 1.05px, transparent 1.95px),
+    radial-gradient(circle at 104px 7px, color-mix(in srgb, var(--stillwater-warm) 90%, transparent) 1.05px, transparent 1.95px),
+    radial-gradient(circle at 192px 9px, color-mix(in srgb, var(--stillwater-text) 90%, transparent) 1.05px, transparent 1.95px),
+    radial-gradient(circle at 278px 11px, color-mix(in srgb, var(--stillwater-accent) 90%, transparent) 1px, transparent 1.85px),
+    radial-gradient(circle at 62px 41px, color-mix(in srgb, var(--stillwater-text) 100%, transparent) 0.9px, transparent 1.8px),
+    radial-gradient(7px 0.9px at 62px 41px, color-mix(in srgb, var(--stillwater-text) 95%, transparent), transparent),
+    radial-gradient(0.9px 7px at 62px 41px, color-mix(in srgb, var(--stillwater-text) 95%, transparent), transparent),
+    radial-gradient(circle at 160px 36px, color-mix(in srgb, var(--stillwater-warm) 100%, transparent) 0.9px, transparent 1.8px),
+    radial-gradient(7px 0.9px at 160px 36px, color-mix(in srgb, var(--stillwater-warm) 95%, transparent), transparent),
+    radial-gradient(0.9px 7px at 160px 36px, color-mix(in srgb, var(--stillwater-warm) 95%, transparent), transparent),
+    radial-gradient(circle at 246px 26px, color-mix(in srgb, var(--stillwater-text) 100%, transparent) 0.9px, transparent 1.8px),
+    radial-gradient(7px 0.9px at 246px 26px, color-mix(in srgb, var(--stillwater-text) 95%, transparent), transparent),
+    radial-gradient(0.9px 7px at 246px 26px, color-mix(in srgb, var(--stillwater-text) 95%, transparent), transparent);
 }
 
 .dark [data-slot="sidebar-inner"] {
@@ -114,11 +127,55 @@
   background-size: 288px 96px !important;
   background-repeat: repeat-x !important;
   background-position: 0 0 !important;
+  position: relative;
+  isolation: isolate;
+}
+
+.dark [data-slot="sidebar-inner"]::before,
+.dark [data-slot="sidebar-inner"]::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 112px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.dark [data-slot="sidebar-inner"]::before {
+  background:
+    radial-gradient(55% 80px at 92% 0, color-mix(in srgb, var(--stillwater-warm) 16%, transparent), transparent 75%),
+    radial-gradient(50% 72px at 6% 0, color-mix(in srgb, var(--stillwater-accent) 18%, transparent), transparent 75%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--stillwater-accent-deep) 38%, transparent), color-mix(in srgb, var(--stillwater-accent-deep) 14%, transparent) 50%, transparent 100%);
+}
+
+.dark [data-slot="sidebar-inner"]::after {
+  background-image: var(--ob-twinkle);
+  background-size: 288px 96px;
+  background-repeat: repeat-x;
+  animation: ob-twinkle 4.8s ease-in-out infinite alternate;
+}
+
+@keyframes ob-twinkle {
+  from { opacity: .45; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark [data-slot="sidebar-inner"]::after {
+    animation: none;
+    opacity: .85;
+  }
 }
 
 /* The Nightly pill sits at the sidebar header's right end, clear of the brand and arrows. */
 [data-slot="sidebar-inner"] div:has(> [data-environment-identification="pill"]) {
   margin-left: auto;
+}
+
+/* In the Windows desktop app (.wco) the pill's capitals sit 2px above the brand's. Measured on the
+   real window; the browser capture lines them up already. */
+.wco [data-environment-identification="pill"] {
+  translate: 0 2px;
 }
 
 /* Windows draws its caption buttons natively, so a theme cannot restyle them. Match T3's titlebar
