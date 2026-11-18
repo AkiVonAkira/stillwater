@@ -35,7 +35,7 @@ When one token reads badly, check every ink and surface pair in that adapter, no
 
 ## Speed
 
-Theme CSS for Electron apps (Vencord, Equicord, Spicetify) has to stay cheap. Broad selectors like `[class*=...]` combined with `:has()` made Discord lag. Target specific classes.
+Theme CSS for Electron apps (Vencord, Equicord, Spicetify) has to stay cheap. Broad selectors like `[class*=...]` combined with `:has()` made Discord lag. Target specific classes. The installer test fails on a `[class^=]` or `[class*=]` subject under `:has()` in a theme file, but it cannot see what an `@import` loads. Improved Spotify Controls is vendored into Midnight for that reason: its nameplate rule cost about 25 ms of style recalc per DOM change in a Discord-shaped fixture, and 2 ms rewritten. To fix a slow imported snippet, vendor it and rewrite the rule.
 
 "Update classes" means run `npm run update-classes`. It renames stale Discord class names in every `vencord/*/Stillwater.theme.css` with the map behind https://syndishanx.github.io/Website/Update_Classes.html. `npm run update-classes -- --check` lists them without writing. Class names alone do not cause lag; check the selectors too.
 

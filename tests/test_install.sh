@@ -244,7 +244,13 @@ theme="$TMP/.config/vesktop/themes/Stillwater.theme.css"
 [[ -f "$theme" ]] || fail "Vencord theme missing"
 grep -q "midnight-discord" "$theme" || fail "Vencord theme should be a midnight flavor"
 grep -q "#5aa8b4" "$theme" || fail "Vencord theme should map Stillwater accent"
-grep -q "improvedSpotifyControls" "$theme" || fail "Vencord theme should import Akira Spotify panel snippet"
+grep -q "Improved Spotify Controls" "$theme" || fail "Vencord theme should carry Akira Spotify panel snippet"
+if grep -q "@import.*improvedSpotifyControls" "$theme"; then fail "Vencord theme should vendor Improved Spotify Controls, not @import it: its nameplate rule cost ~25 ms of style recalc per DOM change"; fi
+# A [class^=]/[class*=] subject under a :has() is tested on every restyled element and lagged Discord. Name the element's own class.
+for css in "$ROOT"/vencord/*/Stillwater.theme.css; do
+  slow="$(tr '\n' ' ' <"$css" | grep -oE ':has\([^{}]*\)[^{};,]*[ >]\[class[*^$]?=[^]]*\][^{};, ]*[[:space:]]*\{' || true)"
+  [[ -z "$slow" ]] || fail "${css#"$ROOT"/} has a [class^=] subject under :has(), which lags Discord; use the element's own class: $slow"
+done
 grep -q "IconConsistencySource" "$theme" || fail "Vencord theme should import plugin icon consistency"
 grep -q "compact-server-shortcuts" "$theme" || fail "Vencord theme should import compact server shortcuts"
 grep -q "SimplifiedPanelArea" "$theme" || fail "Vencord theme should import Simplified Panel Area"
