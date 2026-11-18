@@ -188,14 +188,14 @@
   border-color: var(--ob-focus) !important;
 }
 
-[data-slot="composer-host"]:has([data-pending-user-input-toggle]) {
+[data-slot="composer-host"]:has([data-pending-user-input-toggle], [data-composer-banner-surface="attached"]) {
   background: transparent !important;
   border-color: transparent !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
 }
 
-[data-slot="composer-host"]:has([data-pending-user-input-toggle]):focus-within [data-chat-composer-main-surface]::after {
+[data-slot="composer-host"]:has([data-pending-user-input-toggle], [data-composer-banner-surface="attached"]):focus-within [data-chat-composer-main-surface]::after {
   border-color: var(--ob-focus) !important;
 }
 
