@@ -71,8 +71,12 @@ function threadShell(thread: fixture.FixtureThread): Json {
     lastVisitedAt: at,
     deletedAt: null,
     ...shelfFields(thread),
+    ...(thread.id === fixture.limitThreadId ? { status: "failed", latestRunId: LIMIT_RUN_ID, latestRunCompletedAt: at } : {}),
   };
 }
+
+const LIMIT_RUN_ID = "thread-limit-run";
+const LIMIT_NODE_ID = "thread-limit-root";
 
 function shelfFields(thread: fixture.FixtureThread): Json {
   switch (thread.state) {
@@ -132,16 +136,25 @@ function threadProjection(thread: fixture.FixtureThread): Json {
       : { type: "assistant_message", streaming: false }),
   }));
   const pendingInput = thread.id === fixture.questionThreadId;
+  const limited = thread.id === fixture.limitThreadId;
   const allTurnItems = [...turnItems, ...(pendingInput ? [{
     ...turnItems.at(-1), id: "fixture-question-item", nodeId: "fixture-question-node",
     type: "user_input_request", requestId: "fixture-question", questions: fixture.questions,
     responseMode: "message",
+  }] : []), ...(limited ? [{
+    ...turnItems.at(-1), id: "fixture-limit-item", runId: LIMIT_RUN_ID, nodeId: LIMIT_NODE_ID,
+    status: "failed", type: "error", messageId: undefined, text: undefined, attachments: undefined, streaming: undefined,
+    failure: { class: "usage_limit", message: "Usage limit reached", code: null, retryable: null, resetAt: null },
   }] : [])];
   const visibleTurnItems = allTurnItems.map((item, position) => ({ position, visibility: "local", sourceThreadId: thread.id, sourceItemId: item.id, item }));
   const keys = ["id", "projectId", "title", "providerInstanceId", "modelSelection", "runtimeMode", "interactionMode", "branch", "worktreePath", "activeProviderThreadId", "lineage", "forkedFrom", "createdBy", "creationSource", "createdAt", "updatedAt", "archivedAt", "settledOverride", "settledAt", "lastVisitedAt", "deletedAt"];
   return {
     thread: Object.fromEntries(keys.map((key) => [key, shell[key]])),
-    runs: [],
+    runs: limited ? [{
+      id: LIMIT_RUN_ID, threadId: thread.id, ordinal: 1, providerInstanceId: "codex", modelSelection: shell.modelSelection,
+      providerThreadId: null, userMessageId: messages.at(-2)!.id, rootNodeId: LIMIT_NODE_ID, activeAttemptId: null,
+      status: "failed", requestedAt: at, startedAt: at, completedAt: at, checkpointId: null, contextHandoffId: null,
+    }] : [],
     attempts: [],
     nodes: [],
     subagents: [],
@@ -437,6 +450,23 @@ async function openPhoneSidebar(page: Page): Promise<void> {
   await page.waitForTimeout(400);
 }
 
+/** Opens the usage-limited thread and clicks Reply on the last assistant message, so two attached banners stack on the composer. */
+async function openBannerStack(page: Page, origin: string): Promise<{ x: number; y: number; width: number; height: number }> {
+  await page.goto(`${origin}/${ENVIRONMENT_ID}/${fixture.limitThreadId}`, { waitUntil: "domcontentloaded" });
+  const banners = page.locator("[data-composer-banner-surface='attached']");
+  await page.getByText("Usage limit reached", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
+  const replyButton = page.locator("button[aria-label='Reply to this response']").last();
+  await replyButton.scrollIntoViewIfNeeded();
+  await replyButton.click({ force: true });
+  await banners.nth(1).waitFor({ state: "visible", timeout: 10_000 });
+  await page.locator("[data-chat-composer-form] [contenteditable='true']").first().click();
+  await page.waitForTimeout(400);
+  const top = await banners.first().boundingBox();
+  const host = await page.locator("[data-slot='composer-host']").boundingBox();
+  assert(top && host, "The banner stack and the composer must be visible.");
+  return { x: Math.max(0, host.x - 20), y: Math.max(0, top.y - 16), width: host.width + 40, height: host.y + host.height - top.y + 32 };
+}
+
 async function captureTheme(env: Environment, label: string, theme: Theme, origin: string, out: string, stamp: string, traffic: Traffic) {
   const shots: string[] = [];
   const facts: Record<string, unknown> = {};
@@ -522,6 +552,21 @@ async function captureTheme(env: Environment, label: string, theme: Theme, origi
         if (label === "after") {
           assert(await page.locator("[data-slot='composer-host']").evaluate((el) => getComputedStyle(el).borderColor === "rgba(0, 0, 0, 0)"), "Questions must not draw the extra outer frame.");
           assert.notEqual(await questionSurface.evaluate((el) => getComputedStyle(el, "::after").borderColor), questionBorder, "The question answer input must retain focus feedback.");
+        }
+        const bannerArea = await openBannerStack(page, origin);
+        await clip(page, `${viewport.name}-banners`, bannerArea);
+        if (label === "after") {
+          const check = await page.evaluate(`(() => {
+            const banners = [...document.querySelectorAll("[data-composer-banner-surface='attached']")];
+            return banners.map((el) => ({
+              variant: el.getAttribute("data-variant"),
+              radius: getComputedStyle(el, "::before").borderRadius,
+              border: getComputedStyle(el, "::before").borderColor,
+            }));
+          })()`) as Array<{ variant: string; radius: string; border: string }>;
+          assert.equal(check[0]?.radius, "12px 12px 0px 0px", "Top attached banner must match Stillwater's card radius.");
+          assert.equal(check[1]?.radius, "0px", "Stacked attached banners must stay square on top.");
+          assert.match(check[1]?.border ?? "", /\/\s*0\.07\)$/, "Neutral attached banners must use Stillwater's --ob-edge outline.");
         }
       } else {
         await shot(page, `${viewport.name}-thread`);
@@ -677,6 +722,22 @@ async function main(): Promise<void> {
       await page.mouse.wheel(0, 1);
       await page.screenshot({ path: join(out, `${stamp}-probe.png`) });
     });
+    return;
+  }
+
+  if (process.argv.includes("--banners")) {
+    for (const [label, theme] of [...(beforeFile ? [["before", loadTheme(beforeFile)] as const] : []), ["after", after] as const]) {
+      await withPage(env, theme, VIEWPORTS[1], origin, traffic, async (page) => {
+        const area = await openBannerStack(page, origin);
+        const path = join(out, `${stamp}-${label}-banners.png`);
+        await page.screenshot({ path, clip: area });
+        await page.locator("[data-chat-header]").click();
+        await page.waitForTimeout(200);
+        const unfocusedPath = join(out, `${stamp}-${label}-banners-unfocused.png`);
+        await page.screenshot({ path: unfocusedPath, clip: area });
+        console.log(`wrote ${path}\nwrote ${unfocusedPath}`);
+      });
+    }
     return;
   }
 

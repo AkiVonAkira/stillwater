@@ -199,6 +199,23 @@
   border-color: var(--ob-focus) !important;
 }
 
+/* T3 derives --chat-composer-outline from 30% input over canvas, which is darker than Stillwater's
+   raised surface and makes neutral attached banners and the unfocused attached composer borderless. */
+[data-slot="composer-shell"],
+[data-composer-banner-surface] {
+  --chat-composer-outline: var(--ob-edge) !important;
+  --chat-composer-highlight: var(--ob-shine) !important;
+}
+
+[data-slot="composer-banner-attachment"]:first-child > [data-composer-banner-surface="attached"]::before {
+  border-top-left-radius: var(--ob-card-radius) !important;
+  border-top-right-radius: var(--ob-card-radius) !important;
+}
+
+[data-composer-banner-surface="detached"]::before {
+  border-radius: var(--ob-card-radius) !important;
+}
+
 [data-slot="composer-shell"]::before {
   border-radius: var(--ob-card-radius) !important;
 }

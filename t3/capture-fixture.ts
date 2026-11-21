@@ -44,6 +44,7 @@ export const threads: FixtureThread[] = [
   { id: "thread-menu", projectId: "project-tide", title: "Menu glass opacity", ageMinutes: 600 },
   { id: "thread-fonts", projectId: "project-glass", title: "Mono font in the composer", ageMinutes: 1500 },
   { id: "thread-question", projectId: "project-glass", title: "Choose the observation details", ageMinutes: 1600 },
+  { id: "thread-limit", projectId: "project-tide", title: "Tide gauge backfill", ageMinutes: 1700 },
   { id: "thread-deck", projectId: "project-harbor", title: "Sketch the observation deck layout", ageMinutes: 90, state: "pinned" },
   { id: "thread-lantern", projectId: "project-harbor", title: "Lantern fade timing", ageMinutes: 300 },
   { id: "thread-chart", projectId: "project-sky", title: "Render the star chart at dusk", ageMinutes: 2, state: "working" },
@@ -62,6 +63,8 @@ export const showcaseLayout: Record<string, string> = {
 
 export const selectedThreadId = "thread-row";
 export const questionThreadId = "thread-question";
+/** Its last run stopped on a usage limit, so replying stacks two attached banners on the composer. */
+export const limitThreadId = "thread-limit";
 
 export const questions = [{
   id: "detail", header: "Details", question: "How much detail should the observation cards show?",
