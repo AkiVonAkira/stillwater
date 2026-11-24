@@ -70,10 +70,22 @@ function t3CssProblems(css: string): string[] {
 }
 
 function writeT3(palette: { [key: string]: Json }): string {
-  const source = readFileSync(join(ROOT, "t3", "observatory.css"), "utf8")
+  const stripped = readFileSync(join(ROOT, "t3", "observatory.css"), "utf8")
     .replace(/\r\n/g, "\n")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\n{2,}/g, "\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  // Indentation counts against T3's character limit, so whitespace collapses below. That would also
+  // rewrite a quoted string, so the build refuses one with whitespace or punctuation the collapse
+  // touches. Each closing brace ends a line to keep diffs readable.
+  const quoted = stripped.match(/"[^"]*"|'[^']*'/g)?.find((s) => /[\s{};,>:]/.test(s));
+  if (quoted) {
+    throw new Error(`t3/observatory.css: the build collapses whitespace, so ${quoted} would change. Use a CSS escape such as \\20 for a space.`);
+  }
+  const source = stripped
+    .replace(/\s+/g, " ")
+    .replace(/\s*([{};,>])\s*/g, "$1")
+    .replace(/:\s+/g, ":")
+    .replace(/\s+!important/g, "!important")
+    .replace(/}/g, "}\n")
     .trim();
   const css = `${writeCss(palette).trim()}
 ${source}

@@ -202,6 +202,12 @@ async function fixtureEnvironment(origin: string) {
     updatedAt: iso(10_000),
   }));
   const shell = { schemaVersion: 1, snapshotSequence: 1, projects, threads: fixture.threads.map(threadShell), archivedThreads: [] };
+  // Two providers with an effort select, so the model menu capture shows provider tabs, a model list, and effort levels.
+  const effort = { id: "reasoningEffort", label: "Effort", type: "select", role: "reasoning", currentValue: "medium", options: ["low", "medium", "high", "xhigh"].map((id) => ({ id, label: id === "xhigh" ? "Extra high" : id[0].toUpperCase() + id.slice(1), isDefault: id === "medium" })) };
+  const provider = (instanceId: string, driver: string, models: [string, string][]) => ({
+    instanceId, driver, enabled: true, installed: true, version: "1.0.0", status: "ready", auth: { status: "authenticated" }, checkedAt: iso(5),
+    models: models.map(([slug, name], i) => ({ slug, name, isCustom: false, isDefault: i === 0, capabilities: { optionDescriptors: [effort] } })),
+  });
   const config = {
     environment: descriptor,
     auth,
@@ -209,7 +215,10 @@ async function fixtureEnvironment(origin: string) {
     keybindingsConfigPath: "C:/fixture/keybindings.json",
     keybindings: [],
     issues: [],
-    providers: [{ instanceId: "codex", driver: "codex", enabled: true, installed: true, version: "1.0.0", status: "ready", auth: { status: "authenticated" }, checkedAt: iso(5), models: [{ slug: "gpt-5.4", name: "GPT-5.4", isCustom: false, isDefault: true, capabilities: null }] }],
+    providers: [
+      provider("codex", "codex", [["gpt-5.4", "GPT-5.4"], ["gpt-5.4-mini", "GPT-5.4 Mini"], ["gpt-5.3-codex", "GPT-5.3 Codex"]]),
+      provider("claudeAgent", "claudeAgent", [["claude-opus-5-5", "Claude Opus 5.5"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-haiku-5-5", "Claude Haiku 5.5"]]),
+    ],
     availableEditors: [],
     observability: { logsDirectoryPath: "C:/fixture/logs", localTracingEnabled: false, otlpTracesEnabled: false, otlpMetricsEnabled: false },
     settings: {},
