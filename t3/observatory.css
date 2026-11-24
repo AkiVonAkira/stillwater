@@ -2,6 +2,8 @@
   --radius: .5rem !important;
   --ob-card-radius: 12px;
   --ob-sheet-radius: 16px;
+  --ob-focus: color-mix(in srgb, var(--stillwater-accent) 40%, transparent);
+  --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
 }
 
 .dark {
@@ -13,8 +15,6 @@
   --ob-menu: color-mix(in srgb, var(--stillwater-canvas) 97%, transparent);
   --ob-bar: color-mix(in srgb, var(--stillwater-canvas-overlay) 78%, transparent);
   --ob-well: color-mix(in srgb, var(--stillwater-canvas-overlay) 55%, transparent);
-  --ob-focus: color-mix(in srgb, var(--stillwater-accent) 40%, transparent);
-  --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
   --ob-workspace-background:
     radial-gradient(60% 45% at 8% 6%, color-mix(in srgb, var(--stillwater-accent-deep) 18%, transparent), transparent 70%),
     radial-gradient(45% 50% at 96% 96%, color-mix(in srgb, var(--stillwater-warm) 9%, transparent), transparent 70%),
@@ -30,8 +30,6 @@
   --ob-menu: rgb(244 239 230 / .97);
   --ob-bar: rgb(235 228 216 / .85);
   --ob-well: rgb(230 223 210 / .6);
-  --ob-focus: color-mix(in srgb, var(--stillwater-accent) 40%, transparent);
-  --ob-halo: color-mix(in srgb, var(--stillwater-accent) 8%, transparent);
 }
 
 /* One sky behind the whole chat area: the inset paints it, and the layers above it go transparent,
@@ -143,6 +141,10 @@
     animation: none;
     opacity: .85;
   }
+
+  [data-model-picker-provider] [aria-pressed]::after {
+    transition: none;
+  }
 }
 
 /* Stillwater's sky already marks the sidebar header, so the Nightly pill is hidden. T3 wraps it in
@@ -167,16 +169,10 @@
   translate: -.5px -.5px;
 }
 
-[data-chat-header] {
-  background: transparent !important;
-  border-color: transparent !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-
 [data-slot="composer-host"],
 [data-thread-details-card],
-[data-user-message-bubble] {
+[data-user-message-bubble],
+[data-workspace-area="panel"][data-preview-panel-mode="inline"] {
   background: var(--ob-glass) !important;
   border: 1px solid var(--ob-edge) !important;
   border-radius: var(--ob-card-radius) !important;
@@ -186,13 +182,6 @@
 
 [data-slot="composer-host"]:focus-within {
   border-color: var(--ob-focus) !important;
-}
-
-[data-slot="composer-host"]:has([data-pending-user-input-toggle], [data-composer-banner-surface="attached"]) {
-  background: transparent !important;
-  border-color: transparent !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
 }
 
 [data-slot="composer-host"]:has([data-pending-user-input-toggle], [data-composer-banner-surface="attached"]):focus-within [data-chat-composer-main-surface]::after {
@@ -263,10 +252,6 @@
   height: calc(100% - var(--workspace-topbar-height) - var(--ob-card-gap)) !important;
   align-self: flex-end !important;
   overflow: hidden;
-  background: var(--ob-glass) !important;
-  border: 1px solid var(--ob-edge) !important;
-  border-radius: var(--ob-card-radius) !important;
-  backdrop-filter: blur(18px) saturate(140%);
   box-shadow: inset 0 1px 0 var(--ob-shine) !important;
 }
 
@@ -363,14 +348,149 @@ div:has(> [data-thread-terminal-drawer][data-terminal-owner="drawer"]) {
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / .25), inset 0 1px 0 var(--ob-shine) !important;
 }
 
-/* When the chat is too narrow for the thread details card, T3 opens the same card in a popover. The
-   card is already glass with its own edge and shadow, so the popover's own sheet would draw a
-   second box around it. */
-[data-slot="popover-popup"]:has([data-thread-details-panel="popover"]) {
+/* Surfaces that let the sky or an inner card show through. When the chat is too narrow for the
+   thread details card, T3 opens the same card in a popover, and the card is already glass with its
+   own edge and shadow. The chat header sits on the sky. A composer with a question card or attached
+   banner leaves the framing to those. */
+[data-slot="popover-popup"]:has([data-thread-details-panel="popover"]),
+[data-chat-header],
+[data-slot="composer-host"]:has([data-pending-user-input-toggle], [data-composer-banner-surface="attached"]) {
   background: transparent !important;
   border-color: transparent !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
+}
+
+/* One-column model picker, after T3 Clawd (THIRD_PARTY_NOTICES.md): provider tabs on top, a model
+   list that keeps a fixed height and scrolls, and the effort levels as a segmented bar below it.
+   The row holding the list and effort columns has no attribute, so it is found from the list. */
+[data-slot="popover-popup"]:has([data-model-picker-content]) {
+  width: min(380px, 100vw - 24px) !important;
+}
+
+[data-slot="popover-viewport"] div:has(> [data-model-picker-content]) {
+  flex-direction: column !important;
+  height: min(470px, var(--available-height, 470px) - 48px) !important;
+}
+
+[data-model-picker-content] {
+  flex: 1 1 0 !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+
+  & > [data-model-picker-sidebar] {
+    flex: none !important;
+    width: 100% !important;
+    height: 40px !important;
+    border-bottom: 1px solid var(--border);
+
+    & .min-h-full {
+      flex-direction: row !important;
+      align-items: center;
+      height: 100%;
+      min-height: 0 !important;
+      padding: 4px 6px !important;
+    }
+
+    & .border-b {
+      align-self: stretch;
+      margin: 6px 2px;
+      border: 0 !important;
+      border-left: 1px solid var(--border) !important;
+    }
+  }
+
+  & [data-model-picker-provider] {
+    width: 32px !important;
+  }
+
+  & [data-model-picker-selected-indicator] {
+    display: none !important;
+  }
+
+  & > [data-model-picker-sidebar] + div {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    border-left: 0 !important;
+  }
+}
+
+/* The active provider tab gets an accent underline in place of the vertical rail indicator. */
+[data-model-picker-provider] [aria-pressed] {
+  position: relative;
+  overflow: visible;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    left: calc(50% - 7px);
+    width: 14px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--stillwater-accent);
+    opacity: 0;
+    scale: .3 1;
+    transition: opacity .18s, scale .22s cubic-bezier(.2, .8, .2, 1);
+  }
+
+  &[aria-pressed="true"]::after {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+[data-model-picker-effort] {
+  flex: none !important;
+  width: 100% !important;
+  height: auto !important;
+  border-left: 0 !important;
+  border-top: 1px solid var(--border) !important;
+
+  & > :last-child {
+    flex: none !important;
+    padding: 8px 10px 10px !important;
+  }
+
+  & [role="radiogroup"]:has(> [data-effort-level]) {
+    flex-flow: row wrap !important;
+    gap: 2px !important;
+    padding: 3px !important;
+    border-radius: 9px;
+    background: var(--ob-well);
+  }
+
+  & [data-effort-level] {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+    height: 26px !important;
+    justify-content: center !important;
+    padding: 0 10px !important;
+    border-radius: 7px !important;
+    color: var(--muted-foreground) !important;
+
+    & > :not(:first-child) {
+      display: none !important;
+    }
+
+    & > :first-child {
+      flex: none !important;
+    }
+
+    &:hover {
+      color: var(--foreground) !important;
+    }
+
+    &[aria-checked="true"] {
+      background: var(--ob-sheet) !important;
+      color: var(--stillwater-accent) !important;
+      box-shadow: var(--ob-shadow);
+    }
+  }
 }
 
 [data-slot="tooltip-popup"] {
