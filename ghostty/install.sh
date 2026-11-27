@@ -60,8 +60,12 @@ set_theme() {
     return 0
   fi
   # Ryoku's config includes its matugen palette, then user.conf last, so the theme goes in user.conf.
-  if grep -q '^config-file[[:space:]]*=[[:space:]]*?user.conf' "$conf"; then
-    if [[ ! -f "$1/user.conf" ]] || ! grep -q '^config-file[[:space:]]*=[[:space:]]*themes/Stillwater$' "$1/user.conf"; then
+  if grep -q '^config-file[[:space:]]*=[[:space:]]*?user\.conf[[:space:]]*$' "$conf"; then
+    if [[ ! -f "$1/user.conf" ]] || ! grep -q '^config-file[[:space:]]*=[[:space:]]*themes/Stillwater[[:space:]]*$' "$1/user.conf"; then
+      # A last line without a newline would swallow the include.
+      if [[ -s "$1/user.conf" && -n "$(tail -c 1 "$1/user.conf")" ]]; then
+        printf '\n' >>"$1/user.conf"
+      fi
       printf '%s\n' 'config-file = themes/Stillwater' >>"$1/user.conf"
     fi
     return 0

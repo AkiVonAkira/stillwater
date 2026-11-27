@@ -40,10 +40,14 @@ function Set-GhosttyTheme {
   if (-not (Test-Path -LiteralPath $conf -PathType Leaf)) { return }
   $raw = [System.IO.File]::ReadAllText($conf)
   # Ryoku's config includes its matugen palette, then user.conf last, so the theme goes in user.conf.
-  if ($raw -match '(?m)^config-file\s*=\s*\?user\.conf') {
+  if ($raw -match '(?m)^config-file\s*=\s*\?user\.conf[ \t]*\r?$') {
     $user = Join-Path (Get-GhosttyDir) "user.conf"
-    $have = (Test-Path -LiteralPath $user -PathType Leaf) -and ([System.IO.File]::ReadAllText($user) -match '(?m)^config-file\s*=\s*themes/Stillwater\r?$')
-    if (-not $have) { [System.IO.File]::AppendAllText($user, "config-file = themes/Stillwater`n") }
+    $text = if (Test-Path -LiteralPath $user -PathType Leaf) { [System.IO.File]::ReadAllText($user) } else { "" }
+    if ($text -notmatch '(?m)^config-file\s*=\s*themes/Stillwater[ \t]*\r?$') {
+      # A last line without a newline would swallow the include.
+      $lead = if ($text -and -not $text.EndsWith("`n")) { "`n" } else { "" }
+      [System.IO.File]::AppendAllText($user, "${lead}config-file = themes/Stillwater`n")
+    }
     return
   }
   if ($raw -match '(?m)^theme\s*=') {
