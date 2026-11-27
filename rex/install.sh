@@ -29,21 +29,23 @@ set_palette() {
   fi
   tmp="$(mktemp)"
   awk '
-    function put(k, v) { print k " = " v; done[k] = 1 }
-    BEGIN { want["dark_theme_color_palette"] = "stillwater"; want["use_system_accent_color"] = "false"; global = 1 }
-    global && /^[[:space:]]*\[/ {
-      for (k in want) if (!done[k]) put(k, want[k])
-      global = 0
+    function put(i) { print key[i] " = " val[i]; done[i] = 1 }
+    function rest(i) { for (i = 1; i <= 2; i++) if (!done[i]) put(i) }
+    BEGIN {
+      key[1] = "dark_theme_color_palette"; val[1] = "stillwater"
+      key[2] = "use_system_accent_color"; val[2] = "false"
+      global = 1
     }
+    global && /^[[:space:]]*\[/ { rest(); global = 0 }
     global {
       line = $0
       sub(/\r$/, "", line)
-      for (k in want) {
-        if (!done[k] && line ~ ("^[[:space:]]*#?[[:space:]]*" k "[[:space:]]*=")) { put(k, want[k]); next }
+      for (i = 1; i <= 2; i++) {
+        if (!done[i] && line ~ ("^[[:space:]]*#?[[:space:]]*" key[i] "[[:space:]]*=")) { put(i); next }
       }
     }
     { print }
-    END { if (global) for (k in want) if (!done[k]) put(k, want[k]) }
+    END { if (global) rest() }
   ' "$conf" >"$tmp"
   mv "$tmp" "$conf"
 }
