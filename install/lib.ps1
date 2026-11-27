@@ -333,6 +333,7 @@ function Get-StillwaterNextStep([string]$Id) {
     "yasb" { return "Reload YASB to apply colors." }
     "kitty" { return "Reload Kitty to apply Stillwater." }
     "ghostty" { return "Set theme = Stillwater in Ghostty config." }
+    "rex" { return "Restart Rex." }
     "harbor" { return "Import Stillwater.harborstyle under Settings, Theme & appearance." }
     "btop" { return "Set color_theme to stillwater in btop.conf." }
     "fastfetch" { return "Open a new shell." }

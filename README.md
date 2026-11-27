@@ -32,6 +32,7 @@ In the picker, ← and → pick the base theme for apps that have more than one.
 - [Neovim](https://neovim.io)
 - [Obsidian](https://obsidian.md)
 - [Prism Launcher](https://prismlauncher.org)
+- [Rex](https://www.superlogical.com/rex) (Windows; on macOS, import the Ghostty theme)
 - [Ryoku](https://ryoku.dev) (Linux)
 - [Spicetify](https://spicetify.app) (Base, Dribbblish)
 - [Spotifast](https://spotifast.rocks)

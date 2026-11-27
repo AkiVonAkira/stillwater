@@ -503,6 +503,21 @@ printf '%s' 'keybind = ctrl+v=paste_from_clipboard' >"$TMP/.config/ghostty/user.
 grep -qx 'keybind = ctrl+v=paste_from_clipboard' "$TMP/.config/ghostty/user.conf" || fail "Ryoku ghostty should keep the user's lines"
 if grep -q 'Stillwater' "$TMP/.config/ghostty/config"; then fail "Ryoku ghostty should leave config to Ryoku"; fi
 
+rex="$TMP/AppData/Local/Superlogical/Rex"
+mkdir -p "$rex"
+printf '%s\n' '# Rex config' '# use_system_accent_color  = true' '# dark_theme_color_palette  = default_dark' '[server]' 'tailscale_enabled = true' >"$rex/config.ini"
+out="$("$BASH_EXE" "$ROOT/install.sh" rex)"
+printf '%s\n' "$out" | grep -q 'Installed Rex.' || fail "should install Rex"
+"$BASH_EXE" "$ROOT/install.sh" rex >/dev/null
+grep -q "#5aa8b4" "$rex/palettes/stillwater.ini" || fail "Rex palette should map Stillwater accent"
+[[ "$(grep -c '^dark_theme_color_palette = stillwater$' "$rex/config.ini")" == 1 ]] || fail "Rex should select Stillwater once"
+grep -q '^use_system_accent_color = false$' "$rex/config.ini" || fail "Rex should turn off the Windows accent"
+[[ "$(sed -n '4p' "$rex/config.ini")" == '[server]' ]] || fail "Rex keys should stay in the global section"
+grep -q '^tailscale_enabled = true$' "$rex/config.ini" || fail "Rex should keep the user's settings"
+printf '%s\n' '[server]' 'tailscale_enabled = true' >"$rex/config.ini"
+"$BASH_EXE" "$ROOT/install.sh" rex >/dev/null
+[[ "$(head -n 1 "$rex/config.ini")" == 'dark_theme_color_palette = stillwater' ]] || fail "Rex should add missing keys before the first section"
+
 mkdir -p "$TMP/.config/btop"
 printf '%s\n' 'color_theme = "Default"' >"$TMP/.config/btop/btop.conf"
 out="$("$BASH_EXE" "$ROOT/install.sh" btop)"
