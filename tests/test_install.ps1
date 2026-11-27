@@ -75,6 +75,19 @@ try {
   $r = Invoke-Installer -List
   if ($r.Out -notmatch "Cursor\s+found\s+update\s+0\.9\.0 to $([regex]::Escape($version))") { Fail "an older Cursor install with other changes should show the version update: $($r.Out)" }
 
+  # Ryoku's Ghostty config loads user.conf last, so Stillwater goes there, once.
+  $ghostty = Join-Path $Tmp ".config\ghostty"
+  New-Item -ItemType Directory -Force -Path $ghostty | Out-Null
+  [IO.File]::WriteAllText((Join-Path $ghostty "config"), "config-file = ryoku-colors`nconfig-file = ?user.conf`n")
+  [IO.File]::WriteAllText((Join-Path $ghostty "user.conf"), "keybind = ctrl+v=paste_from_clipboard")
+  $null = Invoke-Installer ghostty
+  $r = Invoke-Installer ghostty
+  if ($r.Code -ne 0) { Fail "Ghostty install exited $($r.Code): $($r.Out)" }
+  $user = [IO.File]::ReadAllText((Join-Path $ghostty "user.conf"))
+  if (([regex]::Matches($user, '(?m)^config-file = themes/Stillwater$')).Count -ne 1) { Fail "Ryoku Ghostty should load Stillwater once from user.conf: $user" }
+  if ($user -notmatch '(?m)^keybind = ctrl\+v=paste_from_clipboard\r?$') { Fail "Ryoku Ghostty should keep the user's lines" }
+  if ([IO.File]::ReadAllText((Join-Path $ghostty "config")) -match 'Stillwater') { Fail "Ryoku Ghostty should leave config to Ryoku" }
+
   $r = Invoke-Installer bogus
   if ($r.Code -eq 0) { Fail "an unknown adapter should fail" }
   if ($r.Out -notmatch "Unknown adapter: bogus") { Fail "an unknown adapter should be named: $($r.Out)" }
