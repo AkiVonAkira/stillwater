@@ -35,6 +35,7 @@ const STAMPS: [string, RegExp][] = [
   ["ghostty/Stillwater", HASH_VERSION],
   ["harbor/Stillwater.harborstyle", HASH_VERSION],
   ["kitty/Stillwater.conf", HASH_VERSION],
+  ["rex/stillwater.ini", HASH_VERSION],
   ["starship/starship.toml", HASH_VERSION],
 ];
 

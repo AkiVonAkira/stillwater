@@ -440,6 +440,9 @@ stillwater_next_step() {
     ghostty)
       printf 'Set theme = Stillwater in Ghostty config.'
       ;;
+    rex)
+      printf 'Restart Rex.'
+      ;;
     harbor)
       printf 'Import Stillwater.harborstyle under Settings, Theme & appearance.'
       ;;

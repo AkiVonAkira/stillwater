@@ -88,6 +88,23 @@ try {
   if ($user -notmatch '(?m)^keybind = ctrl\+v=paste_from_clipboard\r?$') { Fail "Ryoku Ghostty should keep the user's lines" }
   if ([IO.File]::ReadAllText((Join-Path $ghostty "config")) -match 'Stillwater') { Fail "Ryoku Ghostty should leave config to Ryoku" }
 
+  # Rex keeps its palette keys in config.ini's global section, before the first [section].
+  $rex = Join-Path $Tmp "AppData\Local\Superlogical\Rex"
+  New-Item -ItemType Directory -Force -Path $rex | Out-Null
+  $rexConf = Join-Path $rex "config.ini"
+  [IO.File]::WriteAllText($rexConf, "# Rex config`n# use_system_accent_color  = true`n# dark_theme_color_palette  = default_dark`n[server]`ntailscale_enabled = true`n")
+  $r = Invoke-Installer rex
+  if ($r.Out -notmatch "Installed Rex\.") { Fail "should install Rex: $($r.Out)" }
+  $null = Invoke-Installer rex
+  if ((Get-Content -Raw (Join-Path $rex "palettes\stillwater.ini")) -notmatch "#5aa8b4") { Fail "Rex palette should map Stillwater accent" }
+  $lines = [IO.File]::ReadAllLines($rexConf)
+  if (@($lines | Where-Object { $_ -eq "dark_theme_color_palette = stillwater" }).Count -ne 1) { Fail "Rex should select Stillwater once: $($lines -join '|')" }
+  if ($lines -notcontains "use_system_accent_color = false") { Fail "Rex should turn off the Windows accent" }
+  if ($lines[3] -ne "[server]" -or $lines -notcontains "tailscale_enabled = true") { Fail "Rex should keep its sections and the user's settings: $($lines -join '|')" }
+  [IO.File]::WriteAllText($rexConf, "[server]`ntailscale_enabled = true`n")
+  $null = Invoke-Installer rex
+  if ([IO.File]::ReadAllLines($rexConf)[0] -ne "dark_theme_color_palette = stillwater") { Fail "Rex should add missing keys before the first section" }
+
   $r = Invoke-Installer bogus
   if ($r.Code -eq 0) { Fail "an unknown adapter should fail" }
   if ($r.Out -notmatch "Unknown adapter: bogus") { Fail "an unknown adapter should be named: $($r.Out)" }
