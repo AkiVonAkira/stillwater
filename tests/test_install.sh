@@ -495,6 +495,13 @@ printf '%s\n' 'config-file = ryoku-colors' >"$TMP/.config/ghostty/config"
 "$BASH_EXE" "$ROOT/install.sh" ghostty >/dev/null
 grep -q '^config-file = ryoku-colors$' "$TMP/.config/ghostty/config" || fail "Ghostty should keep config-file includes"
 if grep -q '^theme =' "$TMP/.config/ghostty/config"; then fail "Ghostty should not add theme = when absent"; fi
+printf '%s\n' 'config-file = ryoku-colors' 'config-file = ?user.conf' >"$TMP/.config/ghostty/config"
+printf '%s\n' 'keybind = ctrl+v=paste_from_clipboard' >"$TMP/.config/ghostty/user.conf"
+"$BASH_EXE" "$ROOT/install.sh" ghostty >/dev/null
+"$BASH_EXE" "$ROOT/install.sh" ghostty >/dev/null
+[[ "$(grep -c '^config-file = themes/Stillwater$' "$TMP/.config/ghostty/user.conf")" == 1 ]] || fail "Ryoku ghostty should load Stillwater once from user.conf"
+grep -q 'ctrl+v=paste_from_clipboard' "$TMP/.config/ghostty/user.conf" || fail "Ryoku ghostty should keep the user's lines"
+if grep -q 'Stillwater' "$TMP/.config/ghostty/config"; then fail "Ryoku ghostty should leave config to Ryoku"; fi
 
 mkdir -p "$TMP/.config/btop"
 printf '%s\n' 'color_theme = "Default"' >"$TMP/.config/btop/btop.conf"
